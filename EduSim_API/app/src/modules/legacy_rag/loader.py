@@ -2,6 +2,7 @@ import logging
 logger = logging.getLogger("EduSim.modules.legacy_rag.loader")
 
 import os
+from .vector_store import TEXTBOOKS_DIR
 from langchain_community.document_loaders import PyPDFLoader
 
 def load_pdf(pdf_path: str):
@@ -17,11 +18,15 @@ def load_pdf(pdf_path: str):
     except Exception as e:
         raise Exception(f"Error loading {pdf_path}: {e}")
 
-def load_all_pdfs(directory_path: str):
+def load_all_pdfs(directory_path: str = None):
     """Load all PDF documents from a directory."""
+    if directory_path is None:
+        directory_path = str(TEXTBOOKS_DIR)
     all_docs = []
     if not os.path.isdir(directory_path):
-        raise FileNotFoundError(f"Directory not found: {directory_path}")
+        logger.warning(f"[LOADER] Directory not found: {directory_path}")
+        return []
+
         
     for filename in os.listdir(directory_path):
         if filename.lower().endswith(".pdf"):

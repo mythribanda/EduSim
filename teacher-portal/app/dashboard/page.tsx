@@ -61,8 +61,8 @@ export default function DashboardPage() {
         headers["Authorization"] = `Bearer ${token}`;
       }
 
-      // 1. Fetch teacher classes from GET /classes/mine
-      const classesRes = await fetch(`${API_URL}/classes/mine`, { credentials: "omit", headers });
+      // 1. Fetch teacher classes from GET /api/classes/mine
+      const classesRes = await fetch(`${API_URL}/api/classes/mine`, { credentials: "omit", headers });
       if (!classesRes.ok) {
         throw new Error(
           `Failed to fetch teacher classes (${classesRes.status}: ${classesRes.statusText})`
@@ -70,12 +70,12 @@ export default function DashboardPage() {
       }
       const rawClasses: ClassItem[] = await classesRes.json();
 
-      // 2. Fetch analytics for each class concurrently from GET /classes/{id}/analytics
+      // 2. Fetch analytics for each class concurrently from GET /api/classes/{id}/analytics
       const enriched = await Promise.all(
         rawClasses.map(async (cls) => {
           try {
             const analyticsRes = await fetch(
-              `${API_URL}/classes/${cls.id}/analytics`,
+              `${API_URL}/api/classes/${cls.id}/analytics`,
               { credentials: "omit", headers }
             );
             if (analyticsRes.ok) {

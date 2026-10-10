@@ -12,6 +12,7 @@ verifies that the session belongs to the requesting user.
 """
 
 from __future__ import annotations
+import logging
 from typing import Any, Dict, Optional
 from fastapi import APIRouter, HTTPException, Path, Body, status, Depends, Header
 from pydantic import BaseModel, Field
@@ -27,6 +28,8 @@ from app.src.services.persistence_service import (
     save_sandbox_state,
 )
 from app.src.modules.sandbox import service
+
+logger = logging.getLogger(__name__)
 
 # Initialize APIRouter
 sandbox_router = APIRouter(prefix="/sandbox", tags=["Sandbox"])
@@ -81,12 +84,6 @@ async def verify_sandbox_session_owner(
 # Pydantic Request Models
 # ============================================================================
 
-class GenerateRequest(BaseModel):
-    """Payload to synthesize a custom scenario from a natural language prompt."""
-    prompt: str = Field(..., min_length=4, description="Physics prompt description")
-    topic: Optional[str] = Field(None, description="Optional textbook subject topic")
-
-
 class LoadRequest(BaseModel):
     """Payload to retrieve an active simulation session."""
     simulation_id: str = Field(..., description="UUID of the active simulation session")
@@ -110,72 +107,23 @@ class SnapshotRestoreRequest(BaseModel):
 
 
 # ============================================================================
-# API Routes
-# ============================================================================
-
+# DEPRECATED: use POST /api/simulations/generate
 @sandbox_router.post(
     "/generate",
-    status_code=status.HTTP_201_CREATED,
-    summary="Synthesize and initialize a new physical simulation"
+    summary="[Deprecated] Generate simulation - use POST /api/simulations/generate",
+    deprecated=True
 )
-async def generate_sandbox_simulation(
-    request: GenerateRequest,
+async def generate_sandbox_simulation_deprecated(
+    request: Dict[str, Any] = Body(...),
     authorization: Optional[str] = Header(None),
     db: Session = Depends(get_db),
 ):
-    """
-    RAG textbook context is queried, dynamic scenarios are synthesized by the LLM,
-    objects are normalized, and an active RuntimeStore session is registered.
-    """
-    try:
-        user = resolve_user_from_authorization(authorization, db)
-        user_id = str(user.id) if user else None
-        data = await service.generate_simulation(
-            prompt=request.prompt,
-            topic=request.topic,
-            user_id=user_id,
-        )
-        if user:
-            save_sandbox_state(
-                db,
-                user=user,
-                payload={
-                    "simulation_id": data.get("simulation_id") or data.get("id") or request.prompt[:120],
-                    "prompt": request.prompt,
-                    "topic": request.topic,
-                    "title": data.get("title"),
-                    "description": data.get("description"),
-                    "dsl_json": data,
-                    "runtime_json": data.get("runtime"),
-                    "snapshot_json": data.get("snapshot"),
-                    "ui_state_json": data.get("ui_state"),
-                },
-            )
-            record_activity(
-                db,
-                user=user,
-                domain="sandbox",
-                action="generate",
-                entity_type="simulation",
-                entity_id=str(data.get("simulation_id") or data.get("id") or request.prompt[:120]),
-                source="/api/sandbox/generate",
-                metadata={"topic": request.topic},
-            )
-            db.commit()
-        return {
-            "success": True,
-            **data
-        }
-    except ValueError as val_err:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Validation failed during synthesis: {val_err}"
-        )
-    except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Simulation generation failed: {exc}"
-        )
+    from app.src.modules.simulation_synthesis.service import generate_simulation_synthesis
+    prompt = request.get("prompt", "")
+    topic = request.get("topic")
+    user = resolve_user_from_authorization(authorization, db)
+    user_id = str(user.id) if user else None
+    return await service.generate_simulation(prompt=prompt, topic=topic, user_id=user_id)
 
 
 @sandbox_router.post(
@@ -218,9 +166,10 @@ async def load_sandbox_simulation(
             detail=str(val_err)
         )
     except Exception as exc:
+        logger.error(f"Simulation retrieval failed: {exc}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Simulation retrieval failed: {exc}"
+            detail="Simulation retrieval failed due to an internal error."
         )
 
 
@@ -264,9 +213,10 @@ async def reset_sandbox_simulation(
             detail=str(val_err)
         )
     except Exception as exc:
+        logger.error(f"Simulation reset failed: {exc}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Simulation reset failed: {exc}"
+            detail="Simulation reset failed due to an internal error."
         )
 
 
@@ -314,9 +264,10 @@ async def update_sandbox_control(
             detail=str(val_err)
         )
     except Exception as exc:
+        logger.error(f"Parameter modification failed: {exc}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Parameter modification failed: {exc}"
+            detail="Parameter modification failed due to an internal error."
         )
 
 
@@ -360,9 +311,10 @@ async def get_sandbox_runtime(
             detail=str(val_err)
         )
     except Exception as exc:
+        logger.error(f"Failed to fetch runtime tick: {exc}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch runtime tick: {exc}"
+            detail="Failed to fetch runtime tick due to an internal error."
         )
 
 
@@ -406,9 +358,10 @@ async def get_sandbox_snapshot(
             detail=str(val_err)
         )
     except Exception as exc:
+        logger.error(f"Failed to capture snapshot: {exc}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to capture snapshot: {exc}"
+            detail="Failed to capture snapshot due to an internal error."
         )
 
 
@@ -457,7 +410,8 @@ async def restore_sandbox_snapshot(
             detail=str(val_err)
         )
     except Exception as exc:
+        logger.error(f"Failed to restore state snapshot: {exc}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to restore state snapshot: {exc}"
+            detail="Failed to restore state snapshot due to an internal error."
         )

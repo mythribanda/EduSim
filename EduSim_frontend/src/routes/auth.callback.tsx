@@ -45,7 +45,7 @@ function AuthCallbackComponent() {
 
     if (error) {
       toast.error(`Authentication failed: ${error}`);
-      navigate({ to: "/login" });
+      navigate({ to: "/login", search: { verify_token: "", reset_token: "" } });
       return;
     }
 
@@ -81,11 +81,11 @@ function AuthCallbackComponent() {
         navigate({ to: "/dashboard" });
       } else {
         toast.error("Invalid token format received");
-        navigate({ to: "/login" });
+        navigate({ to: "/login", search: { verify_token: "", reset_token: "" } });
       }
     } else {
       toast.error("Authentication callback received no token");
-      navigate({ to: "/login" });
+      navigate({ to: "/login", search: { verify_token: "", reset_token: "" } });
     }
   }, [token, error, navigate]);
 

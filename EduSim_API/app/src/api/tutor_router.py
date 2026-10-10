@@ -18,9 +18,9 @@ tutor_router = APIRouter()
 
 from pydantic import BaseModel, Field
 from typing import List, Any
-from services.tutor import build_tutor_prompt, ask_tutor_service, identify_topic_from_text
-from services.ai_router import call_ai
-from services.mastery import update_mastery
+from app.src.services.tutor import build_tutor_prompt, ask_tutor_service, identify_topic_from_text
+from app.src.services.ai_router import call_ai
+from app.src.services.mastery import update_mastery
 
 class AskTutorRequest(BaseModel):
     query: str = Field(..., min_length=1, description="Student question or physics prompt")
@@ -339,10 +339,13 @@ async def get_tutor_guide(
             "success": True,
             "data": response
         }
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error(f"Tutor Guide Generation Error: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Tutor Guide Generation Error: {str(e)}"
+            detail="Tutor Guide Generation Error."
         )
 
 
@@ -368,11 +371,15 @@ async def explain_sim(
             "success": True,
             "data": data
         }
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error(f"Simulation Explanation Error: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Simulation Explanation Error: {str(e)}"
+            detail="Simulation Explanation Error."
         )
+
 
 
 @tutor_router.get("/search")

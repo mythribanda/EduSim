@@ -1,3 +1,4 @@
+import logging
 from fastapi import HTTPException
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
@@ -8,6 +9,8 @@ from .service import (
     get_simulation_synthesis,
     generate_simulation_synthesis_stream,
 )
+
+logger = logging.getLogger("EduSim.modules.simulation_synthesis.controller")
 
 
 class AgentGenerateRequest(BaseModel):
@@ -27,8 +30,12 @@ async def synthesis_generate_controller(request: AgentGenerateRequest):
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Simulation synthesis failed: {str(e)}")
+        logger.error(f"Simulation synthesis failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Simulation synthesis failed.")
+
 
 
 async def synthesis_list_controller(limit: int = 30):
@@ -38,8 +45,11 @@ async def synthesis_list_controller(limit: int = 30):
             "success": True,
             "items": data,
         }
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to list simulations: {str(e)}")
+        logger.error(f"Failed to list simulations: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to list simulations.")
 
 
 async def synthesis_get_controller(simulation_id: str):
@@ -54,7 +64,8 @@ async def synthesis_get_controller(simulation_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to load simulation: {str(e)}")
+        logger.error(f"Failed to load simulation: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to load simulation.")
 
 
 async def synthesis_export_controller(simulation_id: str):
@@ -73,7 +84,8 @@ async def synthesis_export_controller(simulation_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to export simulation: {str(e)}")
+        logger.error(f"Failed to export simulation: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to export simulation.")
 
 
 async def synthesis_generate_stream_controller(request: AgentGenerateRequest):
@@ -102,5 +114,8 @@ async def synthesis_generate_stream_controller(request: AgentGenerateRequest):
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to start streaming: {str(e)}")
+        logger.error(f"Failed to start streaming: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to start streaming.")

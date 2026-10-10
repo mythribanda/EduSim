@@ -1,4 +1,4 @@
-import { CLASSES } from "@/data/curriculum";
+import { CLASSES, STREAM_CLASSES, UNIVERSITY_COURSES, Stream, Course, Subject } from "@/data/curriculum";
 
 export interface DBClass {
   id: number;
@@ -8,7 +8,7 @@ export interface DBClass {
 
 export interface DBSubject {
   id: string;
-  class_id: number;
+  class_id?: number | string;
   code: string;
   name: string;
   description: string;
@@ -46,6 +46,46 @@ export const CurriculumService = {
     return cls.subjects.map(s => ({
       id: s.id,
       class_id: cls.id,
+      code: s.id,
+      name: s.name,
+      description: s.description,
+      icon: s.icon
+    }));
+  },
+
+  getStreamClasses: async () => {
+    return STREAM_CLASSES;
+  },
+
+  getStreams: async (classId: number): Promise<Stream[]> => {
+    const cls = STREAM_CLASSES.find(sc => sc.id === classId);
+    return cls ? cls.streams : [];
+  },
+
+  getStreamSubjects: async (classId: number, streamId: string): Promise<DBSubject[]> => {
+    const cls = STREAM_CLASSES.find(sc => sc.id === classId);
+    const stream = cls?.streams.find(s => s.id === streamId);
+    if (!stream) return [];
+    return stream.subjects.map(s => ({
+      id: s.id,
+      class_id: classId,
+      code: s.id,
+      name: s.name,
+      description: s.description,
+      icon: s.icon
+    }));
+  },
+
+  getUniversityCourses: async (): Promise<Course[]> => {
+    return UNIVERSITY_COURSES;
+  },
+
+  getCourseSubjects: async (courseId: string): Promise<DBSubject[]> => {
+    const course = UNIVERSITY_COURSES.find(c => c.id === courseId);
+    if (!course) return [];
+    return course.subjects.map(s => ({
+      id: s.id,
+      class_id: course.id,
       code: s.id,
       name: s.name,
       description: s.description,

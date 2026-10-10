@@ -37,3 +37,24 @@ class QuestionModel(BaseModel):
 
 class QuestionGenerationResponse(BaseModel):
     questions: List[Union[QuestionItem, QuestionModel, Any]]
+
+
+class QuestionSubmitRequest(BaseModel):
+    topic: str = Field(..., description="Physics topic name")
+    student_id: Optional[str] = Field(default=None, description="Student UUID or identifier")
+    question_id: Optional[str] = None
+    selected_option: str
+    correct_option: Optional[str] = None
+    question_text: Optional[str] = None
+
+
+class QuestionSubmitResponse(BaseModel):
+    is_correct: bool
+    correct_answer: str
+    explanation: Optional[str] = ""
+    mastery_score: float
+    correct_streak: int
+    total_attempts: int
+    total_correct: int
+    recommended_difficulty: str
+    recommended_next: str

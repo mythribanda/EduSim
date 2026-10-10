@@ -9,12 +9,12 @@ from sqlalchemy import func
 from app.src.config.database import get_db
 from app.src.models.user import User
 from app.src.api.auth import get_current_user
-from middleware.rbac import (
+from app.src.middleware.rbac import (
     normalize_role,
     require_role,
     check_class_membership,
 )
-from models import (
+from app.src.models.school import (
     Class,
     TeacherClassSubject,
     StudentEnrollment,
@@ -453,7 +453,7 @@ def get_class_students(
     student_ids = [enr.student_id for enr in enrollments]
     mastery_by_student: Dict[uuid.UUID, list] = {}
     if student_ids:
-        from models import StudentTopicMastery
+        from app.src.models.school import StudentTopicMastery
         all_masteries = (
             db.query(StudentTopicMastery)
             .filter(StudentTopicMastery.student_id.in_(student_ids))
@@ -643,7 +643,7 @@ def get_class_analytics(
         active_this_week = len(active_event_students | active_session_students)
 
     # 3. Topic Mastery scores
-    from models import StudentTopicMastery
+    from app.src.models.school import StudentTopicMastery
     average_mastery = 0.0
     weakest_topic = None
     strongest_topic = None

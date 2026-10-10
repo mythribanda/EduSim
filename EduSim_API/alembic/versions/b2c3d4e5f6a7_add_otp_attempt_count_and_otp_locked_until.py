@@ -1,12 +1,6 @@
-"""add otp_attempt_count and otp_locked_until to users
-
-Revision ID: b2c3d4e5f6a7
-Revises: a1b2c3d4e5f6
-Create Date: 2026-08-06 23:09:00.000000
-
-"""
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.engine.reflection import Inspector
 
 
 # revision identifiers, used by Alembic.
@@ -17,25 +11,23 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        'users',
-        sa.Column(
-            'otp_attempt_count',
-            sa.Integer(),
-            nullable=False,
-            server_default='0',
-        ),
-    )
-    op.add_column(
-        'users',
-        sa.Column(
-            'otp_locked_until',
-            sa.DateTime(timezone=True),
-            nullable=True,
-        ),
-    )
+    bind = op.get_bind()
+    inspector = Inspector.from_engine(bind)
+    existing_tables = inspector.get_table_names()
+
+    if 'users' in existing_tables:
+        cols = [c["name"] for c in inspector.get_columns('users')]
+        with op.batch_alter_table('users') as batch_op:
+            if 'otp_attempt_count' not in cols:
+                batch_op.add_column(
+                    sa.Column('otp_attempt_count', sa.Integer(), nullable=False, server_default='0')
+                )
+            if 'otp_locked_until' not in cols:
+                batch_op.add_column(
+                    sa.Column('otp_locked_until', sa.DateTime(timezone=True), nullable=True)
+                )
 
 
 def downgrade() -> None:
-    op.drop_column('users', 'otp_locked_until')
-    op.drop_column('users', 'otp_attempt_count')
+    pass
+

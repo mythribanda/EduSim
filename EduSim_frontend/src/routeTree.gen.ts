@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TutorRouteImport } from './routes/tutor'
+import { Route as SimulationsRouteImport } from './routes/simulations'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ProfileRouteImport } from './routes/profile'
@@ -19,6 +20,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AiAgentRouteImport } from './routes/ai-agent'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SubjectsClassIdRouteImport } from './routes/subjects.$classId'
+import { Route as SimulationsIdRouteImport } from './routes/simulations.$id'
 import { Route as SimulationTopicRouteImport } from './routes/simulation.$topic'
 import { Route as SandboxSimulationIdRouteImport } from './routes/sandbox.$simulationId'
 import { Route as FormulaLabTopicRouteImport } from './routes/formula-lab.$topic'
@@ -29,6 +31,11 @@ import { Route as TopicsClassIdSubjectChapterRouteImport } from './routes/topics
 const TutorRoute = TutorRouteImport.update({
   id: '/tutor',
   path: '/tutor',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SimulationsRoute = SimulationsRouteImport.update({
+  id: '/simulations',
+  path: '/simulations',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SignupRoute = SignupRouteImport.update({
@@ -76,6 +83,11 @@ const SubjectsClassIdRoute = SubjectsClassIdRouteImport.update({
   path: '/subjects/$classId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SimulationsIdRoute = SimulationsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => SimulationsRoute,
+} as any)
 const SimulationTopicRoute = SimulationTopicRouteImport.update({
   id: '/simulation/$topic',
   path: '/simulation/$topic',
@@ -117,11 +129,13 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
+  '/simulations': typeof SimulationsRouteWithChildren
   '/tutor': typeof TutorRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/formula-lab/$topic': typeof FormulaLabTopicRoute
   '/sandbox/$simulationId': typeof SandboxSimulationIdRoute
   '/simulation/$topic': typeof SimulationTopicRoute
+  '/simulations/$id': typeof SimulationsIdRoute
   '/subjects/$classId': typeof SubjectsClassIdRoute
   '/chapters/$classId/$subject': typeof ChaptersClassIdSubjectRoute
   '/topics/$classId/$subject/$chapter': typeof TopicsClassIdSubjectChapterRoute
@@ -135,11 +149,13 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
+  '/simulations': typeof SimulationsRouteWithChildren
   '/tutor': typeof TutorRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/formula-lab/$topic': typeof FormulaLabTopicRoute
   '/sandbox/$simulationId': typeof SandboxSimulationIdRoute
   '/simulation/$topic': typeof SimulationTopicRoute
+  '/simulations/$id': typeof SimulationsIdRoute
   '/subjects/$classId': typeof SubjectsClassIdRoute
   '/chapters/$classId/$subject': typeof ChaptersClassIdSubjectRoute
   '/topics/$classId/$subject/$chapter': typeof TopicsClassIdSubjectChapterRoute
@@ -154,11 +170,13 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
+  '/simulations': typeof SimulationsRouteWithChildren
   '/tutor': typeof TutorRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/formula-lab/$topic': typeof FormulaLabTopicRoute
   '/sandbox/$simulationId': typeof SandboxSimulationIdRoute
   '/simulation/$topic': typeof SimulationTopicRoute
+  '/simulations/$id': typeof SimulationsIdRoute
   '/subjects/$classId': typeof SubjectsClassIdRoute
   '/chapters/$classId/$subject': typeof ChaptersClassIdSubjectRoute
   '/topics/$classId/$subject/$chapter': typeof TopicsClassIdSubjectChapterRoute
@@ -174,11 +192,13 @@ export interface FileRouteTypes {
     | '/profile'
     | '/settings'
     | '/signup'
+    | '/simulations'
     | '/tutor'
     | '/auth/callback'
     | '/formula-lab/$topic'
     | '/sandbox/$simulationId'
     | '/simulation/$topic'
+    | '/simulations/$id'
     | '/subjects/$classId'
     | '/chapters/$classId/$subject'
     | '/topics/$classId/$subject/$chapter'
@@ -192,11 +212,13 @@ export interface FileRouteTypes {
     | '/profile'
     | '/settings'
     | '/signup'
+    | '/simulations'
     | '/tutor'
     | '/auth/callback'
     | '/formula-lab/$topic'
     | '/sandbox/$simulationId'
     | '/simulation/$topic'
+    | '/simulations/$id'
     | '/subjects/$classId'
     | '/chapters/$classId/$subject'
     | '/topics/$classId/$subject/$chapter'
@@ -210,11 +232,13 @@ export interface FileRouteTypes {
     | '/profile'
     | '/settings'
     | '/signup'
+    | '/simulations'
     | '/tutor'
     | '/auth/callback'
     | '/formula-lab/$topic'
     | '/sandbox/$simulationId'
     | '/simulation/$topic'
+    | '/simulations/$id'
     | '/subjects/$classId'
     | '/chapters/$classId/$subject'
     | '/topics/$classId/$subject/$chapter'
@@ -229,6 +253,7 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   SettingsRoute: typeof SettingsRoute
   SignupRoute: typeof SignupRoute
+  SimulationsRoute: typeof SimulationsRouteWithChildren
   TutorRoute: typeof TutorRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   FormulaLabTopicRoute: typeof FormulaLabTopicRoute
@@ -246,6 +271,13 @@ declare module '@tanstack/react-router' {
       path: '/tutor'
       fullPath: '/tutor'
       preLoaderRoute: typeof TutorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/simulations': {
+      id: '/simulations'
+      path: '/simulations'
+      fullPath: '/simulations'
+      preLoaderRoute: typeof SimulationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/signup': {
@@ -311,6 +343,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SubjectsClassIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/simulations/$id': {
+      id: '/simulations/$id'
+      path: '/$id'
+      fullPath: '/simulations/$id'
+      preLoaderRoute: typeof SimulationsIdRouteImport
+      parentRoute: typeof SimulationsRoute
+    }
     '/simulation/$topic': {
       id: '/simulation/$topic'
       path: '/simulation/$topic'
@@ -356,6 +395,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface SimulationsRouteChildren {
+  SimulationsIdRoute: typeof SimulationsIdRoute
+}
+
+const SimulationsRouteChildren: SimulationsRouteChildren = {
+  SimulationsIdRoute: SimulationsIdRoute,
+}
+
+const SimulationsRouteWithChildren = SimulationsRoute._addFileChildren(
+  SimulationsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AiAgentRoute: AiAgentRoute,
@@ -365,6 +416,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   SettingsRoute: SettingsRoute,
   SignupRoute: SignupRoute,
+  SimulationsRoute: SimulationsRouteWithChildren,
   TutorRoute: TutorRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   FormulaLabTopicRoute: FormulaLabTopicRoute,

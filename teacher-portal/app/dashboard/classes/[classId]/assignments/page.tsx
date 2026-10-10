@@ -109,9 +109,9 @@ export default function ClassAssignmentsPage({
 
       // Parallel fetch: class metadata, class assignments, and curriculum topics
       const [classRes, assignRes, topicsRes] = await Promise.all([
-        fetch(`${API_URL}/classes/${classId}`, { credentials: "omit", headers }),
-        fetch(`${API_URL}/assignments/class/${classId}`, { credentials: "omit", headers }),
-        fetch(`${API_URL}/curriculum/all-topics`, { credentials: "omit", headers }).catch(() => null),
+        fetch(`${API_URL}/api/classes/${classId}`, { credentials: "omit", headers }),
+        fetch(`${API_URL}/api/assignments/class/${classId}`, { credentials: "omit", headers }),
+        fetch(`${API_URL}/api/curriculum/all-topics`, { credentials: "omit", headers }).catch(() => null),
       ]);
 
       if (!classRes.ok) {
@@ -196,7 +196,7 @@ export default function ClassAssignmentsPage({
         dueDateIso = new Date(formDueDate).toISOString();
       }
 
-      const res = await fetch(`${API_URL}/assignments`, {
+      const res = await fetch(`${API_URL}/api/assignments`, {
         method: "POST",
         credentials: "omit",
         headers,

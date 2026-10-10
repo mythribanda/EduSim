@@ -4,6 +4,8 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { Card, PageWrapper } from "@/components/Card";
 import { useQuery } from "@tanstack/react-query";
 import { CurriculumService } from "@/services/curriculumService";
+import { fetchJsonWithRetry } from "@/services/apiClient";
+import { getApiUrl } from "@/config/api";
 import { 
   Sparkles, 
   BookOpen, 
@@ -13,7 +15,11 @@ import {
   ArrowRight,
   User,
   GraduationCap,
-  FlaskConical
+  FlaskConical,
+  Flame,
+  Trophy,
+  Target,
+  CheckCircle2
 } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard")({
@@ -33,8 +39,18 @@ const EMPTY_TUTOR_SEARCH = {
   prompt: undefined,
 };
 
+interface StudentProfileData {
+  student_id: string;
+  class: string;
+  mastered_topics: string[];
+  weak_topics: string[];
+  current_streak_days: number;
+  total_sessions: number;
+  recommended_next: string;
+}
+
 function Dashboard() {
-  const { user, logout } = useAuthStore();
+  const { user, token } = useAuthStore();
   const navigate = useNavigate();
 
   const { data: classes = [], isLoading } = useQuery({
@@ -42,10 +58,32 @@ function Dashboard() {
     queryFn: CurriculumService.getClasses,
   });
 
+  const { data: profile } = useQuery<StudentProfileData | null>({
+    queryKey: ["studentProfile", user?.id],
+    queryFn: async () => {
+      if (!user?.id || !token) return null;
+      try {
+        return await fetchJsonWithRetry<StudentProfileData>(
+          getApiUrl(`/api/students/${user.id}/profile`),
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      } catch (err) {
+        console.warn("Could not fetch student profile for dashboard:", err);
+        return null;
+      }
+    },
+    enabled: Boolean(user?.id && token),
+  });
+
+  const activeStreak = profile?.current_streak_days ?? 1;
+  const masteredCount = profile?.mastered_topics?.length ?? 0;
+  const recommendedTopic = profile?.recommended_next || "Newton's Second Law";
+
   return (
     <PageWrapper>
       {/* Welcome Banner */}
       <section className="glass-strong rounded-3xl p-8 md:p-12 mb-8 relative overflow-hidden bg-card border border-border shadow-sm">
+
         <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-primary/10 blur-3xl z-0" />
         <div className="absolute -bottom-20 -left-10 w-72 h-72 rounded-full bg-primary/10 blur-3xl z-0" />
 
@@ -149,6 +187,53 @@ function Dashboard() {
             <p className="mt-2 text-sm text-muted-foreground">
               Signed in as <span className="font-semibold text-foreground">{user?.email || "unknown"}</span>
             </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Learning Progress & Next Recommended Activity */}
+      <section className="rounded-3xl border border-border bg-card p-6 mb-8 shadow-sm relative overflow-hidden">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-primary bg-primary/10 border border-primary/20 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                <Target className="w-3.5 h-3.5" /> Next Pedagogical Activity
+              </span>
+            </div>
+            <h3 className="text-xl font-black text-foreground">
+              Continue with <span className="text-primary">{recommendedTopic}</span>
+            </h3>
+            <p className="text-xs text-muted-foreground max-w-lg">
+              Based on your concept mastery and quiz results, our AI tutor recommends exploring {recommendedTopic} through interactive simulation and formula modeling.
+            </p>
+          </div>
+
+          <div className="flex items-center flex-wrap gap-3">
+            <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 px-4 py-2.5 rounded-2xl">
+              <Flame className="w-5 h-5 text-amber-500 fill-amber-500" />
+              <div>
+                <div className="text-[10px] font-extrabold uppercase text-amber-600 dark:text-amber-400">Current Streak</div>
+                <div className="text-sm font-black text-foreground">{activeStreak} Days</div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 bg-violet-500/10 border border-violet-500/20 px-4 py-2.5 rounded-2xl">
+              <Trophy className="w-5 h-5 text-violet-500" />
+              <div>
+                <div className="text-[10px] font-extrabold uppercase text-violet-600 dark:text-violet-400">Mastered Topics</div>
+                <div className="text-sm font-black text-foreground">{masteredCount} Completed</div>
+              </div>
+            </div>
+
+            <Link
+              to="/simulation/$topic"
+              params={{ topic: recommendedTopic }}
+              className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-primary text-primary-foreground font-bold text-xs shadow-md shadow-primary/20 hover:brightness-110 active:scale-95 transition-all"
+            >
+              <Sparkles className="w-4 h-4 text-primary-foreground" />
+              <span>Launch Simulation</span>
+              <ArrowRight className="w-3.5 h-3.5 ml-1" />
+            </Link>
           </div>
         </div>
       </section>

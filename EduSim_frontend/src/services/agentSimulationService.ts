@@ -150,7 +150,7 @@ class AgentSimulationService {
     const timeout = window.setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
 
     try {
-      const response = await fetch(joinUrl(this.apiBaseUrl, "/api/simulations/agent/generate"), {
+      const response = await fetch(joinUrl(this.apiBaseUrl, "/api/simulations/generate"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -195,7 +195,7 @@ class AgentSimulationService {
     let completed = false;
 
     try {
-      const response = await fetch(joinUrl(this.apiBaseUrl, "/api/simulations/agent/generate-stream"), {
+      const response = await fetch(joinUrl(this.apiBaseUrl, "/api/simulations/generate-stream"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

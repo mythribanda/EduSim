@@ -22,8 +22,8 @@ from sqlalchemy import func
 from app.src.config.database import get_db
 from app.src.models.user import User
 from app.src.api.auth import get_current_user
-from middleware.rbac import normalize_role, require_role, check_class_membership
-from models import (
+from app.src.middleware.rbac import normalize_role, require_role, check_class_membership
+from app.src.models.school import (
     Assignment,
     Submission,
     Class,

@@ -10,7 +10,7 @@ from sqlalchemy import engine_from_config, pool
 from app.src.config.database import Base, DATABASE_URL
 from app.src.models import user as user_models  # noqa: F401
 from app.src.models import persistence as persistence_models  # noqa: F401
-from models import Class, TeacherClassSubject, StudentEnrollment, StudentTopicMastery  # noqa: F401
+from app.src.models.school import Class, TeacherClassSubject, StudentEnrollment, StudentTopicMastery, Assignment, Submission, Question  # noqa: F401
 
 
 
@@ -19,7 +19,7 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-config.set_main_option("sqlalchemy.url", os.getenv("DATABASE_URL", DATABASE_URL))
+config.set_main_option("sqlalchemy.url", DATABASE_URL)
 
 target_metadata = Base.metadata
 

@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "@tanstack/react-router";
-import { Copy, RefreshCw, Activity, Atom } from "lucide-react";
+import { Copy, RefreshCw, Activity, Atom, GraduationCap } from "lucide-react";
 import { useMounted } from "@/hooks/useMounted";
 import { useTutorStore } from "@/store/tutorStore";
 import { TutorMarkdownRenderer } from "./TutorMarkdownRenderer";
@@ -81,25 +81,33 @@ export function ChatBubble({ content, role, timestamp, topicTitle, userQuery, on
             )}
 
             {isAi && formulas.length > 0 && (
-              <div className="mt-6 pt-6 border-t border-border flex flex-col sm:flex-row items-center justify-center gap-3 w-full">
+              <div className="mt-6 pt-6 border-t border-border flex flex-wrap items-center justify-center gap-3 w-full">
                 <button
                   onClick={() => {
                     setInlineRagContent(content);
                     setShowInlineFormulaLab(true);
                   }}
-                  className="group relative flex items-center gap-3 rounded-[2rem] bg-primary hover:bg-primary/90 px-8 py-3.5 text-sm font-bold text-primary-foreground transition-all hover:-translate-y-0.5 active:scale-95 shadow-[0_4px_12px_rgba(112,181,255,0.25)] hover:shadow-[0_6px_20px_rgba(112,181,255,0.35)] w-full sm:w-auto justify-center"
+                  className="group relative flex items-center gap-2.5 rounded-[2rem] bg-primary hover:bg-primary/90 px-6 py-3 text-sm font-bold text-primary-foreground transition-all hover:-translate-y-0.5 active:scale-95 shadow-[0_4px_12px_rgba(112,181,255,0.25)] hover:shadow-[0_6px_20px_rgba(112,181,255,0.35)] w-full sm:w-auto justify-center"
                 >
-                  <Activity className="h-5 w-5 text-primary-foreground/80" />
+                  <Activity className="h-4 w-4 text-primary-foreground/80" />
                   <span>Explore in Formula Lab</span>
                 </button>
                 <Link
                   to="/sandbox/$simulationId"
                   params={{ simulationId: "default" }}
                   search={{ query: userQuery || topicTitle || "Physics Simulation", mode: "guide" }}
-                  className="group relative flex items-center gap-3 rounded-[2rem] bg-secondary hover:bg-secondary/80 border border-border px-8 py-3.5 text-sm font-bold text-foreground transition-all hover:-translate-y-0.5 active:scale-95 shadow-md w-full sm:w-auto justify-center"
+                  className="group relative flex items-center gap-2.5 rounded-[2rem] bg-secondary hover:bg-secondary/80 border border-border px-6 py-3 text-sm font-bold text-foreground transition-all hover:-translate-y-0.5 active:scale-95 shadow-md w-full sm:w-auto justify-center"
                 >
-                  <Atom className="h-5 w-5 text-primary" />
+                  <Atom className="h-4 w-4 text-primary" />
                   <span>Create Simulation</span>
+                </Link>
+                <Link
+                  to="/formula-lab/$topic"
+                  params={{ topic: topicTitle || "General" }}
+                  className="group relative flex items-center gap-2.5 rounded-[2rem] bg-gradient-to-r from-violet-600 to-indigo-600 hover:brightness-110 px-6 py-3 text-sm font-bold text-white transition-all hover:-translate-y-0.5 active:scale-95 shadow-md w-full sm:w-auto justify-center"
+                >
+                  <GraduationCap className="h-4 w-4 text-white" />
+                  <span>Practice Quiz</span>
                 </Link>
               </div>
             )}

@@ -105,8 +105,8 @@ export default function AssignmentGradingPage({
 
       // Parallel fetch: assignment metadata + all submissions for this assignment
       const [assignRes, subsRes] = await Promise.all([
-        fetch(`${API_URL}/assignments/${assignmentId}`, { credentials: "omit", headers }),
-        fetch(`${API_URL}/assignments/${assignmentId}/submissions`, { credentials: "omit", headers }),
+        fetch(`${API_URL}/api/assignments/${assignmentId}`, { credentials: "omit", headers }),
+        fetch(`${API_URL}/api/assignments/${assignmentId}/submissions`, { credentials: "omit", headers }),
       ]);
 
       if (!assignRes.ok) {
@@ -190,7 +190,7 @@ export default function AssignmentGradingPage({
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
       const res = await fetch(
-        `${API_URL}/assignments/${assignmentId}/submissions/${submissionId}/grade`,
+        `${API_URL}/api/assignments/${assignmentId}/submissions/${submissionId}/grade`,
         {
           method: "PATCH",
           credentials: "omit",
@@ -225,7 +225,7 @@ export default function AssignmentGradingPage({
       }, 2500);
 
       // Re-fetch assignment stats to update average score and graded count
-      const freshAssignRes = await fetch(`${API_URL}/assignments/${assignmentId}`, {
+      const freshAssignRes = await fetch(`${API_URL}/api/assignments/${assignmentId}`, {
         credentials: "omit",
         headers,
       });

@@ -62,7 +62,7 @@ async def generate_simulation(
     from app.src.modules.simulation_synthesis.service import generate_simulation_synthesis
 
     # 1. Synthesize declarative sandbox specification using AI Synthesis Core
-    synthesis_result = generate_simulation_synthesis(prompt=prompt, topic=topic)
+    synthesis_result = await generate_simulation_synthesis(prompt=prompt, topic=topic)
     simulation_id = synthesis_result["id"]
     spec_data = synthesis_result.get("dsl", synthesis_result)
 

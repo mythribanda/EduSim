@@ -11,6 +11,35 @@ from app.src.models.persistence import (
     UserSession,
     SessionEvent,
 )
-from app.src.models.school import Class, TeacherClassSubject, StudentEnrollment, StudentTopicMastery
+from app.src.models.school import (
+    Class,
+    TeacherClassSubject,
+    StudentEnrollment,
+    StudentTopicMastery,
+    Assignment,
+    Submission,
+    Question,
+    generate_join_code,
+)
 
-
+__all__ = [
+    "User",
+    "CurriculumClass",
+    "Subject",
+    "Chapter",
+    "Topic",
+    "ChatHistory",
+    "FormulaHistory",
+    "SimulationHistory",
+    "UserSetting",
+    "UserSession",
+    "SessionEvent",
+    "Class",
+    "TeacherClassSubject",
+    "StudentEnrollment",
+    "StudentTopicMastery",
+    "Assignment",
+    "Submission",
+    "Question",
+    "generate_join_code",
+]

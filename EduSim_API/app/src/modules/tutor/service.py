@@ -371,13 +371,9 @@ async def unified_tutor_generation_async(
         "- Output ONLY valid parseable JSON. Do not prepend or append markdown text outside the JSON object."
     )
 
-    user_prompt = f"Textbook Context:\n{context}\n\nStudent Query:\n{query}"
-
     try:
-        try:
-            from services.ai_router import call_ai
-        except ImportError:
-            from app.src.services.ai_router import call_ai
+        user_prompt = f"Textbook Context:\n{context}\n\nStudent Query:\n{query}"
+        from app.src.services.ai_router import call_ai
 
         ai_resp = await call_ai(
             prompt=user_prompt,

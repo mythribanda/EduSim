@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from app.src.config.database import SessionLocal
-from models import Question
-from services.ai_router import call_ai
+from app.src.models.school import Question
+from app.src.services.ai_router import call_ai
 from app.src.models.question_models import (
     QuestionGenerateRequest,
     QuestionItem,
@@ -252,3 +252,109 @@ class QuestionService:
         diff = difficulty or "medium"
         qs = await QuestionService.generate_cached_questions(topic=t, difficulty=diff, class_level=cl, count=4)
         return QuestionGenerationResponse(questions=qs)
+
+    @staticmethod
+    async def submit_question_answer(
+        topic: str,
+        selected_option: str,
+        student_id: Optional[str] = None,
+        question_id: Optional[str] = None,
+        correct_option: Optional[str] = None,
+        db: Optional[Session] = None,
+    ) -> Dict[str, Any]:
+        """
+        Evaluate student quiz answer, update student topic mastery, record session event,
+        and return result feedback with next topic recommendation.
+        """
+        from app.src.services.mastery import update_mastery, get_recommended_difficulty
+        from app.src.models.persistence import SessionEvent
+        from app.src.api.students_router import TOPIC_PROGRESSIONS
+
+        close_db = False
+        if db is None:
+            db = SessionLocal()
+            close_db = True
+
+        try:
+            # Resolve student UUID or default
+            raw_uid = student_id or "00000000-0000-0000-0000-000000000001"
+            try:
+                uid = uuid.UUID(str(raw_uid))
+            except (ValueError, TypeError):
+                uid = uuid.uuid5(uuid.NAMESPACE_DNS, str(raw_uid))
+
+            explanation = ""
+            expected_correct = correct_option
+
+            # 1. Lookup Question in DB if ID provided
+            if question_id:
+                try:
+                    q_uuid = uuid.UUID(str(question_id))
+                    q_rec = db.query(Question).filter(Question.id == q_uuid).first()
+                    if q_rec:
+                        expected_correct = q_rec.correct
+                        explanation = q_rec.explanation or ""
+                except Exception:
+                    pass
+
+            if not expected_correct:
+                expected_correct = selected_option  # Fallback if unknown
+
+            # 2. Evaluate correctness (case/whitespace insensitive)
+            sel_clean = str(selected_option).strip().lower()
+            exp_clean = str(expected_correct).strip().lower()
+            is_correct = (sel_clean == exp_clean) or (sel_clean in exp_clean) or (exp_clean in sel_clean)
+
+            # 3. Update Mastery Score
+            mastery_rec = update_mastery(
+                student_id=uid,
+                topic_id=topic,
+                is_correct=is_correct,
+                db=db,
+            )
+
+            # 4. Get Recommended Difficulty
+            rec_diff = get_recommended_difficulty(uid, topic, db)
+
+            # 5. Determine Recommended Next Topic
+            norm_topic_lower = topic.strip().lower()
+            rec_next = TOPIC_PROGRESSIONS.get(norm_topic_lower, "Newton's Second Law")
+            if norm_topic_lower == rec_next.lower():
+                rec_next = "Newton's Third Law"
+
+            # 6. Record Session Event
+            try:
+                event = SessionEvent(
+                    id=uuid.uuid4(),
+                    student_id=uid,
+                    event_type="quiz_answered",
+                    payload={
+                        "topic": topic,
+                        "question_id": str(question_id) if question_id else None,
+                        "selected_option": selected_option,
+                        "correct_option": expected_correct,
+                        "is_correct": is_correct,
+                        "new_mastery_score": mastery_rec.mastery_score,
+                    },
+                )
+                db.add(event)
+                db.commit()
+            except Exception as ev_err:
+                db.rollback()
+                logger.warning("Could not persist session event for quiz submission: %s", ev_err)
+
+            return {
+                "is_correct": is_correct,
+                "correct_answer": expected_correct,
+                "explanation": explanation or ("Correct answer verified." if is_correct else f"The correct answer is: {expected_correct}"),
+                "mastery_score": mastery_rec.mastery_score,
+                "correct_streak": mastery_rec.correct_streak,
+                "total_attempts": mastery_rec.total_attempts,
+                "total_correct": mastery_rec.total_correct,
+                "recommended_difficulty": rec_diff,
+                "recommended_next": rec_next,
+            }
+        finally:
+            if close_db:
+                db.close()
+

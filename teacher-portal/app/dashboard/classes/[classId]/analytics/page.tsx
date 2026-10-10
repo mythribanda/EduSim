@@ -127,38 +127,40 @@ export default function ClassAnalyticsPage({
     setLoading(true);
     setError(null);
 
+    const token =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem("token")
+        : null;
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
     try {
-      // 1. Fetch Class Analytics from pure Python endpoint
-      const analyticsRes = await fetch(`${API_URL}/analytics/class/${classId}`);
+      // 1. Fetch Class Analytics from Python endpoint
+      const analyticsRes = await fetch(`${API_URL}/api/analytics/class/${classId}`, {
+        credentials: "omit",
+        headers,
+      });
       if (!analyticsRes.ok) {
-        // Fallback check for /api prefix
-        const fallbackRes = await fetch(`${API_URL}/api/analytics/class/${classId}`);
-        if (!fallbackRes.ok) {
-          throw new Error(
-            analyticsRes.status === 404
-              ? "Class not found or no analytics available yet."
-              : `Failed to load analytics (HTTP ${analyticsRes.status})`
-          );
-        }
-        const data = await fallbackRes.json();
-        setAnalytics(data);
-      } else {
-        const data = await analyticsRes.json();
-        setAnalytics(data);
+        throw new Error(
+          analyticsRes.status === 404
+            ? "Class not found or no analytics available yet."
+            : `Failed to load analytics (HTTP ${analyticsRes.status})`
+        );
       }
+      const data = await analyticsRes.json();
+      setAnalytics(data);
 
       // 2. Fetch Class Details for header title / navigation
       try {
-        const classRes = await fetch(`${API_URL}/classes/${classId}`);
+        const classRes = await fetch(`${API_URL}/api/classes/${classId}`, {
+          credentials: "omit",
+          headers,
+        });
         if (classRes.ok) {
           const cData = await classRes.json();
           setClassInfo(cData);
-        } else {
-          const fallbackClassRes = await fetch(`${API_URL}/api/classes/${classId}`);
-          if (fallbackClassRes.ok) {
-            const cData = await fallbackClassRes.json();
-            setClassInfo(cData);
-          }
         }
       } catch {
         // Class info optional if analytics contains name
@@ -183,11 +185,18 @@ export default function ClassAnalyticsPage({
     setExporting(true);
     setExportSuccess(false);
 
+    const token =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem("token")
+        : null;
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
     try {
-      let res = await fetch(`${API_URL}/analytics/class/${classId}/export`);
-      if (!res.ok) {
-        res = await fetch(`${API_URL}/api/analytics/class/${classId}/export`);
-      }
+      const res = await fetch(`${API_URL}/api/analytics/class/${classId}/export`, {
+        credentials: "omit",
+        headers,
+      });
 
       if (!res.ok) {
         throw new Error(`Export failed with HTTP ${res.status}`);
@@ -227,27 +236,30 @@ export default function ClassAnalyticsPage({
 
     setReminderState((prev) => ({ ...prev, [studentId]: "sending" }));
 
+    const token =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem("token")
+        : null;
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
     try {
       const payload: { message?: string; topic?: string } = {};
       if (customMsg && customMsg.trim()) payload.message = customMsg.trim();
       if (topicName && topicName.trim()) payload.topic = topicName.trim();
 
-      let res = await fetch(`${API_URL}/students/${studentId}/notify`, {
+      const res = await fetch(`${API_URL}/api/students/${studentId}/notify`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        credentials: "omit",
+        headers,
         body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
-        res = await fetch(`${API_URL}/api/students/${studentId}/notify`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-      }
-
-      if (!res.ok) {
         throw new Error(`Notification failed with HTTP ${res.status}`);
+      }
       }
 
       setReminderState((prev) => ({ ...prev, [studentId]: "sent" }));

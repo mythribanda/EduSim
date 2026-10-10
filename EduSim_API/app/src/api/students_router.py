@@ -41,8 +41,8 @@ from app.src.models.persistence import (
     UserSession,
 )
 from app.src.models.user import User
-from middleware.rbac import require_student_or_teacher
-from models import Class, StudentEnrollment, StudentTopicMastery, TeacherClassSubject
+from app.src.middleware.rbac import require_student_or_teacher, require_role, normalize_role
+from app.src.models.school import Class, StudentEnrollment, StudentTopicMastery, TeacherClassSubject
 
 logger = logging.getLogger("EduSim.api.students")
 
@@ -456,6 +456,7 @@ class StudentNotifyRequest(BaseModel):
 def notify_student(
     student_id: str = Path(..., description="Student UUID or ID"),
     payload: Optional[StudentNotifyRequest] = Body(default=None),
+    current_user: User = Depends(require_role("educator", "admin")),
     db: Session = Depends(get_db),
 ):
     """
@@ -465,13 +466,62 @@ def notify_student(
     try:
         student_uuid = uuid.UUID(str(student_id))
     except (ValueError, TypeError):
-        student_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, str(student_id))
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid student UUID format.",
+        )
+
     student = db.query(User).filter(User.id == student_uuid).first()
     if not student:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Student with ID '{student_id}' not found.",
         )
+
+    user_role = normalize_role(getattr(current_user, "role", None))
+    if user_role != "admin":
+        is_authorized = False
+        # Matches educator_id directly
+        if getattr(student, "educator_id", None) and str(student.educator_id) == str(current_user.id):
+            is_authorized = True
+        # Matches class_id
+        elif (
+            getattr(current_user, "class_id", None)
+            and getattr(student, "class_id", None)
+            and str(current_user.class_id) == str(student.class_id)
+        ):
+            is_authorized = True
+        else:
+            try:
+                from app.src.models.school import Class, StudentEnrollment, TeacherClassSubject
+                created_class_ids = {
+                    row[0] for row in db.query(Class.id).filter(Class.created_by == current_user.id).all()
+                }
+                taught_class_ids = {
+                    row[0] for row in db.query(TeacherClassSubject.class_id).filter(TeacherClassSubject.teacher_id == current_user.id).all()
+                }
+                all_teacher_class_ids = created_class_ids | taught_class_ids
+                if all_teacher_class_ids:
+                    enrolled = db.query(StudentEnrollment).filter(
+                        StudentEnrollment.student_id == student_uuid,
+                        StudentEnrollment.class_id.in_(all_teacher_class_ids),
+                        StudentEnrollment.status == "active",
+                    ).first()
+                    if enrolled:
+                        is_authorized = True
+                    elif getattr(student, "class_id", None) and (
+                        student.class_id in all_teacher_class_ids or
+                        any(str(student.class_id) == str(cid) for cid in all_teacher_class_ids)
+                    ):
+                        is_authorized = True
+            except Exception as e:
+                logger.error(f"Error checking student enrollment: {e}", exc_info=True)
+
+        if not is_authorized:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. You are not an authorized teacher for this student.",
+            )
 
     student_name = student.name or student.email or "Student"
     topic_str = payload.topic if payload and payload.topic else "physics concepts"
@@ -507,4 +557,5 @@ def notify_student(
         "student_name": student_name,
         "sent_message": msg_text,
     }
+
 

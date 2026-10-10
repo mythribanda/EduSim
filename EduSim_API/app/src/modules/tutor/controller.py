@@ -1,6 +1,10 @@
+import logging
 from fastapi import HTTPException
 from pydantic import BaseModel, Field
 from .service import analyze_tutor_query
+
+logger = logging.getLogger("EduSim.modules.tutor.controller")
+
 
 class ChatMessage(BaseModel):
     role: str
@@ -43,8 +47,12 @@ async def analyze_tutor_controller(
             "provider": data.get("provider", "unknown"),
             "tokens_used": data.get("tokens_used", 0),
         }
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error(f"Tutor Analysis Error: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Tutor Analysis Error: {str(e)}"
+            detail="Tutor Analysis Error."
         )
+

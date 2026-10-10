@@ -17,7 +17,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.src.config.database import get_db
-from services.analytics import get_class_analytics, export_class_analytics_csv
+from app.src.models.user import User
+from app.src.middleware.rbac import require_role, check_class_membership, normalize_role
+from app.src.services.analytics import get_class_analytics, export_class_analytics_csv
 
 logger = logging.getLogger("EduSim.api.analytics")
 
@@ -57,14 +59,22 @@ class ClassAnalyticsResponse(BaseModel):
 
 
 @router.get("/class/{class_id}", response_model=ClassAnalyticsResponse)
+@router.get("/classes/{class_id}", response_model=ClassAnalyticsResponse, include_in_schema=False)
 def get_analytics_for_class(
     class_id: str = Path(..., description="Class ID (UUID or string)"),
+    current_user: User = Depends(require_role("educator", "admin")),
     db: Session = Depends(get_db),
 ):
     """
     Pure Python & SQL class analytics endpoint.
     Zero LLM / AI calls — 100% computed from database aggregations.
     """
+    if normalize_role(getattr(current_user, "role", None)) != "admin":
+        if not check_class_membership(current_user, class_id, db):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied. You are not authorized to view analytics for class {class_id}.",
+            )
     try:
         analytics_data = get_class_analytics(class_id=class_id, db=db)
         return analytics_data
@@ -73,22 +83,32 @@ def get_analytics_for_class(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(e),
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error computing class analytics for '{class_id}': {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to compute class analytics: {str(e)}",
+            detail="Failed to compute class analytics.",
         )
 
 
 @router.get("/class/{class_id}/export")
+@router.get("/classes/{class_id}/export", include_in_schema=False)
 def export_analytics_for_class(
     class_id: str = Path(..., description="Class ID (UUID or string)"),
+    current_user: User = Depends(require_role("educator", "admin")),
     db: Session = Depends(get_db),
 ):
     """
     Export class analytics as a downloadable CSV report.
     """
+    if normalize_role(getattr(current_user, "role", None)) != "admin":
+        if not check_class_membership(current_user, class_id, db):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied. You are not authorized to export analytics for class {class_id}.",
+            )
     try:
         csv_content = export_class_analytics_csv(class_id=class_id, db=db)
         filename = f"class_{class_id[:8]}_analytics_report.csv"
@@ -105,9 +125,12 @@ def export_analytics_for_class(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(e),
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error exporting CSV analytics for '{class_id}': {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to export class analytics: {str(e)}",
+            detail="Failed to export class analytics.",
         )
+

@@ -63,7 +63,7 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from .constaraint_schema import SandboxConstraint
+from .constraint_schema import SandboxConstraint
 from .control_schema import SandboxControl
 from .environment_schema import SandboxEnvironment
 from .object_schema import SandboxObject

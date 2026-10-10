@@ -232,3 +232,287 @@ def get_user_content_enhancement(subject: SubjectType, extracted: dict) -> str:
     }
 
     return enhancements.get(subject, enhancements["physics"])
+
+
+PRECOMPILED_PHYSICS_TEMPLATES = {
+    "newton": {
+        "dsl": {
+            "meta": {
+                "id": "sim_newton_second_law",
+                "title": "Newton's Second Law & Motion",
+                "topic": "Newton's Laws of Motion",
+                "simulationType": "Mechanics",
+                "difficulty": "Class 9-11",
+                "version": "2.0"
+            },
+            "environment": {
+                "gravity": {"x": 0.0, "y": 9.8},
+                "airResistance": 0.01,
+                "world": {"width": 800, "height": 600, "unitSystem": "normalized"},
+                "background": {"color": "#0f172a"},
+                "camera": {"mode": "auto-fit", "padding": 0.15, "allowZoom": True, "allowPan": True},
+                "boundaries": {"enabled": True, "type": "solid"}
+            },
+            "objects": [
+                {
+                    "id": "cart",
+                    "category": "physics-object",
+                    "bodyType": "dynamic",
+                    "shape": {"type": "rectangle", "width": 4, "height": 2},
+                    "position": {"x": 10, "y": 48},
+                    "physics": {"mass": 2.0, "density": 1.0, "affectedByGravity": True, "fixedRotation": False, "isSensor": False},
+                    "material": {"friction": 0.1, "restitution": 0.3},
+                    "collision": {"enabled": True, "group": "default"},
+                    "visual": {"color": "#38bdf8", "label": "Cart (2kg)", "showLabel": True, "showVelocityVector": True}
+                },
+                {
+                    "id": "ground",
+                    "category": "environment",
+                    "bodyType": "static",
+                    "shape": {"type": "rectangle", "width": 80, "height": 4},
+                    "position": {"x": 40, "y": 56},
+                    "physics": {"mass": 0.0, "density": 1.0, "affectedByGravity": False, "fixedRotation": True, "isSensor": False},
+                    "material": {"friction": 0.2, "restitution": 0.0},
+                    "collision": {"enabled": True, "group": "default"},
+                    "visual": {"color": "#1e293b", "label": "Track", "showLabel": False}
+                }
+            ],
+            "forces": [
+                {"id": "applied_force", "type": "constantForce", "target": "cart", "vector": {"x": 10.0, "y": 0.0}, "active": True}
+            ],
+            "controls": {
+                "parameters": [
+                    {"id": "mass_ctrl", "type": "slider", "label": "Cart Mass", "symbol": "m", "bind": "objects[0].physics.mass", "min": 0.5, "max": 10.0, "step": 0.5},
+                    {"id": "force_ctrl", "type": "slider", "label": "Applied Force", "symbol": "F", "bind": "forces[0].vector.x", "min": 0.0, "max": 50.0, "step": 1.0}
+                ],
+                "actions": [
+                    {"id": "reset_btn", "type": "button", "label": "Reset", "action": "resetSimulation"}
+                ]
+            },
+            "observables": [
+                {"id": "obs_velocity", "label": "Velocity (v)", "source": "objects[0].velocity.x", "unit": "m/s", "precision": 2},
+                {"id": "obs_accel", "label": "Acceleration (a)", "source": "objects[0].acceleration.x", "unit": "m/s²", "precision": 2}
+            ],
+            "formulaBindings": [
+                {
+                    "id": "f_ma_binding",
+                    "formula": "a = F / m",
+                    "variables": {
+                        "F": {"path": "forces[0].vector.x", "role": "independent"},
+                        "m": {"path": "objects[0].physics.mass", "role": "independent"},
+                        "a": {"path": "objects[0].acceleration.x", "role": "dependent"}
+                    }
+                }
+            ],
+            "runtime": {
+                "engine": "matter-js",
+                "renderer": "pixi-js",
+                "fps": 60,
+                "paused": False
+            }
+        },
+        "knowledge": {
+            "relevant_formulas": ["F = m * a", "v = u + a * t", "s = u*t + 0.5*a*t^2"],
+            "related_concepts": ["Force", "Mass", "Acceleration", "Inertia", "Friction"],
+            "learningObjectives": ["Understand how varying force changes acceleration", "Observe inverse relationship between mass and acceleration"]
+        },
+        "metadata": {
+            "subject": "physics",
+            "chapter": "Laws of Motion",
+            "difficulty": "medium",
+            "curriculum": "CBSE / NCERT / Standard Physics",
+            "simulationCategory": "Mechanics",
+            "tags": ["Newton's Laws", "Force", "Acceleration", "Mass"]
+        }
+    },
+    "projectile": {
+        "dsl": {
+            "meta": {
+                "id": "sim_projectile_motion",
+                "title": "Projectile Motion & Trajectory",
+                "topic": "Projectile Motion",
+                "simulationType": "Mechanics",
+                "difficulty": "Class 10-11",
+                "version": "2.0"
+            },
+            "environment": {
+                "gravity": {"x": 0.0, "y": 9.8},
+                "airResistance": 0.005,
+                "world": {"width": 800, "height": 600, "unitSystem": "normalized"},
+                "background": {"color": "#0f172a"},
+                "camera": {"mode": "auto-fit", "padding": 0.15, "allowZoom": True, "allowPan": True},
+                "boundaries": {"enabled": True, "type": "solid"}
+            },
+            "objects": [
+                {
+                    "id": "projectile_ball",
+                    "category": "physics-object",
+                    "bodyType": "dynamic",
+                    "shape": {"type": "circle", "radius": 1.2},
+                    "position": {"x": 5, "y": 48},
+                    "velocity": {"x": 15.0, "y": -15.0},
+                    "physics": {"mass": 1.0, "density": 1.0, "affectedByGravity": True, "fixedRotation": False, "isSensor": False},
+                    "material": {"friction": 0.1, "restitution": 0.6},
+                    "collision": {"enabled": True, "group": "default"},
+                    "visual": {"color": "#f59e0b", "label": "Projectile", "showLabel": True, "showVelocityVector": True, "showTrail": True}
+                },
+                {
+                    "id": "ground",
+                    "category": "environment",
+                    "bodyType": "static",
+                    "shape": {"type": "rectangle", "width": 80, "height": 4},
+                    "position": {"x": 40, "y": 56},
+                    "physics": {"mass": 0.0, "density": 1.0, "affectedByGravity": False, "fixedRotation": True, "isSensor": False},
+                    "material": {"friction": 0.4, "restitution": 0.2},
+                    "collision": {"enabled": True, "group": "default"},
+                    "visual": {"color": "#1e293b", "label": "Ground", "showLabel": False}
+                }
+            ],
+            "controls": {
+                "parameters": [
+                    {"id": "vel_x", "type": "slider", "label": "Launch Vx", "symbol": "vx", "bind": "objects[0].velocity.x", "min": 0.0, "max": 30.0, "step": 1.0},
+                    {"id": "vel_y", "type": "slider", "label": "Launch Vy", "symbol": "vy", "bind": "objects[0].velocity.y", "min": -30.0, "max": 0.0, "step": 1.0}
+                ],
+                "actions": [
+                    {"id": "reset_btn", "type": "button", "label": "Launch Again", "action": "resetSimulation"}
+                ]
+            },
+            "observables": [
+                {"id": "obs_vx", "label": "Horizontal Vel (Vx)", "source": "objects[0].velocity.x", "unit": "m/s", "precision": 1},
+                {"id": "obs_vy", "label": "Vertical Vel (Vy)", "source": "objects[0].velocity.y", "unit": "m/s", "precision": 1}
+            ],
+            "runtime": {
+                "engine": "matter-js",
+                "renderer": "pixi-js",
+                "fps": 60,
+                "paused": False
+            }
+        },
+        "knowledge": {
+            "relevant_formulas": ["R = (u^2 * sin(2*theta)) / g", "H_max = (u^2 * sin^2(theta)) / (2*g)", "T = (2*u*sin(theta)) / g"],
+            "related_concepts": ["Parabolic Trajectory", "Independence of Motions", "Horizontal Range", "Maximum Height"],
+            "learningObjectives": ["Analyze horizontal and vertical velocity components", "Determine angle for maximum range"]
+        },
+        "metadata": {
+            "subject": "physics",
+            "chapter": "Motion in a Plane",
+            "difficulty": "medium",
+            "curriculum": "CBSE / NCERT",
+            "simulationCategory": "Mechanics",
+            "tags": ["Projectile", "2D Motion", "Range", "Height"]
+        }
+    },
+    "pendulum": {
+        "dsl": {
+            "meta": {
+                "id": "sim_pendulum_oscillation",
+                "title": "Simple Harmonic Motion: Pendulum",
+                "topic": "Oscillations & Pendulum",
+                "simulationType": "Mechanics",
+                "difficulty": "Class 10-11",
+                "version": "2.0"
+            },
+            "environment": {
+                "gravity": {"x": 0.0, "y": 9.8},
+                "airResistance": 0.001,
+                "world": {"width": 800, "height": 600, "unitSystem": "normalized"},
+                "background": {"color": "#0f172a"},
+                "camera": {"mode": "auto-fit", "padding": 0.15, "allowZoom": True, "allowPan": True},
+                "boundaries": {"enabled": True, "type": "solid"}
+            },
+            "objects": [
+                {
+                    "id": "pivot",
+                    "category": "environment",
+                    "bodyType": "static",
+                    "shape": {"type": "circle", "radius": 0.8},
+                    "position": {"x": 40, "y": 15},
+                    "physics": {"mass": 0.0, "density": 1.0, "affectedByGravity": False, "fixedRotation": True, "isSensor": True},
+                    "visual": {"color": "#64748b", "label": "Pivot", "showLabel": True}
+                },
+                {
+                    "id": "bob",
+                    "category": "physics-object",
+                    "bodyType": "dynamic",
+                    "shape": {"type": "circle", "radius": 1.5},
+                    "position": {"x": 55, "y": 25},
+                    "physics": {"mass": 1.0, "density": 1.0, "affectedByGravity": True, "fixedRotation": False, "isSensor": False},
+                    "material": {"friction": 0.01, "restitution": 0.8},
+                    "collision": {"enabled": True, "group": "default"},
+                    "visual": {"color": "#8b5cf6", "label": "Bob", "showLabel": True, "showVelocityVector": True, "showTrail": True}
+                }
+            ],
+            "constraints": [
+                {
+                    "id": "rope_1",
+                    "type": "rope",
+                    "bodyA": "pivot",
+                    "bodyB": "bob",
+                    "length": 20.0,
+                    "stiffness": 1.0,
+                    "visual": {"color": "#cbd5e1", "lineWidth": 2}
+                }
+            ],
+            "controls": {
+                "parameters": [
+                    {"id": "gravity_ctrl", "type": "slider", "label": "Gravity", "symbol": "g", "bind": "environment.gravity.y", "min": 1.0, "max": 25.0, "step": 0.5},
+                    {"id": "length_ctrl", "type": "slider", "label": "String Length", "symbol": "L", "bind": "constraints[0].length", "min": 5.0, "max": 35.0, "step": 1.0}
+                ],
+                "actions": [
+                    {"id": "reset_btn", "type": "button", "label": "Release from Rest", "action": "resetSimulation"}
+                ]
+            },
+            "observables": [
+                {"id": "obs_period", "label": "Approx. Period (T)", "source": "runtime.calculated.period", "unit": "s", "precision": 2}
+            ],
+            "formulaBindings": [
+                {
+                    "id": "pendulum_period_formula",
+                    "formula": "T = 2 * pi * sqrt(L / g)",
+                    "variables": {
+                        "L": {"path": "constraints[0].length", "role": "independent"},
+                        "g": {"path": "environment.gravity.y", "role": "independent"}
+                    }
+                }
+            ],
+            "runtime": {
+                "engine": "matter-js",
+                "renderer": "pixi-js",
+                "fps": 60,
+                "paused": False
+            }
+        },
+        "knowledge": {
+            "relevant_formulas": ["T = 2 * \\pi * \\sqrt{L / g}", "f = 1 / T"],
+            "related_concepts": ["Simple Harmonic Motion", "Restoring Force", "Period & Frequency", "Energy Conservation"],
+            "learningObjectives": ["Understand that period depends on length and gravity, independent of mass for small angles"]
+        },
+        "metadata": {
+            "subject": "physics",
+            "chapter": "Oscillations",
+            "difficulty": "medium",
+            "curriculum": "CBSE / NCERT",
+            "simulationCategory": "Mechanics",
+            "tags": ["Pendulum", "SHM", "Period", "Oscillation"]
+        }
+    }
+}
+
+
+def get_precompiled_template(topic_or_prompt: str) -> dict | None:
+    """
+    Check if a fast, verified precompiled Physics simulation template exists for the given topic or prompt.
+    Returns the valid EduSimResponse dictionary or None if LLM synthesis is needed.
+    """
+    if not topic_or_prompt:
+        return None
+    lowered = topic_or_prompt.lower()
+    
+    if any(kw in lowered for kw in ["projectile", "trajectory", "launch angle", "parabolic"]):
+        return PRECOMPILED_PHYSICS_TEMPLATES["projectile"]
+    if any(kw in lowered for kw in ["pendulum", "oscillation", "harmonic", "shm", "bob", "string length"]):
+        return PRECOMPILED_PHYSICS_TEMPLATES["pendulum"]
+    if any(kw in lowered for kw in ["newton", "force", "acceleration", "f=ma", "f = ma", "mass", "motion", "inertia", "cart", "speed", "velocity", "friction"]):
+        return PRECOMPILED_PHYSICS_TEMPLATES["newton"]
+        
+    return None

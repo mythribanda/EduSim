@@ -44,14 +44,14 @@ const GRAVITY_VALUES: Record<Exclude<GravityPreset, 'custom'>, number> = {
 };
 
 const PALETTE = [
-  { fill: 0x8b5cf6, stroke: 0xc084fc },
-  { fill: 0x06b6d4, stroke: 0x67e8f9 },
-  { fill: 0xf59e0b, stroke: 0xfcd34d },
-  { fill: 0xec4899, stroke: 0xf9a8d4 },
-  { fill: 0x10b981, stroke: 0x6ee7b7 },
-  { fill: 0xf97316, stroke: 0xfdba74 },
-  { fill: 0x6366f1, stroke: 0xa5b4fc },
-  { fill: 0xeab308, stroke: 0xfde047 },
+  { fill: 0x4F8EF7, stroke: 0x2563EB }, // Blue #4F8EF7
+  { fill: 0x22C55E, stroke: 0x16A34A }, // Green #22C55E
+  { fill: 0xF97316, stroke: 0xEA580C }, // Orange #F97316
+  { fill: 0xA855F7, stroke: 0x9333EA }, // Purple #A855F7
+  { fill: 0x38BDF8, stroke: 0x0284C7 }, // Sky
+  { fill: 0xFBBF24, stroke: 0xD97706 }, // Amber
+  { fill: 0xEC4899, stroke: 0xDB2777 }, // Pink
+  { fill: 0x6366F1, stroke: 0x4F46E5 }, // Indigo
 ];
 
 let _pi = 0;
@@ -124,22 +124,22 @@ async function buildScene(
   addStatic(createObject({
     id: 'ground', type: 'rectangle',
     x: W / 2, y: H - 124, width: 5000, height: 28,
-    isStatic: true, fillColor: 0x1e293b, strokeColor: 0x5b5fff, strokeWidth: 2.5,
+    isStatic: true, fillColor: 0x4F8EF7, strokeColor: 0x2563eb, strokeWidth: 2.5,
   }));
   addStatic(createObject({
     id: 'wall-l', type: 'rectangle',
     x: -8, y: H / 2, width: 16, height: 5000,
-    isStatic: true, fillColor: 0x1e293b, strokeColor: 0x5b5fff, strokeWidth: 2.5,
+    isStatic: true, fillColor: 0x4F8EF7, strokeColor: 0x2563eb, strokeWidth: 2.5,
   }));
   addStatic(createObject({
     id: 'wall-r', type: 'rectangle',
     x: W + 8, y: H / 2, width: 16, height: 5000,
-    isStatic: true, fillColor: 0x1e293b, strokeColor: 0x5b5fff, strokeWidth: 2.5,
+    isStatic: true, fillColor: 0x4F8EF7, strokeColor: 0x2563eb, strokeWidth: 2.5,
   }));
   addStatic(createObject({
     id: 'wall-t', type: 'rectangle',
     x: W / 2, y: -8, width: 5000, height: 16,
-    isStatic: true, fillColor: 0x1e293b, strokeColor: 0x5b5fff, strokeWidth: 2.5,
+    isStatic: true, fillColor: 0x4F8EF7, strokeColor: 0x2563eb, strokeWidth: 2.5,
   }));
 
   return dynamic;
@@ -4974,88 +4974,87 @@ const Sep: React.FC<{ label: string }> = ({ label }) => (
 const S: Record<string, React.CSSProperties> = {
   root: {
     display: 'flex', width: '100%', height: '100%', minHeight: 560,
-    background: '#090d16', color: '#0f172a',
+    background: '#ffffff', color: '#1e293b',
     fontFamily: '"Plus Jakarta Sans",system-ui,sans-serif',
     overflow: 'hidden', userSelect: 'none', position: 'relative'
   },
   panel: {
     width: 288, minWidth: 268, height: '100%', padding: '20px 16px',
-    background: 'rgba(15,23,42,0.92)', backdropFilter: 'blur(20px)',
-    borderRight: '1px solid rgba(255,255,255,0.06)',
+    background: '#ffffff', backdropFilter: 'blur(20px)',
+    borderRight: '2px solid #f1f5f9',
     display: 'flex', flexDirection: 'column', overflowY: 'auto',
     flexShrink: 0
   },
   rightSidebar: {
-    width: 320, minWidth: 300, height: '100%', background: 'rgba(15,23,42,0.92)',
-    backdropFilter: 'blur(20px)', borderLeft: '1px solid rgba(255,255,255,0.06)',
+    width: 320, minWidth: 300, height: '100%', background: '#ffffff',
+    backdropFilter: 'blur(20px)', borderLeft: '2px solid #f1f5f9',
     display: 'flex', flexDirection: 'column', overflowY: 'auto',
     flexShrink: 0
   },
   header: { display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4 },
   pulse: {
-    width: 9, height: 9, borderRadius: '50%', background: '#6366f1',
-    boxShadow: '0 0 0 3px rgba(99,102,241,0.28)', flexShrink: 0
+    width: 10, height: 10, borderRadius: '50%', background: '#4F8EF7',
+    boxShadow: '0 0 0 3px rgba(79,142,247,0.28)', flexShrink: 0
   },
   tag: {
-    fontSize: 10, fontWeight: 700, letterSpacing: '0.12em',
-    color: '#818cf8', textTransform: 'uppercase'
+    fontSize: 11, fontWeight: 700, letterSpacing: '0.12em',
+    color: '#4F8EF7', textTransform: 'uppercase'
   },
   title: {
     fontSize: 22, fontWeight: 800, margin: '2px 0 2px', letterSpacing: '-0.03em',
-    background: 'linear-gradient(135deg,#c7d2fe,#bfdbfe)',
-    WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'
+    color: '#0f172a'
   },
-  subtitle: { fontSize: 11, color: '#cbd5e1', marginBottom: 16 },
+  subtitle: { fontSize: 13, color: '#64748b', marginBottom: 16 },
   cards: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 },
   card: {
-    background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)',
-    borderRadius: 10, padding: '9px 11px', transition: 'border-color 0.2s'
+    background: '#f8fafc', border: '2px solid #e2e8f0',
+    borderRadius: 12, padding: '10px 12px', transition: 'border-color 0.2s'
   },
   cardLbl: {
-    fontSize: 9, fontWeight: 700, letterSpacing: '0.1em',
+    fontSize: 11, fontWeight: 700, letterSpacing: '0.05em',
     color: '#64748b', textTransform: 'uppercase', marginBottom: 4
   },
   cardVal: {
-    fontSize: 13, fontWeight: 600, color: '#cbd5e1',
+    fontSize: 14, fontWeight: 700, color: '#0f172a',
     display: 'flex', alignItems: 'center', gap: 5
   },
-  dot: { display: 'inline-block', width: 7, height: 7, borderRadius: '50%', flexShrink: 0 },
+  dot: { display: 'inline-block', width: 8, height: 8, borderRadius: '50%', flexShrink: 0 },
   row: { display: 'flex', gap: 8, marginBottom: 8 },
   btn: {
-    padding: '7px 12px', borderRadius: 8, border: '1px solid transparent',
-    cursor: 'pointer', fontSize: 12, fontWeight: 600,
-    transition: 'opacity 0.15s', outline: 'none'
+    padding: '8px 14px', borderRadius: 10, border: '1px solid transparent',
+    cursor: 'pointer', fontSize: 13, fontWeight: 700,
+    transition: 'opacity 0.15s, transform 0.1s', outline: 'none'
   },
-  btnPrimary: { background: '#4f46e5', color: '#fff', borderColor: '#4338ca' },
-  btnGhost: { background: 'rgba(255,255,255,0.06)', color: '#94a3b8', borderColor: 'rgba(255,255,255,0.1)' },
-  btnIndigo: { background: 'rgba(99,102,241,0.18)', color: '#a5b4fc', borderColor: 'rgba(99,102,241,0.3)' },
-  btnEmerald: { background: 'rgba(16,185,129,0.18)', color: '#6ee7b7', borderColor: 'rgba(16,185,129,0.3)' },
-  btnSky: { background: 'rgba(14,165,233,0.18)', color: '#7dd3fc', borderColor: 'rgba(14,165,233,0.3)' },
+  btnPrimary: { background: '#4F8EF7', color: '#fff', borderColor: '#3b82f6' },
+  btnGhost: { background: '#f1f5f9', color: '#475569', borderColor: '#e2e8f0' },
+  btnIndigo: { background: '#eff6ff', color: '#4F8EF7', borderColor: '#bfdbfe' },
+  btnEmerald: { background: '#f0fdf4', color: '#22C55E', borderColor: '#bbf7d0' },
+  btnSky: { background: '#fff7ed', color: '#F97316', borderColor: '#ffedd5' },
   gravRow: {
-    display: 'flex', gap: 4, background: 'rgba(0,0,0,0.35)',
-    borderRadius: 10, padding: 4, border: '1px solid rgba(255,255,255,0.06)', marginBottom: 16
+    display: 'flex', gap: 4, background: '#f1f5f9',
+    borderRadius: 12, padding: 4, border: '1px solid #e2e8f0', marginBottom: 16
   },
   gravBtn: {
-    flex: 1, padding: '5px 0', background: 'transparent', border: 'none',
-    borderRadius: 7, cursor: 'pointer', fontSize: 10, fontWeight: 700,
-    color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em', transition: 'all 0.15s'
+    flex: 1, padding: '6px 0', background: 'transparent', border: 'none',
+    borderRadius: 8, cursor: 'pointer', fontSize: 11, fontWeight: 700,
+    color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', transition: 'all 0.15s'
   },
-  gravActive: { background: '#4f46e5', color: '#fff' },
+  gravActive: { background: '#4F8EF7', color: '#fff' },
   hint: {
-    fontSize: 10, color: '#334155', lineHeight: 1.55, marginTop: 'auto', paddingTop: 14,
-    borderTop: '1px solid rgba(255,255,255,0.04)'
+    fontSize: 11, color: '#64748b', lineHeight: 1.55, marginTop: 'auto', paddingTop: 14,
+    borderTop: '1px solid #f1f5f9'
   },
-  canvasWrap: { flex: 1, position: 'relative', overflow: 'hidden', background: '#0b0f19', cursor: 'default', transition: 'outline 0.15s' },
+  canvasWrap: { flex: 1, position: 'relative', overflow: 'hidden', background: '#ffffff', cursor: 'default', transition: 'outline 0.15s' },
   dropHint: {
     position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
-    padding: '8px 18px', borderRadius: 10, background: 'rgba(99,102,241,0.2)',
-    border: '1px solid rgba(99,102,241,0.4)', color: '#a5b4fc', fontSize: 13,
-    fontWeight: 600, pointerEvents: 'none', backdropFilter: 'blur(8px)'
+    padding: '8px 18px', borderRadius: 12, background: 'rgba(79,142,247,0.15)',
+    border: '2px dashed #4F8EF7', color: '#4F8EF7', fontSize: 14,
+    fontWeight: 700, pointerEvents: 'none', backdropFilter: 'blur(8px)'
   },
   dotGrid: {
     position: 'absolute', inset: 0, pointerEvents: 'none',
-    backgroundImage: 'radial-gradient(rgba(99, 102, 241, 0.15) 1.5px,transparent 1.5px)',
-    backgroundSize: '18px 18px', opacity: 1
+    backgroundImage: 'radial-gradient(#e2e8f0 1.5px,transparent 1.5px)',
+    backgroundSize: '20px 20px', opacity: 0.8
   },
   mount: { position: 'absolute', inset: 0 },
   badge: {

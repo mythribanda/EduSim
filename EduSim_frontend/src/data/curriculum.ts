@@ -24,6 +24,34 @@ export type ClassInfo = {
   subjects: Subject[];
 };
 
+// --- Stream Types for Classes 11–12 ---
+export type StreamId = "science-pcm" | "science-pcb" | "commerce" | "arts";
+
+export type Stream = {
+  id: StreamId | string;
+  name: string;
+  description: string;
+  subjects: Subject[];
+};
+
+export type StreamClassInfo = {
+  id: number;
+  name: string;
+  description: string;
+  streams: Stream[];
+};
+
+// --- University Course Types ---
+export type Course = {
+  id: string;
+  name: string;
+  degree?: string;
+  level: "undergraduate" | "postgraduate" | "diploma" | string;
+  semester?: number | string;
+  description: string;
+  subjects: Subject[];
+};
+
 const mk = (
   id: string,
   name: string,
@@ -45,21 +73,540 @@ export const CLASSES: ClassInfo[] = [
     id: 1,
     name: "Class 1",
     description: "Foundations of numbers and counting",
-    subjects: [mk("math", "Math", "Calculator", "Numbers, shapes & basic operations", 10)],
+    subjects: [
+      {
+        id: "math",
+        name: "Mathematics",
+        icon: "Calculator",
+        description: "Numbers, shapes & basic operations",
+        chapters: [
+          {
+            name: "Shapes and Space",
+            topics: topicList(
+              "Inside and Outside",
+              "Bigger and Smaller",
+              "Top and Bottom",
+              "Nearer and Farther",
+              "Shapes Around Us",
+              "Rolling and Sliding",
+            ),
+          },
+          {
+            name: "Numbers from 1 to 9",
+            topics: topicList(
+              "Counting 1 to 9",
+              "More or Less",
+              "Concept of Zero",
+              "Number Names 1 to 9",
+            ),
+          },
+          {
+            name: "Addition (Up to 9)",
+            topics: topicList(
+              "One More",
+              "Counting and Adding",
+              "Adding with Objects",
+              "Addition on Number Line",
+            ),
+          },
+          {
+            name: "Subtraction (Up to 9)",
+            topics: topicList(
+              "Taking Away",
+              "Subtracting with Objects",
+              "Subtracting Zero",
+              "Subtraction on Number Line",
+            ),
+          },
+          {
+            name: "Numbers from 10 to 20",
+            topics: topicList(
+              "Making Groups of 10",
+              "Counting 10 to 20",
+              "Tens and Ones",
+              "Addition and Subtraction up to 20",
+            ),
+          },
+          {
+            name: "Time",
+            topics: topicList(
+              "Day and Night",
+              "Daily Routine",
+              "Earlier and Later",
+              "Days of the Week",
+            ),
+          },
+          {
+            name: "Measurement",
+            topics: topicList(
+              "Longer and Shorter",
+              "Taller and Shorter",
+              "Heavier and Lighter",
+              "Measuring with Handspan",
+            ),
+          },
+          {
+            name: "Numbers from 21 to 50",
+            topics: topicList(
+              "Counting 21 to 30",
+              "Counting 31 to 40",
+              "Counting 41 to 50",
+              "Tens and Ones up to 50",
+            ),
+          },
+          {
+            name: "Data Handling and Patterns",
+            topics: topicList(
+              "Sorting Objects",
+              "Counting and Recording",
+              "Shape Patterns",
+              "Number Patterns",
+            ),
+          },
+          {
+            name: "Money",
+            topics: topicList(
+              "Recognizing Coins",
+              "Recognizing Notes",
+              "Combining Coins",
+              "Shopping and Price",
+            ),
+          },
+        ],
+      },
+    ],
   },
   {
     id: 2,
     name: "Class 2",
     description: "Building early arithmetic skills",
-    subjects: [mk("math", "Math", "Calculator", "Addition, subtraction & patterns", 12)],
+    subjects: [
+      {
+        id: "math",
+        name: "Mathematics",
+        icon: "Calculator",
+        description: "Addition, subtraction, grouping & patterns",
+        chapters: [
+          {
+            name: "What is Long, What is Round",
+            topics: topicList(
+              "Rolling and Sliding Objects",
+              "Stacking Shapes",
+              "Round and Flat Surfaces",
+            ),
+          },
+          {
+            name: "Counting in Groups",
+            topics: topicList(
+              "Counting in Pairs",
+              "More or Less than 10",
+              "Grouping Objects in 5s and 10s",
+            ),
+          },
+          {
+            name: "How Much Can You Carry",
+            topics: topicList(
+              "Heavier and Lighter Comparisons",
+              "Balancing Scales",
+              "Estimating Weight",
+            ),
+          },
+          {
+            name: "Counting in Tens",
+            topics: topicList(
+              "Bundles of Ten",
+              "Counting up to 100 in Tens",
+              "Skip Counting by 10",
+            ),
+          },
+          {
+            name: "Patterns",
+            topics: topicList(
+              "Repeating Visual Patterns",
+              "Number Sequences",
+              "Growing Patterns",
+            ),
+          },
+          {
+            name: "Footprints",
+            topics: topicList(
+              "Tracing 2D Shapes",
+              "Edges and Corners",
+              "Circles, Squares, Triangles and Rectangles",
+            ),
+          },
+          {
+            name: "Jugs and Mugs",
+            topics: topicList(
+              "Capacity and Volume",
+              "Measuring Liquid with Glasses",
+              "More or Less Liquid",
+            ),
+          },
+          {
+            name: "Tens and Ones",
+            topics: topicList(
+              "Place Value of 2-digit Numbers",
+              "Expanded Form",
+              "Token Cards for Tens and Ones",
+            ),
+          },
+          {
+            name: "My Funday",
+            topics: topicList(
+              "Days of the Week",
+              "Months of the Year",
+              "Seasons and Weather",
+            ),
+          },
+          {
+            name: "Add Our Points",
+            topics: topicList(
+              "Mental Addition Strategies",
+              "Adding Three Single-Digit Numbers",
+              "Dice Points Counting",
+            ),
+          },
+          {
+            name: "Lines and Lines",
+            topics: topicList(
+              "Standing, Slanting and Curved Lines",
+              "Drawing Shapes with Straight Lines",
+              "Dancing Lines and Poses",
+            ),
+          },
+          {
+            name: "Give and Take",
+            topics: topicList(
+              "Addition with Regrouping (2-digit)",
+              "Subtraction with Regrouping (2-digit)",
+              "Story Problems",
+            ),
+          },
+          {
+            name: "The Longest Step",
+            topics: topicList(
+              "Measuring with Fingers and Footsteps",
+              "Comparing Distances",
+              "Standard vs Non-Standard Units",
+            ),
+          },
+          {
+            name: "Birds Come, Birds Go",
+            topics: topicList(
+              "Word Problems in Addition",
+              "Word Problems in Subtraction",
+              "Mental Math Tricks",
+            ),
+          },
+          {
+            name: "How Many Ponytails",
+            topics: topicList(
+              "Collecting and Organizing Information",
+              "Reading Simple Pictographs",
+              "Answering Questions from Data",
+            ),
+          },
+        ],
+      },
+    ],
   },
   {
     id: 3,
     name: "Class 3",
     description: "Curiosity meets early science",
     subjects: [
-      mk("math", "Math", "Calculator", "Multiplication, division, fractions", 14),
-      mk("evs", "EVS", "Leaf", "Explore the world around you", 14),
+      {
+        id: "math",
+        name: "Mathematics",
+        icon: "Calculator",
+        description: "Multiplication, division, 3-digit numbers & fractions",
+        chapters: [
+          {
+            name: "Where to Look From",
+            topics: topicList(
+              "Top, Side and Front Views",
+              "Grid Drawings and Dot Grids",
+              "Mirror Halves and Symmetry",
+            ),
+          },
+          {
+            name: "Fun with Numbers",
+            topics: topicList(
+              "3-digit Numbers (100 to 999)",
+              "Place Value and Face Value",
+              "Skipping Numbers by 10s, 50s and 100s",
+              "Comparing 3-digit Numbers",
+            ),
+          },
+          {
+            name: "Give and Take",
+            topics: topicList(
+              "Addition Grid Strategies (10 more, 10 less)",
+              "Addition of 3-digit Numbers",
+              "Word Problems in Addition",
+            ),
+          },
+          {
+            name: "Long and Short",
+            topics: topicList(
+              "Centimetres and Metres",
+              "Using a Ruler to Measure Length",
+              "Estimating and Comparing Lengths",
+            ),
+          },
+          {
+            name: "Shapes and Designs",
+            topics: topicList(
+              "Edges, Corners and Faces of Shapes",
+              "Tangrams and Tiling Patterns",
+              "Weaving and Floor Patterns",
+            ),
+          },
+          {
+            name: "Fun with Give and Take",
+            topics: topicList(
+              "Subtraction of 3-digit Numbers",
+              "Checking Subtraction by Addition",
+              "Mental Math Subtraction Strategies",
+            ),
+          },
+          {
+            name: "Time Goes On",
+            topics: topicList(
+              "Seconds, Minutes, Hours and Days",
+              "Reading Analog and Digital Clocks",
+              "Using a Calendar",
+            ),
+          },
+          {
+            name: "Who is Heavier",
+            topics: topicList(
+              "Kilograms and Grams",
+              "Standard Weights and Balances",
+              "Estimating Weight of Everyday Objects",
+            ),
+          },
+          {
+            name: "How Many Times",
+            topics: topicList(
+              "Multiplication as Repeated Addition",
+              "Multiplication Tables (2 to 10)",
+              "Multiplication of 2-digit Numbers",
+              "Multiplication Patterns",
+            ),
+          },
+          {
+            name: "Play with Patterns",
+            topics: topicList(
+              "Picture Patterns with Rules",
+              "Number Towers and Magic Squares",
+              "Secret Messages and Decoding",
+            ),
+          },
+          {
+            name: "Jugs and Mugs",
+            topics: topicList(
+              "Litres and Millilitres",
+              "Measuring Container Volumes",
+              "Estimating Everyday Liquid Capacities",
+            ),
+          },
+          {
+            name: "Can We Share",
+            topics: topicList(
+              "Division as Equal Sharing and Grouping",
+              "Division using Multiplication Facts",
+              "Division Word Problems",
+            ),
+          },
+          {
+            name: "Smart Charts",
+            topics: topicList(
+              "Using Tally Marks",
+              "Creating and Interpreting Bar Charts",
+              "Family Tree Charts",
+            ),
+          },
+          {
+            name: "Rupees and Paise",
+            topics: topicList(
+              "Converting Rupees and Paise",
+              "Adding and Subtracting Money",
+              "Making Cash Memos and Receipts",
+            ),
+          },
+        ],
+      },
+      {
+        id: "evs",
+        name: "EVS",
+        icon: "Leaf",
+        description: "Explore plants, animals, water, family & food",
+        chapters: [
+          {
+            name: "Poonam's Day Out",
+            topics: topicList(
+              "Observing Animals and Birds",
+              "Animal Habitats and Movement",
+              "Sounds and Characteristics of Animals",
+            ),
+          },
+          {
+            name: "The Plant Fairy",
+            topics: topicList(
+              "Diversity of Leaves and Plants",
+              "Types of Plants (Herbs, Shrubs, Trees)",
+              "Textures and Smells of Leaves",
+            ),
+          },
+          {
+            name: "Water O Water",
+            topics: topicList(
+              "Sources of Water",
+              "Importance of Water in Daily Life",
+              "Water Forms and Conservation",
+            ),
+          },
+          {
+            name: "Our First School",
+            topics: topicList(
+              "Family Members and Relationships",
+              "Family Customs and Values",
+              "Helping Each Other at Home",
+            ),
+          },
+          {
+            name: "Chhotu's House",
+            topics: topicList(
+              "Need for Shelter and Homes",
+              "Parts of a House",
+              "Animals that Live with Us",
+              "Decorating and Keeping Homes Clean",
+            ),
+          },
+          {
+            name: "Foods We Eat",
+            topics: topicList(
+              "Diversity in Food across Regions",
+              "Food for Different Age Groups",
+              "Sources of Food (Plants and Animals)",
+            ),
+          },
+          {
+            name: "Saying Without Speaking",
+            topics: topicList(
+              "Sign Language and Gestures",
+              "Sense Organs and Sensory Feelings",
+              "Empathy for Differently Abled",
+            ),
+          },
+          {
+            name: "Flying High",
+            topics: topicList(
+              "Beaks, Claws and Feathers of Birds",
+              "Bird Sounds and Flights",
+              "What Birds Eat",
+            ),
+          },
+          {
+            name: "It's Raining",
+            topics: topicList(
+              "Clouds and Rainfall",
+              "Importance of Rain for Agriculture",
+              "Water Cycle Awareness",
+            ),
+          },
+          {
+            name: "What is Cooking",
+            topics: topicList(
+              "Cooking Utensils and Materials",
+              "Methods of Cooking (Boiling, Frying, Baking)",
+              "Fuels Used for Cooking",
+            ),
+          },
+          {
+            name: "From Here to There",
+            topics: topicList(
+              "Land, Water and Air Transport",
+              "Emergency Vehicles",
+              "History and Evolution of Vehicles",
+            ),
+          },
+          {
+            name: "Work We Do",
+            topics: topicList(
+              "Different Occupations and Professions",
+              "Daily Work Routine in Community",
+              "Dignity of Labor",
+            ),
+          },
+          {
+            name: "Sharing Our Feelings",
+            topics: topicList(
+              "Care for the Elderly and Differently Abled",
+              "Braille Script Concept",
+              "Sensory Appreciation",
+            ),
+          },
+          {
+            name: "The Story of Food",
+            topics: topicList(
+              "From Farm to Plate",
+              "Medicinal Plants and Home Remedies",
+              "Sharing Household Chores",
+            ),
+          },
+          {
+            name: "Making Pots",
+            topics: topicList(
+              "Types of Clay and Soil",
+              "Potter's Wheel and Baking Pots",
+              "Traditional Crafts",
+            ),
+          },
+          {
+            name: "Games We Play",
+            topics: topicList(
+              "Indoor and Outdoor Games",
+              "Traditional Games (Hopscotch, Kabaddi)",
+              "Sportsmanship and Teamwork",
+            ),
+          },
+          {
+            name: "Here Comes a Letter",
+            topics: topicList(
+              "Journey of a Letter",
+              "Post Offices and PIN Codes",
+              "Modern Communication Tools",
+            ),
+          },
+          {
+            name: "A House Like This",
+            topics: topicList(
+              "Houses in Mountains, Deserts and Plains",
+              "Igloos, Houseboats and Stilt Houses",
+              "Building Materials Used",
+            ),
+          },
+          {
+            name: "Our Friends The Animals",
+            topics: topicList(
+              "Care and Protection of Domestic Animals",
+              "Animal Needs for Food and Shelter",
+              "Interdependence of Humans and Animals",
+            ),
+          },
+          {
+            name: "Drop by Drop",
+            topics: topicList(
+              "Water Scarcity in Arid Regions",
+              "Rainwater Harvesting Basics",
+              "Reusing Water in Daily Life",
+            ),
+          },
+        ],
+      },
     ],
   },
   {
@@ -67,8 +614,327 @@ export const CLASSES: ClassInfo[] = [
     name: "Class 4",
     description: "Sharpen logic and observation",
     subjects: [
-      mk("math", "Math", "Calculator", "Decimals, geometry, measurement", 15),
-      mk("evs", "EVS", "Leaf", "Plants, animals & environment", 15),
+      {
+        id: "math",
+        name: "Mathematics",
+        icon: "Calculator",
+        description: "Geometry, fractions, time, area & perimeter",
+        chapters: [
+          {
+            name: "Building with Bricks",
+            topics: topicList(
+              "Brick Patterns and Arch Structures",
+              "3D Shape of a Brick (Faces, Edges, Vertices)",
+              "Kilns and Making of Bricks",
+            ),
+          },
+          {
+            name: "Long and Short",
+            topics: topicList(
+              "Centimetres, Metres and Kilometres",
+              "Unit Conversions",
+              "Estimating Real-world Travel Distances",
+            ),
+          },
+          {
+            name: "A Trip to Bhopal",
+            topics: topicList(
+              "Real-life Word Problems in Arithmetic",
+              "Estimation and Budgeting",
+              "Speed, Time and Distance Intuition",
+            ),
+          },
+          {
+            name: "Tick-Tick-Tick",
+            topics: topicList(
+              "12-Hour vs 24-Hour Clock Time",
+              "Reading Timetables and Dates",
+              "Calculating Time Duration and Intervals",
+            ),
+          },
+          {
+            name: "The Way The World Looks",
+            topics: topicList(
+              "Perspective Drawing (Perspective Views)",
+              "Map Reading and Route Navigation",
+              "Floor Maps and Direction Orientation",
+            ),
+          },
+          {
+            name: "The Junk Seller",
+            topics: topicList(
+              "Money Calculations and Rate Lists",
+              "Multiplication through Box Method",
+              "Profit and Simple Loan Concepts",
+            ),
+          },
+          {
+            name: "Jugs and Mugs",
+            topics: topicList(
+              "Litres and Millilitres Conversion",
+              "Adding and Subtracting Liquid Volumes",
+              "Medicine Dosages and Capacities",
+            ),
+          },
+          {
+            name: "Carts and Wheels",
+            topics: topicList(
+              "Circle Geometry (Radius, Diameter, Centre)",
+              "Drawing Circles using Compass and Strings",
+              "Spinning Tops and Centres of Circles",
+            ),
+          },
+          {
+            name: "Halves and Quarters",
+            topics: topicList(
+              "Fractions: 1/2, 1/4, 3/4 Representation",
+              "Fraction of a Collection and Shapes",
+              "Equivalent Fractions Basics",
+            ),
+          },
+          {
+            name: "Play with Patterns",
+            topics: topicList(
+              "Rotational Symmetry in Patterns (1/4 and 1/2 Turns)",
+              "Magic Squares and Magic Hexagons",
+              "Number and Alphabet Ciphers",
+            ),
+          },
+          {
+            name: "Tables and Shares",
+            topics: topicList(
+              "Multiplication Tables up to 20",
+              "Long Division and Remainder Concept",
+              "Word Problems on Division",
+            ),
+          },
+          {
+            name: "How Heavy How Light",
+            topics: topicList(
+              "Grams and Kilograms Conversions",
+              "Balance Scales and Weights",
+              "Postal Weights and Shipping Charges",
+            ),
+          },
+          {
+            name: "Fields and Fences",
+            topics: topicList(
+              "Perimeter of Regular and Irregular Shapes",
+              "Perimeter Calculation for Rectangles & Squares",
+              "Real-world Boundary Applications",
+            ),
+          },
+          {
+            name: "Smart Charts",
+            topics: topicList(
+              "Bar Graphs and Chapati Charts (Pie Charts)",
+              "Gathering Survey Data",
+              "Interpreting Data from Charts",
+            ),
+          },
+        ],
+      },
+      {
+        id: "evs",
+        name: "EVS",
+        icon: "Leaf",
+        description: "Environment, biodiversity, geography & community life",
+        chapters: [
+          {
+            name: "Going to School",
+            topics: topicList(
+              "Bamboo Bridges, Trolleys and Boats",
+              "Different Geographical Terrains",
+              "Overcoming Physical Obstacles to Education",
+            ),
+          },
+          {
+            name: "Ear to Ear",
+            topics: topicList(
+              "External vs Internal Ears of Animals",
+              "Skin Patterns and Hair on Animals",
+              "Mammals and Egg-laying Animals",
+            ),
+          },
+          {
+            name: "A Day with Nandu",
+            topics: topicList(
+              "Elephant Herds and Social Behavior",
+              "Life of Young Animals in Wild",
+              "Wildlife Conservation and Animal Rights",
+            ),
+          },
+          {
+            name: "The Story of Amrita",
+            topics: topicList(
+              "Bishnoi Community and Khejadi Trees",
+              "Tree Protection and Forest Stewardship",
+              "Desert Ecosystem Flora and Fauna",
+            ),
+          },
+          {
+            name: "Anita and the Honeybees",
+            topics: topicList(
+              "Beekeeping and Honey Production",
+              "Life in a Beehive (Queen, Workers, Drones)",
+              "Girl Child Empowerment and Education",
+            ),
+          },
+          {
+            name: "Omana's Journey",
+            topics: topicList(
+              "Train Journey and Railway Stations",
+              "Railway Tickets and Reservation Charts",
+              "Travel Preparation and Route Planning",
+            ),
+          },
+          {
+            name: "From the Window",
+            topics: topicList(
+              "Level Crossings, Tunnels and Bridges",
+              "Landscape Changes along Journey",
+              "Language and Cultural Variations",
+            ),
+          },
+          {
+            name: "Reaching Grandmother's House",
+            topics: topicList(
+              "Ferries and Waterways Travel",
+              "Reading Ferry and Bus Tickets",
+              "Kerala Backwaters Ecosystem",
+            ),
+          },
+          {
+            name: "Changing Families",
+            topics: topicList(
+              "New Arrivals, Weddings and Relocations",
+              "Family Trees and Generations",
+              "Legal Age of Marriage",
+            ),
+          },
+          {
+            name: "Hu Tu Tu Hu Tu Tu",
+            topics: topicList(
+              "Kabaddi Rules and Physical Stamina",
+              "Women in Sports and Breaking Barriers",
+              "Team Collaboration and Fair Play",
+            ),
+          },
+          {
+            name: "The Valley of Flowers",
+            topics: topicList(
+              "Flora of Uttarakhand Mountains",
+              "Uses of Flowers (Perfumes, Dyes, Medicine)",
+              "Madhubani Art & Floral Designs",
+            ),
+          },
+          {
+            name: "Changing Times",
+            topics: topicList(
+              "Partition of India & Migration",
+              "Evolution of Housing Materials",
+              "Sanitation and Modern Amenities",
+            ),
+          },
+          {
+            name: "A River's Tale",
+            topics: topicList(
+              "River Origins in Mountains",
+              "Water Pollution Sources",
+              "Impact of Industrial Waste on Aquatic Life",
+              "Water Purification Techniques",
+            ),
+          },
+          {
+            name: "Basva's Farm",
+            topics: topicList(
+              "Steps in Farming (Ploughing, Sowing, Weeding)",
+              "Agricultural Implements (Khunti, Kurige, Illige)",
+              "Harvesting and Onion Crop Lifecycle",
+            ),
+          },
+          {
+            name: "From Market to Home",
+            topics: topicList(
+              "Life of Vegetable Vendors",
+              "Sorting and Storing Perishable Produce",
+              "Farm-to-Market Supply Chain",
+            ),
+          },
+          {
+            name: "A Busy Month",
+            topics: topicList(
+              "Bird Nests (Weaver bird, Robin, Tailor bird)",
+              "Beak Adaptations for Different Food Types",
+              "Teeth in Animals (Herbivores vs Carnivores)",
+            ),
+          },
+          {
+            name: "Nandita in Mumbai",
+            topics: topicList(
+              "Urban vs Rural Living Conditions",
+              "Slum Settlements and High-rise Buildings",
+              "Community Water Scarcity in Cities",
+            ),
+          },
+          {
+            name: "Too Much Water, Too Little Water",
+            topics: topicList(
+              "Water-borne Diseases (Diarrhoea, Cholera)",
+              "ORS (Oral Rehydration Solution) Preparation",
+              "Clean Drinking Water Initiatives",
+            ),
+          },
+          {
+            name: "Abdul in the Garden",
+            topics: topicList(
+              "Root Systems (Taproots, Fibrous Roots, Aerial Roots)",
+              "Desert Oak Tree and Water Storage",
+              "Plant Respiration and Stability",
+            ),
+          },
+          {
+            name: "Eating Together",
+            topics: topicList(
+              "Bihu Festival and Community Feasts",
+              "Mid-Day Meal Scheme in Schools",
+              "Cultural Unity Through Food",
+            ),
+          },
+          {
+            name: "Food and Fun",
+            topics: topicList(
+              "Boarding School Life",
+              "Community Kitchen in Gurudwara (Langar)",
+              "Preparation of Kadha Prasad",
+            ),
+          },
+          {
+            name: "The World in My Home",
+            topics: topicList(
+              "Gender Roles and Decision Making",
+              "Values of Honesty and Integrity",
+              "Overcoming Discrimination",
+            ),
+          },
+          {
+            name: "Pochampalli",
+            topics: topicList(
+              "Traditional Silk Weaving and Looms",
+              "Dyeing and Yarn Processing",
+              "Supporting Indigenous Artisans",
+            ),
+          },
+          {
+            name: "Home and Abroad",
+            topics: topicList(
+              "Abu Dhabi Geography and Desert Climate",
+              "Currency Differences (Dirham vs Rupee)",
+              "Petroleum Resources and Oasis",
+            ),
+          },
+        ],
+      },
     ],
   },
   {
@@ -76,8 +942,310 @@ export const CLASSES: ClassInfo[] = [
     name: "Class 5",
     description: "Bridging primary to middle school",
     subjects: [
-      mk("math", "Math", "Calculator", "Advanced arithmetic & geometry", 16),
-      mk("evs", "EVS", "Leaf", "General science foundations", 16),
+      {
+        id: "math",
+        name: "Mathematics",
+        icon: "Calculator",
+        description: "Advanced arithmetic, geometry, volume & decimals",
+        chapters: [
+          {
+            name: "The Fish Tale",
+            topics: topicList(
+              "Large Numbers (Lakhs and Crores)",
+              "Speed and Catch Calculations in Fishing Boats",
+              "Fisherwomen Banks and Simple Loan Calculations",
+            ),
+          },
+          {
+            name: "Shapes and Angles",
+            topics: topicList(
+              "Acute, Right and Obtuse Angles",
+              "Measuring Angles with a Protractor",
+              "Angles in Letters, Shapes and Clock Hands",
+            ),
+          },
+          {
+            name: "How Many Squares",
+            topics: topicList(
+              "Area on a Grid",
+              "Area of Triangles and Irregular Shapes",
+              "Comparing Stamp and Leaf Areas",
+            ),
+          },
+          {
+            name: "Parts and Wholes",
+            topics: topicList(
+              "Fractions of a Whole and of a Group",
+              "Fraction Strips and Equivalent Fractions",
+              "Mixed Fractions Basics",
+            ),
+          },
+          {
+            name: "Does it Look the Same",
+            topics: topicList(
+              "Lines of Symmetry",
+              "Rotational Symmetry (1/2, 1/3, 1/4, 1/6 Turns)",
+              "Mirror Image Verification",
+            ),
+          },
+          {
+            name: "Be My Multiple I'll Be Your Factor",
+            topics: topicList(
+              "Multiples and Common Multiples",
+              "Factors and Factor Trees",
+              "LCM and HCF Foundations",
+            ),
+          },
+          {
+            name: "Can You See the Pattern",
+            topics: topicList(
+              "Rule-based Number Sequences",
+              "Palindromes and Magic Patterns",
+              "Turn Patterns in Geometrical Shapes",
+            ),
+          },
+          {
+            name: "Mapping Your Way",
+            topics: topicList(
+              "Reading City Maps and Route Layouts",
+              "Scale Representation on Maps",
+              "Directions and Quadrants",
+            ),
+          },
+          {
+            name: "Boxes and Sketches",
+            topics: topicList(
+              "Nets of 3D Shapes (Cube, Cylinder, Cone)",
+              "Floor Plans and Deep Drawings",
+              "Isometric Views",
+            ),
+          },
+          {
+            name: "Tenths and Hundredths",
+            topics: topicList(
+              "Decimal Representation of Fractions",
+              "Measuring Length in Decimals",
+              "Money and Temperature in Decimals",
+            ),
+          },
+          {
+            name: "Area and Its Boundary",
+            topics: topicList(
+              "Formula for Perimeter and Area of Rectangle & Square",
+              "Area of Combined Shapes",
+              "Word Problems on Fencing and Flooring",
+            ),
+          },
+          {
+            name: "Smart Charts",
+            topics: topicList(
+              "Tally Charts and Frequency Tables",
+              "Bar Charts and Line Graphs",
+              "Data Interpretation and Predictions",
+            ),
+          },
+          {
+            name: "Ways to Multiply and Divide",
+            topics: topicList(
+              "Multi-digit Multiplication Algorithms",
+              "Long Division with Remainders",
+              "Real-life Multi-step Word Problems",
+            ),
+          },
+          {
+            name: "How Big How Heavy",
+            topics: topicList(
+              "Volume of Cubes and Cuboids",
+              "Liquid Displacement and Volume of Irregular Objects",
+              "Weight-Volume Relationships",
+            ),
+          },
+        ],
+      },
+      {
+        id: "evs",
+        name: "EVS",
+        icon: "Leaf",
+        description: "General science foundations, ecosystems, geology & space",
+        chapters: [
+          {
+            name: "Super Senses",
+            topics: topicList(
+              "Sight, Hearing and Smell in Animals",
+              "Sleep Patterns in Animals",
+              "Poaching and Endangered Species Protection",
+            ),
+          },
+          {
+            name: "A Snake Charmer's Story",
+            topics: topicList(
+              "Kalbeliya Community and Snakes",
+              "Poisonous vs Non-poisonous Snakes",
+              "Wildlife Protection Laws",
+            ),
+          },
+          {
+            name: "From Tasting to Digesting",
+            topics: topicList(
+              "Taste Buds and Tongue Functions",
+              "Human Digestive System Journey",
+              "Proper Nutrition and Balanced Diet",
+            ),
+          },
+          {
+            name: "Mangoes Round the Year",
+            topics: topicList(
+              "Food Spoilage and Microorganisms",
+              "Food Preservation Techniques (Mamidi Tandra)",
+              "Expiry Dates and Food Safety",
+            ),
+          },
+          {
+            name: "Seeds and Seeds",
+            topics: topicList(
+              "Seed Structure and Germination",
+              "Seed Dispersal by Wind, Water, Animals and Explosions",
+              "Origins of Common Agricultural Plants",
+            ),
+          },
+          {
+            name: "Every Drop Counts",
+            topics: topicList(
+              "Historic Water Architecture (Stepwells / Baolis)",
+              "Ghadsisar Lake and Water Catchment",
+              "Water Conservation in Rajasthan",
+            ),
+          },
+          {
+            name: "Experiments with Water",
+            topics: topicList(
+              "Floating and Sinking Concepts",
+              "Solubility in Water",
+              "Evaporation, Condensation and Salt Making (Dandi March)",
+            ),
+          },
+          {
+            name: "A Treat for Mosquitoes",
+            topics: topicList(
+              "Malaria, Dengue, Chikungunya and Mosquito Lifecycle",
+              "Blood Test Reports and Anaemia",
+              "Preventing Stagnant Water Breeding",
+            ),
+          },
+          {
+            name: "Up You Go",
+            topics: topicList(
+              "Mountaineering Skills and Equipment",
+              "Leadership and Team Responsibilities",
+              "Bachendri Pal's Everest Ascent",
+            ),
+          },
+          {
+            name: "Walls Tell Stories",
+            topics: topicList(
+              "Golconda Fort Architecture and Engineering",
+              "Acoustics, Water Fountains and Defensive Walls",
+              "Museum Artifacts and Archaeological History",
+            ),
+          },
+          {
+            name: "Sunita in Space",
+            topics: topicList(
+              "Life in Zero Gravity (Spacecraft)",
+              "Earth as a Globe and Gravitational Pull",
+              "Phases of the Moon and Day-Night Cycle",
+            ),
+          },
+          {
+            name: "What If It Finishes",
+            topics: topicList(
+              "Formation of Petroleum and Coal",
+              "Oil Refineries and Petroleum Products",
+              "Renewable Energy (Solar, Wind) & Conservation",
+            ),
+          },
+          {
+            name: "A Shelter So High",
+            topics: topicList(
+              "Changpa Nomadic Tribe of Ladakh",
+              "Pashmina Goats and Wool Processing",
+              "Cold Desert Climate and Rebo Tents",
+            ),
+          },
+          {
+            name: "When the Earth Shook",
+            topics: topicList(
+              "Earthquakes and Tectonic Tremors",
+              "Disaster Preparedness and Emergency Response",
+              "Earthquake-resistant Building Architecture",
+            ),
+          },
+          {
+            name: "Blow Hot, Blow Cold",
+            topics: topicList(
+              "Human Respiration and Temperature Control",
+              "Stethoscope and Heartbeat",
+              "Musical Wind Instruments",
+            ),
+          },
+          {
+            name: "Who Will Do This Work",
+            topics: topicList(
+              "Sanitation Work and Waste Management",
+              "Dr. B.R. Ambedkar and Social Equality",
+              "Dignity of Labor and Eradicating Untouchability",
+            ),
+          },
+          {
+            name: "Across the Wall",
+            topics: topicList(
+              "Nagpada Basketball Team and Breaking Gender Stereotypes",
+              "Sportsmanship and Overcoming Poverty",
+              "Team Dynamics and Motivation",
+            ),
+          },
+          {
+            name: "No Place for Us",
+            topics: topicList(
+              "Dams, Urban Projects and Displacement",
+              "Rural to Urban Migration Challenges",
+              "Loss of Cultural Identity and Livelihood",
+            ),
+          },
+          {
+            name: "A Seed Tells a Farmer's Story",
+            topics: topicList(
+              "Traditional Farming vs Modern Chemical Farming",
+              "Hybrid Seeds, Pesticides and Soil Degradation",
+              "Irrigation Methods and Farmer Debts",
+            ),
+          },
+          {
+            name: "Whose Forests",
+            topics: topicList(
+              "Kuduk Community and Jharkhand Forests",
+              "Suryamani and 'Torang' Movement",
+              "Forest Rights Act and Ecological Balance",
+            ),
+          },
+          {
+            name: "Like Father, Like Daughter",
+            topics: topicList(
+              "Inherited Traits vs Acquired Habits",
+              "Gregor Mendel's Experiments with Peas",
+              "Twin Traits and Family Characteristics",
+            ),
+          },
+          {
+            name: "On the Move Again",
+            topics: topicList(
+              "Seasonal Migration of Sugarcane Farmers",
+              "Impact of Migration on Children's Education",
+              "Cooperative Farming and Solutions",
+            ),
+          },
+        ],
+      },
     ],
   },
   {
@@ -2668,9 +3836,2126 @@ export const CLASSES: ClassInfo[] = [
   },
 ];
 
+
+// ============================================================================
+// Classes 11–12 Streams (Science-PCM, Science-PCB, Commerce, Arts)
+// ============================================================================
+
+export const STREAM_CLASSES: StreamClassInfo[] = [
+  {
+    id: 11,
+    name: "Class 11",
+    description: "Higher Secondary Foundation across specialized academic streams",
+    streams: [
+      {
+        id: "science-pcm",
+        name: "Science (PCM)",
+        description: "Physics, Chemistry, and Mathematics track for Engineering & Physical Sciences",
+        subjects: [
+          {
+            id: "physics",
+            name: "Physics",
+            icon: "Atom",
+            description: "Physical world, mechanics, thermodynamics, oscillations & waves",
+            chapters: [
+              {
+                name: "Units and Measurements",
+                topics: topicList(
+                  "The International System of Units",
+                  "Measurement of Length, Mass, and Time",
+                  "Dimensions of Physical Quantities",
+                  "Dimensional Formulae and Dimensional Equations",
+                  "Dimensional Analysis and Its Applications",
+                  "Significant Figures and Error Analysis",
+                ),
+              },
+              {
+                name: "Motion in a Straight Line",
+                topics: topicList(
+                  "Position, Path Length and Displacement",
+                  "Average Velocity and Average Speed",
+                  "Instantaneous Velocity and Speed",
+                  "Acceleration",
+                  "Kinematic Equations for Uniformly Accelerated Motion",
+                  "Relative Velocity in One Dimension",
+                ),
+              },
+              {
+                name: "Motion in a Plane",
+                topics: topicList(
+                  "Scalars and Vectors",
+                  "Multiplication of Vectors by Real Numbers",
+                  "Addition and Subtraction of Vectors - Graphical Method",
+                  "Resolution of Vectors & Unit Vectors",
+                  "Vector Addition - Analytical Method",
+                  "Motion in a Plane with Constant Acceleration",
+                  "Projectile Motion",
+                  "Uniform Circular Motion",
+                ),
+              },
+              {
+                name: "Laws of Motion",
+                topics: topicList(
+                  "Aristotle's Fallacy & Galileo's Law of Inertia",
+                  "Newton's First Law of Motion",
+                  "Newton's Second Law of Motion",
+                  "Newton's Third Law of Motion",
+                  "Conservation of Linear Momentum",
+                  "Equilibrium of a Particle & Free Body Diagrams",
+                  "Friction (Static, Kinetic, Rolling)",
+                  "Circular Motion & Banking of Roads",
+                ),
+              },
+              {
+                name: "Work, Energy and Power",
+                topics: topicList(
+                  "Scalar Product of Vectors (Dot Product)",
+                  "Notions of Work and Kinetic Energy: The Work-Energy Theorem",
+                  "Work Done by a Constant Force and Variable Force",
+                  "The Concept of Potential Energy",
+                  "Conservation of Mechanical Energy",
+                  "Spring Potential Energy",
+                  "Power and Collisions (Elastic & Inelastic)",
+                ),
+              },
+              {
+                name: "System of Particles and Rotational Motion",
+                topics: topicList(
+                  "Center of Mass and Its Motion",
+                  "Linear Momentum of a System of Particles",
+                  "Vector Product of Two Vectors (Cross Product)",
+                  "Angular Velocity and Its Relation with Linear Velocity",
+                  "Torque and Angular Momentum",
+                  "Equilibrium of a Rigid Body",
+                  "Moment of Inertia & Radius of Gyration",
+                  "Kinematics & Dynamics of Rotational Motion",
+                ),
+              },
+              {
+                name: "Gravitation",
+                topics: topicList(
+                  "Kepler's Laws of Planetary Motion",
+                  "Universal Law of Gravitation",
+                  "The Gravitational Constant",
+                  "Acceleration due to Gravity of the Earth",
+                  "Variation of g with Altitude and Depth",
+                  "Gravitational Potential Energy & Escape Velocity",
+                  "Earth Satellites & Orbital Velocity",
+                ),
+              },
+              {
+                name: "Mechanical Properties of Solids",
+                topics: topicList(
+                  "Stress and Strain",
+                  "Hooke's Law and Stress-Strain Curve",
+                  "Elastic Moduli (Young's, Shear, Bulk)",
+                  "Applications of Elastic Behaviour of Materials",
+                ),
+              },
+              {
+                name: "Mechanical Properties of Fluids",
+                topics: topicList(
+                  "Pressure, Pascal's Law & Hydraulic Machines",
+                  "Streamline Flow & Equation of Continuity",
+                  "Bernoulli's Principle and Applications",
+                  "Viscosity & Stokes' Law",
+                  "Reynolds Number & Turbulence",
+                  "Surface Tension, Surface Energy & Capillarity",
+                ),
+              },
+              {
+                name: "Thermal Properties of Matter",
+                topics: topicList(
+                  "Temperature and Heat",
+                  "Measurement of Temperature & Ideal Gas Equation",
+                  "Thermal Expansion",
+                  "Specific Heat Capacity & Calorimetry",
+                  "Change of State & Latent Heat",
+                  "Heat Transfer: Conduction, Convection & Radiation",
+                  "Newton's Law of Cooling",
+                ),
+              },
+              {
+                name: "Thermodynamics",
+                topics: topicList(
+                  "Thermal Equilibrium and Zeroth Law",
+                  "First Law of Thermodynamics",
+                  "Specific Heat Capacity of Gases",
+                  "Thermodynamic State Variables and Equation of State",
+                  "Thermodynamic Processes (Isothermal, Adiabatic, Isobaric, Isochoric)",
+                  "Second Law of Thermodynamics",
+                  "Heat Engines and Refrigerators / Heat Pumps",
+                ),
+              },
+              {
+                name: "Kinetic Theory",
+                topics: topicList(
+                  "Molecular Nature of Matter",
+                  "Behaviour of Gases & Kinetic Theory Postulates",
+                  "Pressure of an Ideal Gas",
+                  "Kinetic Interpretation of Temperature",
+                  "Law of Equipartition of Energy",
+                  "Specific Heat Capacity of Monatomic, Diatomic & Polyatomic Gases",
+                  "Mean Free Path",
+                ),
+              },
+              {
+                name: "Oscillations",
+                topics: topicList(
+                  "Periodic and Oscillatory Motions",
+                  "Simple Harmonic Motion (SHM)",
+                  "SHM and Uniform Circular Motion",
+                  "Velocity and Acceleration in SHM",
+                  "Energy in SHM: Kinetic and Potential",
+                  "Simple Pendulum and Spring Oscillations",
+                  "Damped and Forced Oscillations; Resonance",
+                ),
+              },
+              {
+                name: "Waves",
+                topics: topicList(
+                  "Transverse and Longitudinal Waves",
+                  "Displacement Relation in a Progressive Wave",
+                  "The Speed of a Travelling Wave",
+                  "The Principle of Superposition of Waves",
+                  "Reflection of Waves & Standing Waves in Strings and Pipes",
+                  "Beats",
+                  "Doppler Effect in Waves",
+                ),
+              },
+            ],
+          },
+          {
+            id: "chemistry",
+            name: "Chemistry",
+            icon: "FlaskConical",
+            description: "Physical, Inorganic, and Organic Chemistry foundations",
+            chapters: [
+              {
+                name: "Some Basic Concepts of Chemistry",
+                topics: topicList(
+                  "Importance of Chemistry & Nature of Matter",
+                  "Laws of Chemical Combinations",
+                  "Dalton's Atomic Theory",
+                  "Atomic and Molecular Masses & Mole Concept",
+                  "Percentage Composition and Empirical Formula",
+                  "Stoichiometry and Stoichiometric Calculations",
+                  "Limiting Reagent & Concentration Terms (Molarity, Molality)",
+                ),
+              },
+              {
+                name: "Structure of Atom",
+                topics: topicList(
+                  "Discovery of Sub-atomic Particles (Electron, Proton, Neutron)",
+                  "Thomson and Rutherford Atomic Models",
+                  "Electromagnetic Radiation & Photoelectric Effect",
+                  "Bohr's Model for Hydrogen Atom",
+                  "Dual Behaviour of Matter & de Broglie Equation",
+                  "Heisenberg's Uncertainty Principle",
+                  "Quantum Mechanical Model of Atom & Quantum Numbers",
+                  "Shapes of Orbitals & Electronic Configuration Principles",
+                ),
+              },
+              {
+                name: "Classification of Elements and Periodicity in Properties",
+                topics: topicList(
+                  "Modern Periodic Law and Periodic Table",
+                  "Electronic Configurations and Types of Elements (s, p, d, f blocks)",
+                  "Periodic Trends: Atomic Radii and Ionic Radii",
+                  "Ionization Enthalpy",
+                  "Electron Gain Enthalpy",
+                  "Electronegativity and Chemical Reactivity Trends",
+                ),
+              },
+              {
+                name: "Chemical Bonding and Molecular Structure",
+                topics: topicList(
+                  "Kössell-Lewis Approach to Chemical Bonding",
+                  "Ionic Bond & Lattice Enthalpy",
+                  "Covalent Bond & Bond Parameters",
+                  "Lewis Structures and Formal Charge",
+                  "VSEPR Theory & Molecular Shapes",
+                  "Valence Bond Theory & Orbital Overlap",
+                  "Hybridization (sp, sp2, sp3, d-orbitals)",
+                  "Molecular Orbital Theory & Homonuclear Diatomic Molecules",
+                  "Hydrogen Bonding",
+                ),
+              },
+              {
+                name: "Chemical Thermodynamics",
+                topics: topicList(
+                  "System, Surroundings and Types of Systems",
+                  "Internal Energy, Work and Heat",
+                  "First Law of Thermodynamics",
+                  "Enthalpy and Enthalpy Changes during Reactions",
+                  "Hess's Law of Constant Heat Summation",
+                  "Enthalpies of Formation, Combustion, Atomization, Phase Transition",
+                  "Spontaneity, Entropy and Second Law of Thermodynamics",
+                  "Gibbs Free Energy Change and Equilibrium Criterion",
+                ),
+              },
+              {
+                name: "Equilibrium",
+                topics: topicList(
+                  "Equilibrium in Physical and Chemical Processes",
+                  "Law of Chemical Equilibrium and Equilibrium Constant (Kc, Kp)",
+                  "Homogeneous and Heterogeneous Equilibria",
+                  "Applications of Equilibrium Constant",
+                  "Le Chatelier's Principle and Factors Affecting Equilibria",
+                  "Ionic Equilibrium: Acids, Bases and Salts",
+                  "Ionization of Acids and Bases, pH Scale",
+                  "Buffer Solutions & Solubility Product (Ksp)",
+                ),
+              },
+              {
+                name: "Redox Reactions",
+                topics: topicList(
+                  "Classical and Electronic Concepts of Oxidation and Reduction",
+                  "Oxidation Number and Rules for Determination",
+                  "Balancing Redox Reactions (Oxidation Number and Ion-Electron Methods)",
+                  "Redox Reactions and Electrode Processes",
+                ),
+              },
+              {
+                name: "Organic Chemistry: Some Basic Principles and Techniques",
+                topics: topicList(
+                  "Classification and IUPAC Nomenclature of Organic Compounds",
+                  "Isomerism: Structural and Stereoisomerism",
+                  "Fundamental Concepts in Organic Reaction Mechanisms",
+                  "Fission of Covalent Bonds: Carbocations, Carbanions, Free Radicals",
+                  "Nucleophiles and Electrophiles",
+                  "Electron Displacement Effects (Inductive, Resonance, Hyperconjugation)",
+                  "Purification and Qualitative/Quantitative Analysis of Organic Compounds",
+                ),
+              },
+              {
+                name: "Hydrocarbons",
+                topics: topicList(
+                  "Classification of Hydrocarbons",
+                  "Alkanes: Nomenclature, Preparation, Physical & Chemical Properties",
+                  "Conformations of Alkanes (Ethane)",
+                  "Alkenes: Structure, Geometrical Isomerism, Preparation & Properties",
+                  "Markovnikov's and Anti-Markovnikov's Addition",
+                  "Alkynes: Nomenclature, Acidic Character, Preparation & Reactions",
+                  "Aromatic Hydrocarbons: Benzene Structure and Aromaticity (Hückel's Rule)",
+                  "Electrophilic Aromatic Substitution Mechanisms",
+                ),
+              },
+            ],
+          },
+          {
+            id: "math",
+            name: "Mathematics",
+            icon: "Calculator",
+            description: "Algebra, trigonometry, coordinate geometry, calculus & statistics",
+            chapters: [
+              {
+                name: "Sets",
+                topics: topicList(
+                  "Sets and Their Representations",
+                  "Empty Set, Finite and Infinite Sets, Equal Sets",
+                  "Subsets, Power Set and Universal Set",
+                  "Venn Diagrams",
+                  "Operations on Sets (Union, Intersection, Difference, Complement)",
+                ),
+              },
+              {
+                name: "Relations and Functions",
+                topics: topicList(
+                  "Cartesian Product of Sets",
+                  "Relations, Domain, Co-domain and Range",
+                  "Functions: Polynomial, Rational, Modulus, Signum, Greatest Integer",
+                  "Algebra of Real Functions",
+                ),
+              },
+              {
+                name: "Trigonometric Functions",
+                topics: topicList(
+                  "Angles: Degree and Radian Measures",
+                  "Trigonometric Functions and Their Signs in Quadrants",
+                  "Trigonometric Identities of Sum and Difference of Two Angles",
+                  "Multiple and Submultiple Angle Formulae",
+                  "Trigonometric Equations and General Solutions",
+                ),
+              },
+              {
+                name: "Complex Numbers and Quadratic Equations",
+                topics: topicList(
+                  "Complex Numbers and Imaginary Unit i",
+                  "Algebra of Complex Numbers",
+                  "Modulus and Conjugate of a Complex Number",
+                  "Argand Plane and Polar Representation",
+                  "Quadratic Equations with Complex Roots",
+                ),
+              },
+              {
+                name: "Linear Inequalities",
+                topics: topicList(
+                  "Algebraic Solutions of Linear Inequalities in One Variable",
+                  "Graphical Representation of Linear Inequalities in Two Variables",
+                  "Solution of System of Linear Inequalities",
+                ),
+              },
+              {
+                name: "Permutations and Combinations",
+                topics: topicList(
+                  "Fundamental Principle of Counting",
+                  "Factorial Notation",
+                  "Permutations: Derivation and Applications",
+                  "Combinations: Formulae and Problem Solving",
+                ),
+              },
+              {
+                name: "Binomial Theorem",
+                topics: topicList(
+                  "Binomial Theorem for Positive Integral Indices",
+                  "Pascal's Triangle",
+                  "General and Middle Terms in Binomial Expansion",
+                ),
+              },
+              {
+                name: "Sequences and Series",
+                topics: topicList(
+                  "Sequences and Series Definitions",
+                  "Arithmetic Progression (AP) and Arithmetic Mean",
+                  "Geometric Progression (GP) and Geometric Mean",
+                  "Relationship Between AM and GM",
+                  "Sum to n Terms of Special Series",
+                ),
+              },
+              {
+                name: "Straight Lines",
+                topics: topicList(
+                  "Slope of a Line and Angle Between Two Lines",
+                  "Various Forms of Equations of a Line",
+                  "General Equation of a Line and Distance of a Point from a Line",
+                ),
+              },
+              {
+                name: "Conic Sections",
+                topics: topicList(
+                  "Sections of a Cone",
+                  "Circle: Standard and General Equations",
+                  "Parabola: Standard Equations and Properties",
+                  "Ellipse: Standard Equations, Eccentricity and Foci",
+                  "Hyperbola: Standard Equations and Asymptotes",
+                ),
+              },
+              {
+                name: "Introduction to Three Dimensional Geometry",
+                topics: topicList(
+                  "Coordinate Axes and Coordinate Planes in 3D",
+                  "Coordinates of a Point in Space",
+                  "Distance Between Two Points in 3D Space",
+                  "Section Formula in 3D",
+                ),
+              },
+              {
+                name: "Limits and Derivatives",
+                topics: topicList(
+                  "Intuitive Idea of Limits",
+                  "Limits of Trigonometric and Polynomial Functions",
+                  "Definition of Derivative and First Principle",
+                  "Algebra of Derivatives of Polynomials and Trigonometric Functions",
+                ),
+              },
+              {
+                name: "Statistics",
+                topics: topicList(
+                  "Measures of Dispersion",
+                  "Range and Mean Deviation about Mean & Median",
+                  "Variance and Standard Deviation of Grouped and Ungrouped Data",
+                  "Analysis of Frequency Distributions",
+                ),
+              },
+              {
+                name: "Probability",
+                topics: topicList(
+                  "Random Experiments, Sample Space and Events",
+                  "Axiomatic Approach to Probability",
+                  "Addition Rule for Probability of Mutually Exclusive and Exhaustive Events",
+                ),
+              },
+            ],
+          },
+          {
+            id: "cs",
+            name: "Computer Science",
+            icon: "Terminal",
+            description: "Python programming, computational thinking & computer systems",
+            chapters: [
+              {
+                name: "Computer Systems and Organization",
+                topics: topicList(
+                  "Basic Computer Organization (CPU, Memory, I/O)",
+                  "Types of Software and Operating System Functions",
+                  "Number Systems (Binary, Octal, Decimal, Hexadecimal)",
+                  "Boolean Logic and Logic Gates",
+                ),
+              },
+              {
+                name: "Computational Thinking and Programming - 1",
+                topics: topicList(
+                  "Problem Solving and Algorithm Design",
+                  "Python Basics: Variables, Data Types and Operators",
+                  "Control Statements: Conditional Branches and Loops",
+                  "Strings, Lists, Tuples and Dictionaries in Python",
+                  "Introduction to Python Modules",
+                ),
+              },
+              {
+                name: "Society, Law and Ethics",
+                topics: topicList(
+                  "Digital Footprint and Cyber Ethics",
+                  "Data Protection and Cyber Crime Laws",
+                  "E-waste Management and Green Computing",
+                ),
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: "science-pcb",
+        name: "Science (PCB)",
+        description: "Physics, Chemistry, and Biology track for Medicine & Life Sciences",
+        subjects: [
+          {
+            id: "physics",
+            name: "Physics",
+            icon: "Atom",
+            description: "Physical world, mechanics, thermodynamics, oscillations & waves",
+            chapters: [
+              {
+                name: "Units and Measurements",
+                topics: topicList(
+                  "The International System of Units",
+                  "Measurement of Length, Mass, and Time",
+                  "Dimensional Analysis and Significant Figures",
+                ),
+              },
+              {
+                name: "Motion in a Straight Line & Plane",
+                topics: topicList(
+                  "Kinematics in 1D and 2D",
+                  "Vectors and Projectile Motion",
+                  "Circular Motion",
+                ),
+              },
+              {
+                name: "Laws of Motion & Work-Energy",
+                topics: topicList(
+                  "Newton's Laws of Motion & Friction",
+                  "Work-Energy Theorem and Power",
+                  "Conservation of Energy",
+                ),
+              },
+              {
+                name: "Gravitation & Properties of Bulk Matter",
+                topics: topicList(
+                  "Universal Law of Gravitation",
+                  "Elasticity and Fluid Mechanics",
+                  "Surface Tension and Viscosity",
+                ),
+              },
+              {
+                name: "Thermodynamics & Kinetic Theory",
+                topics: topicList(
+                  "Laws of Thermodynamics",
+                  "Heat Engines and Heat Transfer",
+                  "Kinetic Theory of Gases",
+                ),
+              },
+              {
+                name: "Oscillations and Waves",
+                topics: topicList(
+                  "Simple Harmonic Motion (SHM)",
+                  "Wave Characteristics and Sound Waves",
+                  "Doppler Effect and Resonance",
+                ),
+              },
+            ],
+          },
+          {
+            id: "chemistry",
+            name: "Chemistry",
+            icon: "FlaskConical",
+            description: "Physical, Inorganic, and Organic Chemistry foundations",
+            chapters: [
+              {
+                name: "Atomic Structure & Chemical Bonding",
+                topics: topicList(
+                  "Atomic Orbitals and Quantum Numbers",
+                  "Periodic Trends in Elements",
+                  "Chemical Bonding and Molecular Geometry (VSEPR, Hybridization)",
+                ),
+              },
+              {
+                name: "Thermodynamics and Chemical Equilibrium",
+                topics: topicList(
+                  "First and Second Laws of Thermodynamics",
+                  "Enthalpy and Free Energy Changes",
+                  "Chemical and Ionic Equilibrium (pH, Buffers)",
+                ),
+              },
+              {
+                name: "Organic Chemistry Fundamentals",
+                topics: topicList(
+                  "IUPAC Nomenclature and Isomerism",
+                  "Reaction Intermediates and Electronic Effects",
+                  "Alkanes, Alkenes, Alkynes and Aromatic Hydrocarbons",
+                ),
+              },
+            ],
+          },
+          {
+            id: "biology",
+            name: "Biology",
+            icon: "Dna",
+            description: "Diversity of life, cell biology, plant physiology & human physiology",
+            chapters: [
+              {
+                name: "Diversity in the Living World",
+                topics: topicList(
+                  "What is Living? Biodiversity and Taxonomy",
+                  "Five Kingdom Classification (Monera, Protista, Fungi, Plantae, Animalia)",
+                  "Plant Kingdom Classification (Algae to Angiosperms)",
+                  "Animal Kingdom Non-chordates and Chordates",
+                ),
+              },
+              {
+                name: "Structural Organisation in Animals and Plants",
+                topics: topicList(
+                  "Morphology of Flowering Plants (Root, Stem, Leaf, Flower, Fruit)",
+                  "Anatomy of Flowering Plants (Tissues, Secondary Growth)",
+                  "Animal Tissues (Epithelial, Connective, Muscular, Neural)",
+                  "Morphology and Anatomy of Frog and Cockroach",
+                ),
+              },
+              {
+                name: "Cell Structure and Function",
+                topics: topicList(
+                  "Cell Theory and Cell as Basic Unit of Life",
+                  "Prokaryotic vs Eukaryotic Cell Structure",
+                  "Cell Organelles (Mitochondria, Chloroplasts, ER, Golgi)",
+                  "Biomolecules (Carbohydrates, Proteins, Nucleic Acids, Enzymes)",
+                  "Cell Cycle and Cell Division (Mitosis and Meiosis)",
+                ),
+              },
+              {
+                name: "Plant Physiology",
+                topics: topicList(
+                  "Photosynthesis in Higher Plants (Light and Dark Reactions, C3/C4 Pathways)",
+                  "Respiration in Plants (Glycolysis, Krebs Cycle, ETS)",
+                  "Plant Growth and Development (Plant Hormones, Photoperiodism)",
+                ),
+              },
+              {
+                name: "Human Physiology",
+                topics: topicList(
+                  "Breathing and Exchange of Gases (Respiratory Volumes, Mechanism)",
+                  "Body Fluids and Circulation (Heart, Blood Groups, Cardiac Cycle)",
+                  "Excretory Products and Their Elimination (Nephron, Urine Formation)",
+                  "Locomotion and Movement (Joints, Muscle Contraction Mechanism)",
+                  "Neural Control and Coordination (Neuron, CNS, Reflex Action, Sensory Organs)",
+                  "Chemical Coordination and Integration (Endocrine Glands and Hormones)",
+                ),
+              },
+            ],
+          },
+          {
+            id: "psychology",
+            name: "Psychology",
+            icon: "Brain",
+            description: "Foundations of psychological enquiry, human memory & cognition",
+            chapters: [
+              {
+                name: "What is Psychology & Methods of Enquiry",
+                topics: topicList(
+                  "Evolution of Psychology as a Discipline",
+                  "Branches and Themes in Psychology",
+                  "Scientific Methods and Psychological Research Tools",
+                ),
+              },
+              {
+                name: "Human Development & Sensory Processes",
+                topics: topicList(
+                  "Lifespan Development Stages (Infancy to Old Age)",
+                  "Sensory, Attentional and Perceptual Processes",
+                  "Principles of Perception and Illusions",
+                ),
+              },
+              {
+                name: "Learning, Memory & Thinking",
+                topics: topicList(
+                  "Conditioning and Observational Learning",
+                  "Stages of Memory (Sensory, Short-term, Long-term)",
+                  "Information Processing and Problem Solving",
+                ),
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: "commerce",
+        name: "Commerce",
+        description: "Accounting, Business Studies, Economics, and Quantitative Methods",
+        subjects: [
+          {
+            id: "accountancy",
+            name: "Accountancy",
+            icon: "BookOpen",
+            description: "Financial accounting principles, ledger, trial balance & financial statements",
+            chapters: [
+              {
+                name: "Theoretical Framework of Accounting",
+                topics: topicList(
+                  "Introduction to Accounting and Basic Terms",
+                  "Accounting Principles, Concepts and Conventions",
+                  "Accounting Standards and IFRS Overview",
+                  "Basis of Accounting: Cash vs Accrual",
+                ),
+              },
+              {
+                name: "Accounting Process and Recording of Transactions",
+                topics: topicList(
+                  "Source Documents and Accounting Equation",
+                  "Rules of Debit and Credit & Journal Entries",
+                  "Special Purpose Books: Cash Book and Subsidiary Books",
+                  "Ledger Posting and Balancing",
+                  "Bank Reconciliation Statement (BRS)",
+                  "Trial Balance Preparation and Rectification of Errors",
+                ),
+              },
+              {
+                name: "Depreciation, Provisions and Reserves",
+                topics: topicList(
+                  "Concept of Depreciation, Depletion and Amortization",
+                  "Methods of Depreciation: Straight Line and Written Down Value",
+                  "Accounting Treatment of Depreciation",
+                  "Provisions vs Reserves and Types of Reserves",
+                ),
+              },
+              {
+                name: "Financial Statements of Sole Proprietorship",
+                topics: topicList(
+                  "Capital vs Revenue Expenditures and Receipts",
+                  "Trading and Profit & Loss Account",
+                  "Balance Sheet Preparation with Adjustments",
+                ),
+              },
+            ],
+          },
+          {
+            id: "business-studies",
+            name: "Business Studies",
+            icon: "Briefcase",
+            description: "Foundations of business, forms of business organizations & corporate finance",
+            chapters: [
+              {
+                name: "Nature and Purpose of Business",
+                topics: topicList(
+                  "Concept, Objectives and Role of Business",
+                  "Classification of Business Activities: Industry and Commerce",
+                  "Business Risk: Nature and Causes",
+                ),
+              },
+              {
+                name: "Forms of Business Organisations",
+                topics: topicList(
+                  "Sole Proprietorship and Partnership",
+                  "Joint Hindu Family Business & Cooperative Societies",
+                  "Joint Stock Company: Formation and Types",
+                  "Choice of Form of Business Organisation",
+                ),
+              },
+              {
+                name: "Public, Private and Global Enterprises",
+                topics: topicList(
+                  "Public Sector Enterprises: Departmental, Statutory, Government Company",
+                  "Global Enterprises and Multinational Corporations (MNCs)",
+                  "Joint Ventures and Public Private Partnerships (PPP)",
+                ),
+              },
+              {
+                name: "Business Services and Emerging Modes",
+                topics: topicList(
+                  "Banking, Insurance, Transportation and Warehousing",
+                  "E-Business: Scope, Benefits and Security Concerns",
+                  "Outsourcing and Business Process Outsourcing (BPO)",
+                ),
+              },
+              {
+                name: "Sources of Business Finance",
+                topics: topicList(
+                  "Concept and Classification of Financial Needs",
+                  "Equity Shares, Preference Shares and Debentures",
+                  "Retained Earnings, Commercial Banks and Trade Credit",
+                  "International Financing: ADR, GDR, FCCB",
+                ),
+              },
+              {
+                name: "Small Business and Internal Trade",
+                topics: topicList(
+                  "Role of MSMEs in Economic Development",
+                  "Wholesale and Retail Trade Forms",
+                  "GST (Goods and Services Tax) Implementation",
+                ),
+              },
+            ],
+          },
+          {
+            id: "economics",
+            name: "Economics",
+            icon: "TrendingUp",
+            description: "Microeconomics principles & statistics for economic analysis",
+            chapters: [
+              {
+                name: "Introduction to Microeconomics",
+                topics: topicList(
+                  "Meaning of Economy and Central Problems of an Economy",
+                  "Production Possibility Frontier (PPF) and Opportunity Cost",
+                  "Positive vs Normative Economics",
+                ),
+              },
+              {
+                name: "Consumer's Equilibrium and Demand",
+                topics: topicList(
+                  "Utility Analysis: Total and Marginal Utility, Law of Diminishing Marginal Utility",
+                  "Indifference Curve Analysis and Budget Line",
+                  "Demand, Law of Demand and Demand Schedule",
+                  "Elasticity of Demand: Measurement and Determinants",
+                ),
+              },
+              {
+                name: "Producer Behaviour and Supply",
+                topics: topicList(
+                  "Production Function: Short Run and Long Run, Law of Variable Proportions",
+                  "Cost Concepts: Total, Fixed, Variable, Marginal and Average Costs",
+                  "Revenue Concepts: Total, Average and Marginal Revenue",
+                  "Producer's Equilibrium using MR-MC Approach",
+                  "Supply, Law of Supply and Price Elasticity of Supply",
+                ),
+              },
+              {
+                name: "Forms of Market and Price Determination",
+                topics: topicList(
+                  "Perfect Competition: Features and Equilibrium Price Determination",
+                  "Effects of Shifts in Demand and Supply Curves",
+                  "Simple Applications of Demand and Supply: Price Ceiling and Price Floor",
+                ),
+              },
+              {
+                name: "Statistics for Economics",
+                topics: topicList(
+                  "Collection, Organization and Tabulation of Data",
+                  "Diagrammatic and Graphical Presentation of Data",
+                  "Measures of Central Tendency: Mean, Median, Mode",
+                  "Correlation: Karl Pearson and Spearman's Rank Correlation",
+                  "Introduction to Index Numbers",
+                ),
+              },
+            ],
+          },
+          {
+            id: "applied-math",
+            name: "Applied Mathematics",
+            icon: "Calculator",
+            description: "Mathematical modeling, financial mathematics & statistical inference",
+            chapters: [
+              {
+                name: "Numbers, Quantification and Numerical Applications",
+                topics: topicList(
+                  "Binary Numbers, Complex Numbers & Logarithms",
+                  "Averages, Clock Problems, Calendar Problems",
+                  "Mensuration and Time-Work Problems",
+                ),
+              },
+              {
+                name: "Financial Mathematics",
+                topics: topicList(
+                  "Simple and Compound Interest Calculation",
+                  "Annuities and Present/Future Value",
+                  "Taxation, GST and Income Tax Calculations",
+                  "Bills and Discounting",
+                ),
+              },
+              {
+                name: "Descriptive Statistics and Probability",
+                topics: topicList(
+                  "Data Summarization and Percentile Calculations",
+                  "Conditional Probability and Bayes Theorem Basics",
+                  "Random Variables and Standard Probability Distributions",
+                ),
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: "arts",
+        name: "Arts & Humanities",
+        description: "History, Political Science, Geography, Sociology, and Social Dynamics",
+        subjects: [
+          {
+            id: "history",
+            name: "History",
+            icon: "Landmark",
+            description: "Themes in world history, ancient civilizations & modern transformations",
+            chapters: [
+              {
+                name: "Early Societies",
+                topics: topicList(
+                  "From the Beginning of Time: Early Humans & Evolution",
+                  "Writing and City Life: Early Mesopotamian Civilization",
+                ),
+              },
+              {
+                name: "Empires",
+                topics: topicList(
+                  "An Empire Across Three Continents: The Roman Empire",
+                  "Central Islamic Lands: Caliphates and Trade",
+                  "Nomadic Empires: Genghis Khan and the Mongols",
+                ),
+              },
+              {
+                name: "Changing Traditions",
+                topics: topicList(
+                  "The Three Orders: Feudal Society in Medieval Europe",
+                  "Changing Cultural Traditions: The European Renaissance",
+                  "Confrontation of Cultures: European Voyages & Indigenous American Civilizations",
+                ),
+              },
+              {
+                name: "Towards Modernisation",
+                topics: topicList(
+                  "The Industrial Revolution in Britain",
+                  "Displacing Indigenous Peoples in North America and Australia",
+                  "Paths to Modernisation: China and Japan",
+                ),
+              },
+            ],
+          },
+          {
+            id: "political-science",
+            name: "Political Science",
+            icon: "Scale",
+            description: "Indian Constitution at work & political theory foundations",
+            chapters: [
+              {
+                name: "Indian Constitution at Work",
+                topics: topicList(
+                  "Constitution: Why and How? Philosophy and Making of Constitution",
+                  "Fundamental Rights, Directive Principles and Fundamental Duties",
+                  "Election and Representation: Electoral Systems in India",
+                  "Executive, Legislature and Judiciary in the Indian Parliamentary System",
+                  "Federalism and Local Governments (Panchayati Raj & Municipalities)",
+                ),
+              },
+              {
+                name: "Political Theory",
+                topics: topicList(
+                  "Political Theory: Meaning, Scope and Relevance",
+                  "Freedom and Liberty: Negative and Positive Liberty",
+                  "Equality: Forms of Equality and Affirmative Action",
+                  "Social Justice and Rawl's Theory of Justice",
+                  "Rights, Citizenship, Nationalism and Secularism",
+                  "Peace and Development Dimensions",
+                ),
+              },
+            ],
+          },
+          {
+            id: "geography",
+            name: "Geography",
+            icon: "Globe",
+            description: "Fundamentals of physical geography & India's physical environment",
+            chapters: [
+              {
+                name: "Fundamentals of Physical Geography",
+                topics: topicList(
+                  "Geography as a Discipline",
+                  "The Earth: Origin, Evolution and Interior of the Earth",
+                  "Continental Drift and Plate Tectonics",
+                  "Landforms: Weathering, Mass Wasting and Fluvial/Glacial Processes",
+                  "Atmosphere: Composition, Solar Radiation, Heat Balance and Climate",
+                  "Hydrosphere: Ocean Water Movement, Tides and Currents",
+                  "Biosphere and Global Ecosystems",
+                ),
+              },
+              {
+                name: "India: Physical Environment",
+                topics: topicList(
+                  "Location, Size and Frontiers of India",
+                  "Physiography: Northern Mountains, Great Plains, Peninsular Plateau",
+                  "Drainage Systems: Himalayan and Peninsular Rivers",
+                  "Climate, Monsoons and Natural Vegetation in India",
+                  "Soils and Natural Hazards (Floods, Droughts, Cyclones)",
+                ),
+              },
+            ],
+          },
+          {
+            id: "sociology",
+            name: "Sociology",
+            icon: "Users",
+            description: "Introducing sociology, understanding social institutions & culture",
+            chapters: [
+              {
+                name: "Introducing Sociology",
+                topics: topicList(
+                  "Sociology and Society: Sociological Imagination",
+                  "Basic Concepts: Social Groups, Stratification, Status and Role",
+                  "Understanding Social Institutions: Family, Marriage, Kinship, Economy, Polity",
+                  "Culture and Socialisation Processes",
+                  "Methods of Research in Sociology",
+                ),
+              },
+              {
+                name: "Understanding Society",
+                topics: topicList(
+                  "Social Structure, Stratification and Social Processes",
+                  "Social Change and Social Order in Rural and Urban Society",
+                  "Environment and Society",
+                  "Introducing Western and Indian Sociologists",
+                ),
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 12,
+    name: "Class 12",
+    description: "Senior Secondary Mastery & Board Specialization across streams",
+    streams: [
+      {
+        id: "science-pcm",
+        name: "Science (PCM)",
+        description: "Physics, Chemistry, and Advanced Mathematics for Senior Secondary",
+        subjects: [
+          {
+            id: "physics",
+            name: "Physics",
+            icon: "Atom",
+            description: "Electromagnetism, optics, quantum physics & modern semiconductor devices",
+            chapters: [
+              {
+                name: "Electric Charges and Fields",
+                topics: topicList(
+                  "Electric Charge and Conservation of Charge",
+                  "Coulomb's Law and Superposition Principle",
+                  "Electric Field and Electric Field Lines",
+                  "Electric Dipole and Dipole in Uniform Electric Field",
+                  "Electric Flux and Gauss's Law",
+                  "Applications of Gauss's Law (Wire, Sheet, Spherical Shell)",
+                ),
+              },
+              {
+                name: "Electrostatic Potential and Capacitance",
+                topics: topicList(
+                  "Electrostatic Potential and Equipotential Surfaces",
+                  "Potential due to Point Charge and Dipole",
+                  "Electrostatic Potential Energy",
+                  "Conductors and Dielectrics, Polarization",
+                  "Capacitors and Capacitance (Parallel Plate Capacitor)",
+                  "Combination of Capacitors & Energy Stored in a Capacitor",
+                ),
+              },
+              {
+                name: "Current Electricity",
+                topics: topicList(
+                  "Electric Current and Drift Velocity",
+                  "Ohm's Law, Electrical Resistance and Resistivity",
+                  "Temperature Dependence of Resistance",
+                  "EMF, Internal Resistance and Combination of Cells",
+                  "Kirchhoff's Rules and Circuit Analysis",
+                  "Wheatstone Bridge and Meter Bridge",
+                ),
+              },
+              {
+                name: "Moving Charges and Magnetism",
+                topics: topicList(
+                  "Magnetic Force and Lorentz Force",
+                  "Biot-Savart Law and Magnetic Field on the Axis of Circular Loop",
+                  "Ampere's Circuital Law and Solenoids",
+                  "Force Between Two Parallel Current-Carrying Conductors",
+                  "Torque on Current Loop and Moving Coil Galvanometer",
+                ),
+              },
+              {
+                name: "Magnetism and Matter",
+                topics: topicList(
+                  "Bar Magnet as an Equivalent Solenoid & Magnetic Field Lines",
+                  "Earth's Magnetism and Magnetic Elements",
+                  "Magnetic Properties of Materials (Dia, Para, Ferro)",
+                  "Permanent Magnets and Electromagnets",
+                ),
+              },
+              {
+                name: "Electromagnetic Induction",
+                topics: topicList(
+                  "Magnetic Flux and Faraday's Experiments",
+                  "Faraday's Law of Electromagnetic Induction",
+                  "Lenz's Law and Conservation of Energy",
+                  "Motional Electromotive Force",
+                  "Self-Inductance and Mutual Inductance",
+                  "AC Generator",
+                ),
+              },
+              {
+                name: "Alternating Current",
+                topics: topicList(
+                  "AC Voltage Applied to Resistor, Inductor and Capacitor",
+                  "Series LCR Circuit, Phasor Diagrams & Resonance",
+                  "Power in AC Circuit & Power Factor",
+                  "Transformers: Working Principle and Losses",
+                ),
+              },
+              {
+                name: "Electromagnetic Waves",
+                topics: topicList(
+                  "Displacement Current and Maxwell's Equations",
+                  "Characteristics and Transverse Nature of EM Waves",
+                  "The Electromagnetic Spectrum and Applications",
+                ),
+              },
+              {
+                name: "Ray Optics and Optical Instruments",
+                topics: topicList(
+                  "Reflection and Refraction at Spherical Surfaces",
+                  "Total Internal Reflection and Optical Fibres",
+                  "Refraction through Prisms and Dispersion",
+                  "Thin Lens Formula and Lens Maker's Formula",
+                  "Microscopes and Astronomical Telescopes",
+                ),
+              },
+              {
+                name: "Wave Optics",
+                topics: topicList(
+                  "Huygens' Principle and Wavefronts",
+                  "Refraction and Reflection using Wave Theory",
+                  "Coherent Sources and Young's Double Slit Experiment",
+                  "Diffraction at a Single Slit",
+                  "Polarization of Light",
+                ),
+              },
+              {
+                name: "Dual Nature of Radiation and Matter",
+                topics: topicList(
+                  "Photoelectric Effect and Hertz/Lenard Observations",
+                  "Einstein's Photoelectric Equation",
+                  "Particle Nature of Light: Photons",
+                  "de Broglie Hypothesis & Davisson-Germer Experiment",
+                ),
+              },
+              {
+                name: "Atoms",
+                topics: topicList(
+                  "Alpha Particle Scattering Experiment and Rutherford Model",
+                  "Bohr Model of the Hydrogen Atom (Energy Levels)",
+                  "Hydrogen Emission Spectrum and Spectral Series",
+                ),
+              },
+              {
+                name: "Nuclei",
+                topics: topicList(
+                  "Atomic Masses and Composition of Nucleus",
+                  "Nuclear Size, Density and Mass Defect",
+                  "Binding Energy per Nucleon and Nuclear Stability",
+                  "Radioactivity: Alpha, Beta, Gamma Decay Laws",
+                  "Nuclear Fission and Nuclear Fusion",
+                ),
+              },
+              {
+                name: "Semiconductor Electronics",
+                topics: topicList(
+                  "Energy Bands in Conductors, Semiconductors and Insulators",
+                  "Intrinsic and Extrinsic Semiconductors (p-type, n-type)",
+                  "p-n Junction Diode: Forward and Reverse Bias",
+                  "Diode as a Rectifier (Half Wave, Full Wave)",
+                  "Special Diodes: Zener Diode, LED, Solar Cell, Photodiode",
+                  "Logic Gates (AND, OR, NOT, NAND, NOR)",
+                ),
+              },
+            ],
+          },
+          {
+            id: "chemistry",
+            name: "Chemistry",
+            icon: "FlaskConical",
+            description: "Electrochemistry, chemical kinetics, coordination compounds & organic functional groups",
+            chapters: [
+              {
+                name: "Solutions",
+                topics: topicList(
+                  "Types of Solutions and Concentration Units",
+                  "Solubility of Gases: Henry's Law",
+                  "Vapour Pressure of Liquid Solutions and Raoult's Law",
+                  "Ideal and Non-ideal Solutions",
+                  "Colligative Properties: Elevation of Boiling Point, Depression of Freezing Point, Osmotic Pressure",
+                  "Abnormal Molar Mass & van't Hoff Factor",
+                ),
+              },
+              {
+                name: "Electrochemistry",
+                topics: topicList(
+                  "Electrochemical Cells and Galvanic Cells",
+                  "Nernst Equation and Equilibrium Constant",
+                  "Conductance in Electrolytic Solutions, Kohlrausch's Law",
+                  "Electrolysis and Faraday's Laws of Electrolysis",
+                  "Batteries, Fuel Cells and Corrosion Mechanism",
+                ),
+              },
+              {
+                name: "Chemical Kinetics",
+                topics: topicList(
+                  "Rate of a Chemical Reaction (Average and Instantaneous)",
+                  "Factors Influencing Reaction Rate and Rate Law",
+                  "Order and Molecularity of a Reaction",
+                  "Integrated Rate Equations for Zero and First Order Reactions",
+                  "Temperature Dependence of Reaction Rate & Arrhenius Equation",
+                  "Collision Theory of Chemical Reactions",
+                ),
+              },
+              {
+                name: "The d- and f-Block Elements",
+                topics: topicList(
+                  "Position in Periodic Table and Electronic Configurations",
+                  "General Trends in Transition Elements (Atomic Size, Ionization, Oxidation States)",
+                  "Magnetic Properties, Catalytic Properties, Alloy Formation",
+                  "Preparation and Properties of K2Cr2O7 and KMnO4",
+                  "Lanthanoids and Actinoids (Electronic Configuration, Lanthanoid Contraction)",
+                ),
+              },
+              {
+                name: "Coordination Compounds",
+                topics: topicList(
+                  "Werner's Theory of Coordination Compounds",
+                  "Ligands, Coordination Number, IUPAC Nomenclature",
+                  "Isomerism in Coordination Compounds",
+                  "Valence Bond Theory and Crystal Field Theory (Octahedral, Tetrahedral)",
+                  "Colour, Magnetic Properties & Stability of Coordination Complexes",
+                ),
+              },
+              {
+                name: "Haloalkanes and Haloarenes",
+                topics: topicList(
+                  "Classification and IUPAC Nomenclature",
+                  "Methods of Preparation from Alcohols and Hydrocarbons",
+                  "SN1 and SN2 Reaction Mechanisms",
+                  "Reactions of Haloarenes: Electrophilic Substitution",
+                  "Polyhalogen Compounds (Chloroform, Freons, DDT)",
+                ),
+              },
+              {
+                name: "Alcohols, Phenols and Ethers",
+                topics: topicList(
+                  "Classification, Nomenclature and Preparation of Alcohols",
+                  "Physical and Chemical Properties of Alcohols (Acidity, Oxidation)",
+                  "Preparation and Acidic Nature of Phenols (Reimer-Tiemann, Kolbe)",
+                  "Preparation, Properties and Reactions of Ethers",
+                ),
+              },
+              {
+                name: "Aldehydes, Ketones and Carboxylic Acids",
+                topics: topicList(
+                  "Nomenclature and Structure of Carbonyl Group",
+                  "Preparation and Properties of Aldehydes and Ketones",
+                  "Nucleophilic Addition Reactions (Aldol, Cannizzaro)",
+                  "Acidity, Preparation and Chemical Reactions of Carboxylic Acids",
+                ),
+              },
+              {
+                name: "Amines",
+                topics: topicList(
+                  "Structure and Classification of Amines",
+                  "Preparation of Amines (Reduction of Nitro/Nitriles, Gabriel Phthalimide, Hoffmann)",
+                  "Basic Character and Chemical Reactions of Amines",
+                  "Diazonium Salts: Preparation, Chemical Reactions in Synthesis",
+                ),
+              },
+              {
+                name: "Biomolecules",
+                topics: topicList(
+                  "Carbohydrates: Monosaccharides (Glucose, Fructose), Disaccharides, Polysaccharides",
+                  "Proteins: Amino Acids, Peptide Bond, Primary to Quaternary Structure",
+                  "Denaturation of Proteins and Enzymes",
+                  "Nucleic Acids: DNA and RNA Structure and Functions",
+                  "Vitamins and Hormones",
+                ),
+              },
+            ],
+          },
+          {
+            id: "math",
+            name: "Mathematics",
+            icon: "Calculator",
+            description: "Matrices, calculus, vectors, 3D geometry & linear programming",
+            chapters: [
+              {
+                name: "Relations and Functions",
+                topics: topicList(
+                  "Types of Relations: Reflexive, Symmetric, Transitive, Equivalence",
+                  "Types of Functions: Injective (One-to-One), Surjective (Onto), Bijective",
+                  "Composition of Functions and Invertible Functions",
+                ),
+              },
+              {
+                name: "Inverse Trigonometric Functions",
+                topics: topicList(
+                  "Definition, Range, Domain and Principal Value Branches",
+                  "Graphs of Inverse Trigonometric Functions",
+                  "Properties and Identities of Inverse Trigonometric Functions",
+                ),
+              },
+              {
+                name: "Matrices",
+                topics: topicList(
+                  "Concept, Notation, Order, Equality and Types of Matrices",
+                  "Operations on Matrices: Addition, Scalar Multiplication, Matrix Multiplication",
+                  "Transpose of a Matrix, Symmetric and Skew-Symmetric Matrices",
+                  "Invertible Matrices and Matrix Inverse",
+                ),
+              },
+              {
+                name: "Determinants",
+                topics: topicList(
+                  "Determinant of a Matrix (up to 3x3)",
+                  "Minors, Cofactors and Adjoint of a Matrix",
+                  "Inverse of a Matrix using Determinants",
+                  "Solving System of Linear Equations using Matrix Method",
+                ),
+              },
+              {
+                name: "Continuity and Differentiability",
+                topics: topicList(
+                  "Continuity and Differentiability of Functions",
+                  "Derivative of Composite Functions (Chain Rule)",
+                  "Derivative of Implicit Functions and Inverse Trigonometric Functions",
+                  "Exponential and Logarithmic Functions and Logarithmic Differentiation",
+                  "Derivatives of Functions in Parametric Forms",
+                  "Second Order Derivatives",
+                ),
+              },
+              {
+                name: "Applications of Derivatives",
+                topics: topicList(
+                  "Rate of Change of Quantities",
+                  "Increasing and Decreasing Functions",
+                  "Maxima and Minima: First and Second Derivative Tests",
+                  "Optimization Word Problems",
+                ),
+              },
+              {
+                name: "Integrals",
+                topics: topicList(
+                  "Integration as Inverse Process of Differentiation",
+                  "Integration by Substitution, Partial Fractions, Parts",
+                  "Definite Integrals and Fundamental Theorem of Calculus",
+                  "Properties of Definite Integrals and Evaluation",
+                ),
+              },
+              {
+                name: "Applications of the Integrals",
+                topics: topicList(
+                  "Area under Simple Curves (Lines, Parabolas, Circles, Ellipses)",
+                  "Area Between Two Curves",
+                ),
+              },
+              {
+                name: "Differential Equations",
+                topics: topicList(
+                  "Order and Degree of Differential Equations",
+                  "Formation of Differential Equations",
+                  "Variable Separable Method for Solving First Order Equations",
+                  "Homogeneous Differential Equations",
+                  "Linear Differential Equations of First Order",
+                ),
+              },
+              {
+                name: "Vector Algebra",
+                topics: topicList(
+                  "Vectors and Scalars, Direction Cosines and Direction Ratios",
+                  "Types of Vectors and Position Vector",
+                  "Dot Product of Vectors and Projections",
+                  "Cross Product of Vectors and Area Calculations",
+                ),
+              },
+              {
+                name: "Three Dimensional Geometry",
+                topics: topicList(
+                  "Direction Cosines and Direction Ratios of a Line",
+                  "Equation of a Line in Space (Vector and Cartesian Forms)",
+                  "Angle Between Two Lines & Shortest Distance Between Skew Lines",
+                  "Equation of a Plane and Intersecting Planes",
+                ),
+              },
+              {
+                name: "Linear Programming",
+                topics: topicList(
+                  "Introduction and Mathematical Formulation of LPP",
+                  "Graphical Method of Solving LPP in Two Variables",
+                  "Feasible and Infeasible Regions, Optimal Feasible Solutions",
+                ),
+              },
+              {
+                name: "Probability",
+                topics: topicList(
+                  "Conditional Probability and Multiplication Rule",
+                  "Independent Events and Total Probability Theorem",
+                  "Bayes' Theorem and Applications",
+                  "Random Variables and Probability Distributions",
+                  "Bernoulli Trials and Binomial Distribution",
+                ),
+              },
+            ],
+          },
+          {
+            id: "cs",
+            name: "Computer Science",
+            icon: "Terminal",
+            description: "Advanced Python, SQL, computer networks & data structures",
+            chapters: [
+              {
+                name: "Computational Thinking and Programming - 2",
+                topics: topicList(
+                  "Functions in Python (Scope, Parameters, Return Values)",
+                  "Exception Handling using try-except Blocks",
+                  "File Handling: Text, Binary and CSV Files",
+                  "Data Structures: Stack Operations using Python Lists",
+                ),
+              },
+              {
+                name: "Computer Networks",
+                topics: topicList(
+                  "Network Types (LAN, MAN, WAN) and Topologies",
+                  "Transmission Media (Wired and Wireless)",
+                  "Network Devices (Router, Switch, Gateway, Hub)",
+                  "Network Protocols (TCP/IP, HTTP, HTTPS, FTP, DNS)",
+                  "Network Security Concepts and Firewalls",
+                ),
+              },
+              {
+                name: "Database Management and SQL",
+                topics: topicList(
+                  "Relational Data Model and Normalization Basics",
+                  "SQL DDL and DML Commands (CREATE, INSERT, UPDATE, DELETE)",
+                  "SQL Queries with WHERE, GROUP BY, HAVING, ORDER BY",
+                  "SQL Aggregate Functions and Joins",
+                  "Connecting Python with MySQL Database",
+                ),
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: "science-pcb",
+        name: "Science (PCB)",
+        description: "Senior Secondary Physics, Chemistry, and Advanced Biology",
+        subjects: [
+          {
+            id: "physics",
+            name: "Physics",
+            icon: "Atom",
+            description: "Electromagnetism, optics, quantum physics & semiconductor devices",
+            chapters: [
+              {
+                name: "Electrostatics and Magnetism",
+                topics: topicList(
+                  "Electric Charges, Fields and Gauss's Law",
+                  "Capacitance and Current Electricity",
+                  "Magnetic Effects of Current and Matter",
+                ),
+              },
+              {
+                name: "Electromagnetic Induction, AC & Optics",
+                topics: topicList(
+                  "Faraday's Law and AC Circuits",
+                  "Ray Optics and Optical Instruments",
+                  "Wave Optics and Interference",
+                ),
+              },
+              {
+                name: "Modern Physics & Semiconductors",
+                topics: topicList(
+                  "Dual Nature of Matter and Radiation",
+                  "Atoms and Nuclear Structure",
+                  "Semiconductor Diodes and Transistors",
+                ),
+              },
+            ],
+          },
+          {
+            id: "chemistry",
+            name: "Chemistry",
+            icon: "FlaskConical",
+            description: "Physical, Inorganic, and Organic Chemistry functional groups",
+            chapters: [
+              {
+                name: "Physical & Inorganic Chemistry",
+                topics: topicList(
+                  "Solutions and Colligative Properties",
+                  "Electrochemistry and Chemical Kinetics",
+                  "Coordination Compounds and d/f-Block Elements",
+                ),
+              },
+              {
+                name: "Organic Chemistry & Biomolecules",
+                topics: topicList(
+                  "Haloalkanes, Alcohols and Carbonyl Compounds",
+                  "Amines and Diazonium Salts",
+                  "Biomolecules (Proteins, Nucleic Acids, Enzymes)",
+                ),
+              },
+            ],
+          },
+          {
+            id: "biology",
+            name: "Biology",
+            icon: "Dna",
+            description: "Reproduction, genetics, evolution, biotechnology & ecology",
+            chapters: [
+              {
+                name: "Reproduction",
+                topics: topicList(
+                  "Sexual Reproduction in Flowering Plants (Pollination, Double Fertilization, Seeds)",
+                  "Human Reproductive System (Male/Female Anatomy, Gametogenesis)",
+                  "Menstrual Cycle and Embryonic Development",
+                  "Reproductive Health and Contraceptive Methods",
+                  "Sexually Transmitted Infections and Assisted Reproductive Technologies (IVF, ART)",
+                ),
+              },
+              {
+                name: "Genetics and Evolution",
+                topics: topicList(
+                  "Principles of Inheritance and Variation (Mendelian Genetics, Linkage)",
+                  "Sex Determination and Genetic Disorders (Mendelian, Chromosomal)",
+                  "Molecular Basis of Inheritance (DNA Replication, Transcription, Genetic Code, Translation)",
+                  "Regulation of Gene Expression (Lac Operon) & Human Genome Project",
+                  "Evolution: Origin of Life, Theories of Evolution, Natural Selection & Human Evolution",
+                ),
+              },
+              {
+                name: "Biology in Human Welfare",
+                topics: topicList(
+                  "Human Health and Disease (Pathogens, Immunity, Cancer, AIDS)",
+                  "Microbes in Human Welfare (Fermentation, Antibiotics, Sewage Treatment, Biogas)",
+                ),
+              },
+              {
+                name: "Biotechnology and Its Applications",
+                topics: topicList(
+                  "Biotechnology: Principles and Processes (Recombinant DNA Technology, PCR, Restriction Enzymes)",
+                  "Applications in Agriculture (Bt Crops, RNA Interference)",
+                  "Applications in Medicine (Genetically Engineered Insulin, Gene Therapy)",
+                  "Biosafety Issues, Ethical Concerns and Biopiracy",
+                ),
+              },
+              {
+                name: "Ecology and Environment",
+                topics: topicList(
+                  "Organisms and Populations (Adaptations, Population Growth Attributes)",
+                  "Ecosystem (Structure, Productivity, Decomposition, Energy Flow, Ecological Pyramids)",
+                  "Biodiversity and Its Conservation (Patterns of Biodiversity, Hotspots, In-situ and Ex-situ Conservation)",
+                  "Environmental Issues and Conservation Strategies",
+                ),
+              },
+            ],
+          },
+          {
+            id: "psychology",
+            name: "Psychology",
+            icon: "Brain",
+            description: "Psychological traits, therapeutic approaches & social psychology",
+            chapters: [
+              {
+                name: "Variations in Psychological Attributes",
+                topics: topicList(
+                  "Theories of Intelligence (Psychometric and Information Processing)",
+                  "Assessment of Psychological Attributes and Aptitude",
+                  "Culture and Intelligence",
+                ),
+              },
+              {
+                name: "Self and Personality",
+                topics: topicList(
+                  "Concept of Self and Self-Esteem",
+                  "Major Approaches to Personality (Trait, Type, Psychodynamic, Humanistic)",
+                  "Assessment of Personality (Projective and Self-Report Techniques)",
+                ),
+              },
+              {
+                name: "Psychological Disorders & Therapeutic Approaches",
+                topics: topicList(
+                  "Concepts of Abnormality and DSM Classification",
+                  "Major Disorders: Anxiety, Mood, Schizophrenia, Neurodevelopmental",
+                  "Therapies: Psychodynamic, Cognitive Behavioural (CBT), Humanistic",
+                ),
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: "commerce",
+        name: "Commerce",
+        description: "Senior Secondary Accountancy, Business Management & Macroeconomics",
+        subjects: [
+          {
+            id: "accountancy",
+            name: "Accountancy",
+            icon: "BookOpen",
+            description: "Partnership accounting, company accounts, shares & cash flow statements",
+            chapters: [
+              {
+                name: "Accounting for Partnership Firms",
+                topics: topicList(
+                  "Fundamentals of Partnership and Profit & Loss Appropriation",
+                  "Goodwill: Nature, Factors and Valuation Methods",
+                  "Reconstitution of Partnership: Change in Profit Sharing Ratio",
+                  "Admission of a Partner",
+                  "Retirement and Death of a Partner",
+                  "Dissolution of a Partnership Firm",
+                ),
+              },
+              {
+                name: "Accounting for Companies",
+                topics: topicList(
+                  "Accounting for Share Capital: Issue, Forfeiture and Reissue of Shares",
+                  "Accounting for Debentures: Issue and Redemption of Debentures",
+                ),
+              },
+              {
+                name: "Analysis of Financial Statements",
+                topics: topicList(
+                  "Financial Statements of a Company (Schedule III format)",
+                  "Tools for Financial Analysis: Comparative and Common-Size Statements",
+                  "Accounting Ratios: Liquidity, Solvency, Activity, Profitability Ratios",
+                  "Cash Flow Statement Preparation (AS-3 Indirect Method)",
+                ),
+              },
+            ],
+          },
+          {
+            id: "business-studies",
+            name: "Business Studies",
+            icon: "Briefcase",
+            description: "Principles of management, marketing & financial markets",
+            chapters: [
+              {
+                name: "Principles and Functions of Management",
+                topics: topicList(
+                  "Nature and Significance of Management",
+                  "Principles of Management (Fayol and Taylor)",
+                  "Business Environment Dimensions",
+                  "Planning, Organising, Staffing, Directing and Controlling Functions",
+                ),
+              },
+              {
+                name: "Business Finance and Marketing",
+                topics: topicList(
+                  "Financial Management: Investment, Financing and Dividend Decisions",
+                  "Financial Markets: Money Market and Capital Market (Stock Exchange, SEBI)",
+                  "Marketing Management: Marketing Mix (4 Ps: Product, Price, Place, Promotion)",
+                  "Consumer Protection: Consumer Rights, Responsibilities and Redressal Machinery",
+                ),
+              },
+            ],
+          },
+          {
+            id: "economics",
+            name: "Economics",
+            icon: "TrendingUp",
+            description: "Macroeconomics fundamentals & Indian economic development",
+            chapters: [
+              {
+                name: "Introductory Macroeconomics",
+                topics: topicList(
+                  "National Income and Related Aggregates (GDP, GNP, NNP at FC/MP)",
+                  "Measurement of National Income: Value Added, Income and Expenditure Methods",
+                  "Money and Banking: Money Creation by Commercial Banks & Central Bank (RBI) Functions",
+                  "Determination of Income and Employment: Aggregate Demand and Supply",
+                  "Government Budget and the Economy: Revenue/Capital Budgets and Deficits",
+                  "Balance of Payments (BOP) and Foreign Exchange Rate Determination",
+                ),
+              },
+              {
+                name: "Indian Economic Development",
+                topics: topicList(
+                  "Indian Economy on the Eve of Independence & Five Year Plans (1950-1990)",
+                  "Economic Reforms Since 1991: Liberalisation, Privatisation and Globalisation (LPG)",
+                  "Current Challenges: Poverty, Human Capital Formation, Rural Development, Employment",
+                  "Sustainable Economic Development and Environmental Concerns",
+                  "Development Experiences of India: Comparison with China and Pakistan",
+                ),
+              },
+            ],
+          },
+          {
+            id: "applied-math",
+            name: "Applied Mathematics",
+            icon: "Calculator",
+            description: "Linear programming, financial math, calculus & index numbers",
+            chapters: [
+              {
+                name: "Matrices, Calculus & Differential Equations",
+                topics: topicList(
+                  "Matrix Inverses and Cramer's Rule in Business Systems",
+                  "Marginal Cost, Marginal Revenue and Revenue Optimization",
+                  "Differential Equations in Growth and Decay Models",
+                ),
+              },
+              {
+                name: "Financial Mathematics & Applied Statistics",
+                topics: topicList(
+                  "Perpetuity, Sinking Funds and EMI Calculations",
+                  "Returns on Investments, CAGR and Nominal/Effective Rates",
+                  "Linear Programming in Business Logistics",
+                  "Time Series Analysis and Forecasting",
+                ),
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: "arts",
+        name: "Arts & Humanities",
+        description: "Senior Secondary History, Political Science, Geography & Sociology",
+        subjects: [
+          {
+            id: "history",
+            name: "History",
+            icon: "Landmark",
+            description: "Themes in Indian history from Harappan civilization to modern constitution",
+            chapters: [
+              {
+                name: "Themes in Indian History - Part I (Ancient)",
+                topics: topicList(
+                  "Bricks, Beads and Bones: Harappan Archaeology",
+                  "Kings, Farmers and Towns: Early States and Economies (600 BCE - 600 CE)",
+                  "Kinship, Caste and Class: Early Societies (600 BCE - 600 CE)",
+                  "Thinkers, Beliefs and Buildings: Early Buddhism and Jainism",
+                ),
+              },
+              {
+                name: "Themes in Indian History - Part II (Medieval)",
+                topics: topicList(
+                  "Through the Eyes of Travellers (Al-Biruni, Ibn Battuta, Bernier)",
+                  "Bhakti-Sufi Traditions and Religious Developments",
+                  "An Imperial Capital: Vijayanagara Architecture and Society",
+                  "Peasants, Zamindars and the State: Agrarian Society and Mughal Empire",
+                ),
+              },
+              {
+                name: "Themes in Indian History - Part III (Modern)",
+                topics: topicList(
+                  "Colonialism and the Countryside: Revenue Systems and Tribal Revolts",
+                  "Rebels and the Raj: The 1857 Revolt and Representations",
+                  "Mahatma Gandhi and the Nationalist Movement (Civil Disobedience, Quit India)",
+                  "Framing the Constitution: Assembly Debates and Making of the Republic",
+                ),
+              },
+            ],
+          },
+          {
+            id: "political-science",
+            name: "Political Science",
+            icon: "Scale",
+            description: "Contemporary world politics & politics in India since independence",
+            chapters: [
+              {
+                name: "Contemporary World Politics",
+                topics: topicList(
+                  "The End of Bipolarity: Disintegration of USSR and Shock Therapy",
+                  "Alternative Centres of Power: European Union, ASEAN, BRICS, China",
+                  "Contemporary South Asia: Democratization and Regional Conflicts",
+                  "International Organisations: Role of UN and Global Governance",
+                  "Security in Contemporary World & Environmental and Natural Resource Politics",
+                  "Globalisation: Economic, Cultural and Political Dimensions",
+                ),
+              },
+              {
+                name: "Politics in India Since Independence",
+                topics: topicList(
+                  "Challenges of Nation-Building: Partition, Integration of Princely States",
+                  "Era of One-Party Dominance and Opposition Parties",
+                  "Politics of Planned Development: Planning Commission and Five Year Plans",
+                  "India's External Relations: Non-Alignment, Wars with China and Pakistan",
+                  "Challenges to and Restoration of the Congress System",
+                  "The Crisis of Democratic Order: The Emergency (1975-1977)",
+                  "Rise of Popular Movements, Regional Aspirations and Coalition Politics",
+                ),
+              },
+            ],
+          },
+          {
+            id: "geography",
+            name: "Geography",
+            icon: "Globe",
+            description: "Fundamentals of human geography & India: people and economy",
+            chapters: [
+              {
+                name: "Fundamentals of Human Geography",
+                topics: topicList(
+                  "Human Geography: Nature and Scope",
+                  "The World Population: Distribution, Density, Growth and Demographic Transition",
+                  "Human Development: Concepts and International Comparisons",
+                  "Primary Activities: Agriculture, Mining, Pastoralism",
+                  "Secondary and Tertiary Activities: Manufacturing, Services, Transport, Trade",
+                  "Human Settlements: Rural and Urban Settlement Patterns",
+                ),
+              },
+              {
+                name: "India: People and Economy",
+                topics: topicList(
+                  "Population: Distribution, Density, Growth and Composition in India",
+                  "Migration: Types, Causes and Consequences",
+                  "Human Settlements and Urban Agglomerations",
+                  "Land Resources and Agriculture in India",
+                  "Water Resources and National Water Policy",
+                  "Mineral and Energy Resources",
+                  "Manufacturing Industries & Industrial Clusters",
+                  "Transport and Communication Networks",
+                ),
+              },
+            ],
+          },
+          {
+            id: "sociology",
+            name: "Sociology",
+            icon: "Users",
+            description: "Indian society structure & social change and development in India",
+            chapters: [
+              {
+                name: "Indian Society",
+                topics: topicList(
+                  "Introducing Indian Society and Colonial Impact",
+                  "The Demographic Structure of Indian Society",
+                  "Social Institutions: Continuity and Change (Caste, Tribe, Family)",
+                  "Patterns of Social Inequality and Exclusion (Dalit, Adivasi, Gender)",
+                  "The Challenges of Cultural Diversity (Communalism, Regionalism, Secularism)",
+                ),
+              },
+              {
+                name: "Social Change and Development in India",
+                topics: topicList(
+                  "Structural Change: Industrialisation and Urbanisation",
+                  "Cultural Change: Sanskritisation, Westernisation, Modernisation",
+                  "The Story of Indian Democracy and Grassroots Movements",
+                  "Change and Development in Rural and Industrial Society",
+                  "Globalisation and Social Change",
+                  "Mass Media and Social Movements (Peasant, Workers, Environmental)",
+                ),
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+];
+
+// ============================================================================
+// University Level Courses (Undergraduate STEM Foundations)
+// ============================================================================
+
+export const UNIVERSITY_COURSES: Course[] = [
+  {
+    id: "btech-first-year",
+    name: "First Year Engineering (Core Foundation)",
+    degree: "B.Tech / B.E. / B.S.",
+    level: "undergraduate",
+    semester: "Year 1 (Semester 1 & 2)",
+    description: "Foundational STEM core curriculum for undergraduate engineering disciplines",
+    subjects: [
+      {
+        id: "eng-mechanics",
+        name: "Engineering Mechanics",
+        icon: "Wrench",
+        description: "Statics, dynamics, rigid body equilibrium, friction, trusses & energy methods",
+        chapters: [
+          {
+            name: "Statics of Particles and Rigid Bodies",
+            topics: topicList(
+              "Coplanar Concurrent and Non-concurrent Force Systems",
+              "Resultant and Components of Force Systems",
+              "Moment of a Force and Varignon's Theorem",
+              "Couple and Equivalent Force-Couple Systems",
+              "Free Body Diagrams and Equilibrium Conditions",
+              "Support Reactions in Beams and Frames",
+            ),
+          },
+          {
+            name: "Friction and Belt Friction",
+            topics: topicList(
+              "Laws of Dry Friction (Coulomb Friction)",
+              "Angle of Friction, Angle of Repose and Cone of Friction",
+              "Wedge Friction and Screw Jack Mechanics",
+              "Flat Belt and V-Belt Friction (Ratio of Belt Tensions)",
+            ),
+          },
+          {
+            name: "Centroid, Center of Gravity and Moment of Inertia",
+            topics: topicList(
+              "Centroids of Composite Areas and Lines",
+              "Center of Gravity of Composite Bodies",
+              "First and Second Moment of Area",
+              "Parallel Axis Theorem and Perpendicular Axis Theorem",
+              "Mass Moment of Inertia of Standard Geometries (Rods, Discs, Cylinders, Spheres)",
+            ),
+          },
+          {
+            name: "Analysis of Trusses and Frames",
+            topics: topicList(
+              "Types of Trusses (Perfect, Imperfect, Redundant)",
+              "Assumptions in Truss Analysis",
+              "Method of Joints for Plane Trusses",
+              "Method of Sections for Quick Force Evaluation",
+              "Zero Force Members Identification",
+            ),
+          },
+          {
+            name: "Kinematics and Dynamics of Particles",
+            topics: topicList(
+              "Rectilinear Motion: Variable Acceleration and Differential Equations",
+              "Curvilinear Motion: Normal-Tangential and Radial-Transverse Coordinates",
+              "Newton's Second Law for Particles and D'Alembert's Principle",
+              "Work-Energy Principle for Particles",
+              "Impulse-Momentum Principle and Direct/Oblique Central Impact",
+            ),
+          },
+          {
+            name: "Kinematics and Kinetics of Rigid Bodies",
+            topics: topicList(
+              "Translation and Fixed-Axis Rotation of Rigid Bodies",
+              "General Plane Motion and Instantaneous Center of Zero Velocity (IC)",
+              "Relative Velocity and Acceleration in Rigid Bodies",
+              "Equations of Motion for Plane Motion of Rigid Bodies",
+              "Conservation of Angular Momentum in Rigid Body Dynamics",
+            ),
+          },
+        ],
+      },
+      {
+        id: "calculus-1",
+        name: "Calculus I",
+        icon: "Sigma",
+        description: "Differential calculus, integral calculus, multivariable analysis & series",
+        chapters: [
+          {
+            name: "Differential Calculus of Single Variable",
+            topics: topicList(
+              "Limits, Continuity and Intermediate Value Theorem",
+              "Differentiability and Mean Value Theorems (Rolle's, Lagrange, Cauchy)",
+              "L'Hôpital's Rule and Indeterminate Forms",
+              "Taylor's and Maclaurin's Theorems with Remainder Terms",
+              "Curvature, Radius of Curvature and Evolutes",
+            ),
+          },
+          {
+            name: "Multivariable Differential Calculus",
+            topics: topicList(
+              "Functions of Several Variables, Limits and Continuity in 2D",
+              "Partial Derivatives and Total Differentials",
+              "Chain Rule for Functions of Several Variables",
+              "Homogeneous Functions and Euler's Theorem",
+              "Jacobians and Coordinate Transformations",
+              "Taylor's Series for Functions of Two Variables",
+              "Maxima, Minima and Saddle Points of Two-Variable Functions",
+              "Lagrange Multipliers for Constrained Optimization",
+            ),
+          },
+          {
+            name: "Integral Calculus and Applications",
+            topics: topicList(
+              "Improper Integrals of First and Second Kind",
+              "Beta and Gamma Functions and Their Properties",
+              "Rectification of Plane Curves",
+              "Volumes and Surface Areas of Revolution",
+            ),
+          },
+          {
+            name: "Multiple Integrals",
+            topics: topicList(
+              "Double Integrals in Cartesian and Polar Coordinates",
+              "Change of Order of Integration in Double Integrals",
+              "Area and Center of Mass Computation using Double Integrals",
+              "Triple Integrals in Cartesian, Cylindrical and Spherical Coordinates",
+              "Volume Computation using Triple Integrals",
+            ),
+          },
+          {
+            name: "Infinite Sequences and Series",
+            topics: topicList(
+              "Convergence and Divergence of Infinite Sequences",
+              "Infinite Series and Geometric Series Test",
+              "Integral Test, Comparison Tests and Limit Comparison Test",
+              "Ratio Test and Root Test (D'Alembert and Cauchy)",
+              "Alternating Series and Leibniz Test for Absolute/Conditional Convergence",
+              "Power Series and Radius of Convergence",
+            ),
+          },
+        ],
+      },
+      {
+        id: "intro-chem",
+        name: "Intro Chemistry",
+        icon: "FlaskRound",
+        description: "Thermodynamics, chemical kinetics, electrochemistry, spectroscopy & materials",
+        chapters: [
+          {
+            name: "Chemical Thermodynamics and Phase Equilibria",
+            topics: topicList(
+              "First and Second Laws of Thermodynamics Review",
+              "Helmholtz and Gibbs Free Energies, Maxwell Relations",
+              "Chemical Potential and Gibbs-Duhem Equation",
+              "Clapeyron and Clausius-Clapeyron Equations",
+              "Gibbs Phase Rule and One-Component Systems (Water, CO2, Sulfur)",
+              "Two-Component Eutectic Systems (Lead-Silver, Iron-Carbon)",
+            ),
+          },
+          {
+            name: "Electrochemistry and Corrosion",
+            topics: topicList(
+              "Galvanic Cells, Standard Electrode Potentials and Nernst Equation",
+              "Reference Electrodes (Standard Hydrogen Electrode, Calomel Electrode)",
+              "Ion-Selective Electrodes and Glass Electrode for pH Measurement",
+              "Electrochemical Mechanisms of Wet and Dry Corrosion",
+              "Factors Influencing Corrosion Rates",
+              "Corrosion Control: Cathodic Protection (Sacrificial Anode, Impressed Current) and Coatings",
+            ),
+          },
+          {
+            name: "Spectroscopic Techniques in Chemistry",
+            topics: topicList(
+              "Electromagnetic Spectrum and Molecular Transitions",
+              "UV-Visible Spectroscopy and Beer-Lambert Law",
+              "Infrared (IR) Spectroscopy and Characteristic Functional Group Frequencies",
+              "Nuclear Magnetic Resonance (1H-NMR) Spectroscopy Principles",
+              "Chemical Shift, Spin-Spin Coupling and Simple Spectra Interpretation",
+            ),
+          },
+          {
+            name: "Engineering Materials and Polymers",
+            topics: topicList(
+              "Classification of Polymers: Thermoplastics and Thermosets",
+              "Mechanism of Addition and Condensation Polymerization",
+              "Conducting Polymers (Polyaniline, Polyacetylene) and Applications",
+              "Lubricants: Mechanism of Fluid-Film and Boundary Lubrication",
+              "Nanomaterials: Carbon Nanotubes (CNTs) and Graphene Properties",
+            ),
+          },
+          {
+            name: "Water Technology and Treatment",
+            topics: topicList(
+              "Hardness of Water: Temporary and Permanent Hardness",
+              "Determination of Hardness by EDTA Complexometric Method",
+              "Boiler Troubles: Scale and Sludge, Caustic Embrittlement, Priming and Foaming",
+              "Water Softening Methods: Zeolite Process and Ion-Exchange Demineralization",
+              "Desalination of Brackish Water by Reverse Osmosis (RO)",
+            ),
+          },
+        ],
+      },
+      {
+        id: "data-structures",
+        name: "Data Structures",
+        icon: "Network",
+        description: "Linear & non-linear data structures, algorithm complexity, trees, graphs & hashing",
+        chapters: [
+          {
+            name: "Algorithm Analysis and Mathematical Foundations",
+            topics: topicList(
+              "Abstract Data Types (ADTs) Concept",
+              "Asymptotic Notations: Big-O, Big-Omega, Big-Theta Definitions",
+              "Time and Space Complexity Analysis of Iterative and Recursive Algorithms",
+              "Recurrence Relations and Master Theorem",
+            ),
+          },
+          {
+            name: "Linear Data Structures: Arrays, Stacks and Queues",
+            topics: topicList(
+              "Dynamic Arrays and Memory Layout",
+              "Stack ADT: Array and Linked Implementations",
+              "Applications of Stacks: Infix to Postfix Conversion, Expression Evaluation",
+              "Queue ADT: Linear Queue, Circular Queue and Deque",
+              "Priority Queue ADT and Binary Heap Representation",
+            ),
+          },
+          {
+            name: "Linked Lists",
+            topics: topicList(
+              "Singly Linked Lists: Traversal, Insertion and Deletion",
+              "Doubly Linked Lists and Operations",
+              "Circular Linked Lists and Applications",
+              "Polynomial Addition using Linked Lists",
+            ),
+          },
+          {
+            name: "Non-Linear Data Structures: Trees",
+            topics: topicList(
+              "Binary Tree Terminology and Properties",
+              "Tree Traversals: Inorder, Preorder, Postorder and Level-Order",
+              "Binary Search Trees (BST): Insertion, Deletion and Search Operations",
+              "Self-Balancing Trees: AVL Tree Rotations (LL, RR, LR, RL)",
+              "B-Trees and B+ Trees Fundamentals for File Systems",
+            ),
+          },
+          {
+            name: "Graphs and Graph Algorithms",
+            topics: topicList(
+              "Graph Representations: Adjacency Matrix and Adjacency List",
+              "Graph Traversals: Breadth-First Search (BFS) and Depth-First Search (DFS)",
+              "Minimum Spanning Trees: Kruskal's and Prim's Algorithms",
+              "Shortest Path Algorithms: Dijkstra's and Bellman-Ford Algorithms",
+              "Topological Sorting and Directed Acyclic Graphs (DAGs)",
+            ),
+          },
+          {
+            name: "Searching, Sorting and Hashing",
+            topics: topicList(
+              "Searching Techniques: Linear Search, Binary Search",
+              "Comparison Sorts: Insertion Sort, Selection Sort, Bubble Sort",
+              "Divide-and-Conquer Sorts: Merge Sort, Quick Sort (Best, Average, Worst Case)",
+              "Linear Time Sorts: Counting Sort, Radix Sort",
+              "Hash Tables, Hash Functions and Collision Resolution (Chaining vs Open Addressing)",
+            ),
+          },
+        ],
+      },
+    ],
+  },
+];
+
+// ============================================================================
+// Helper Functions and Accessors
+// ============================================================================
+
 export const getClass = (id: number) => CLASSES.find((c) => c.id === id);
+
 export const getSubject = (classId: number, subjectId: string) =>
   getClass(classId)?.subjects.find((s) => s.id === subjectId);
+
+export const getStreamClass = (id: number) =>
+  STREAM_CLASSES.find((sc) => sc.id === id);
+
+export const getStream = (classId: number, streamId: string) =>
+  getStreamClass(classId)?.streams.find((s) => s.id === streamId);
+
+export const getStreamSubject = (classId: number, streamId: string, subjectId: string) =>
+  getStream(classId, streamId)?.subjects.find((s) => s.id === subjectId);
+
+export const getCourse = (id: string) =>
+  UNIVERSITY_COURSES.find((c) => c.id === id);
+
+export const getCourseSubject = (courseId: string, subjectId: string) =>
+  getCourse(courseId)?.subjects.find((s) => s.id === subjectId);
 
 export const getTopics = (chapter: number, subject: string): string[] => {
   const base = [

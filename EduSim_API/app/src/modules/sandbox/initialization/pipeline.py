@@ -85,7 +85,7 @@ class ObjectsStage(PipelineStage):
 
         # Hydrate constraints safely
         raw_constraints = context.raw_payload.get("constraints", [])
-        from app.src.modules.sandbox.schemas.constaraint_schema import SandboxConstraint
+        from app.src.modules.sandbox.schemas.constraint_schema import SandboxConstraint
         hydrated_constraints = []
         for raw_c in raw_constraints:
             try:

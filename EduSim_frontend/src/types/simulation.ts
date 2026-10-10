@@ -109,3 +109,33 @@ export interface SimulationDSL {
   equations?: string[];
 }
 
+export interface DSLEntity {
+  id: string;
+  type: string;
+  mass: number | null;
+}
+
+export interface DSLInteraction {
+  type: string;
+  target: string;
+  parameters: Record<string, any>;
+}
+
+export interface DSLVisualization {
+  type: string;
+}
+
+export interface PhysicsDSL {
+  simulation_type: string;
+  topic: string;
+  environment: {
+    gravity: number;
+    friction: number;
+  };
+  entities: DSLEntity[];
+  interactions: DSLInteraction[];
+  visualizations: DSLVisualization[];
+  equations: string[];
+}
+
+

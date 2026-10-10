@@ -1,7 +1,9 @@
+import logging
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from app.src.modules.scene_parser.service import parse_scene
 
+logger = logging.getLogger("EduSim.api.scene")
 scene_router = APIRouter()
 
 
@@ -26,8 +28,12 @@ async def parse_scene_endpoint(request: SceneParseRequest):
             "success": True,
             "data": scene
         }
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error(f"Scene Parse Error: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Scene Parse Error: {str(e)}"
+            detail="Failed to parse scene."
         )
+

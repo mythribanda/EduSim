@@ -14,6 +14,7 @@ export interface User {
   is_email_verified: boolean;
   is_mobile_verified: boolean;
   created_at?: string;
+  auth_provider?: "password" | "google" | string;
 }
 
 interface AuthState {

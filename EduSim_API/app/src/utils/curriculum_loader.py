@@ -75,10 +75,18 @@ def populate_curriculum(db: Session) -> None:
                             continue
                         chapter_topics.add(top_name)
 
+                        has_sim = top_item.get("hasSimulation", top_item.get("has_simulation", False))
+                        sim_route = top_item.get("simulationRoute", top_item.get("simulation_route", None))
+                        if not sim_route and (code == "physics" or "physic" in str(sub_item.get("name", "")).lower() or "science" in str(sub_item.get("name", "")).lower()):
+                            has_sim = True
+                            sim_route = f"/simulation/{top_name}"
+
                         topic = Topic(
                             chapter_id=chapter.id,
                             name=top_name,
-                            description=top_item.get("description")
+                            description=top_item.get("description"),
+                            has_simulation=has_sim,
+                            simulation_route=sim_route
                         )
                         db.add(topic)
             elif isinstance(chapters, (int, float)):

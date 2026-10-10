@@ -22,9 +22,21 @@ depends_on = None
 
 def upgrade() -> None:
     bind = op.get_bind()
-    Base.metadata.create_all(bind=bind)
+    tables = [
+        user_models.User.__table__,
+        persistence_models.CurriculumClass.__table__,
+        persistence_models.Subject.__table__,
+        persistence_models.Chapter.__table__,
+        persistence_models.Topic.__table__,
+        persistence_models.ChatHistory.__table__,
+        persistence_models.FormulaHistory.__table__,
+        persistence_models.SimulationHistory.__table__,
+        persistence_models.UserSetting.__table__,
+        persistence_models.UserSession.__table__,
+    ]
+    Base.metadata.create_all(bind=bind, tables=tables)
 
 
 def downgrade() -> None:
-    bind = op.get_bind()
-    Base.metadata.drop_all(bind=bind)
+    pass
+

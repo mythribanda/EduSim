@@ -36,7 +36,7 @@ export default function AssignmentsLandingPage() {
       };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
-      const res = await fetch(`${API_URL}/classes/mine`, {
+      const res = await fetch(`${API_URL}/api/classes/mine`, {
         credentials: "omit",
         headers,
       });

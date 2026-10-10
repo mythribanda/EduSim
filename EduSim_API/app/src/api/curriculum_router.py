@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.src.config.database import get_db
 from app.src.models.persistence import CurriculumClass, Subject, Chapter, Topic
 from app.src.models.user import User
-from middleware.rbac import require_role
+from app.src.middleware.rbac import require_role
 
 router = APIRouter(prefix="/curriculum", tags=["Curriculum"])
 

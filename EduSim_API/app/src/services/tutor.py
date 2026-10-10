@@ -1,5 +1,5 @@
 """
-services/tutor.py — Context-Aware Socratic AI Tutor Service for EduSim.
+app/src/services/tutor.py — Context-Aware Socratic AI Tutor Service for EduSim.
 
 Builds personalized, context-aware prompts based on student profile (class level,
 weak topics, topic mastery scores) and retrieved textbook context chunks.
@@ -15,9 +15,9 @@ from sqlalchemy.orm import Session
 from app.src.config.database import SessionLocal
 from app.src.models.user import User
 from app.src.models.persistence import ChatHistory, Topic
-from models import StudentTopicMastery, Class, StudentEnrollment
-from services.mastery import get_weak_topics, update_mastery, TopicMasteryItem
-from services.ai_router import call_ai
+from app.src.models.school import StudentTopicMastery, Class, StudentEnrollment
+from app.src.services.mastery import get_weak_topics, update_mastery, TopicMasteryItem
+from app.src.services.ai_router import call_ai
 
 logger = logging.getLogger("EduSim.services.tutor")
 
@@ -371,17 +371,13 @@ async def ask_tutor_service(
         db.add(assistant_chat)
 
         # 5. Call update_mastery() if mapped to an identifiable topic
-        # For a tutor question interaction, we register student engagement in the topic
         mastery_record = None
         if identified_topic:
             try:
-                # Student asked for guidance -> records engagement attempt
-                # Note: is_correct is recorded as False or True depending on context,
-                # here we record topic interaction to maintain attempt count/tracking
                 mastery_record = update_mastery(
                     student_id=uid,
                     topic_id=identified_topic,
-                    is_correct=False,  # Tutor inquiry reflects seeking help on concept
+                    is_correct=False,
                     db=db,
                 )
                 logger.info(
@@ -414,3 +410,11 @@ async def ask_tutor_service(
     finally:
         if close_db:
             db.close()
+
+
+__all__ = [
+    "identify_topic_from_text",
+    "build_tutor_prompt",
+    "ask_tutor_service",
+    "SOCRATIC_INSTRUCTION",
+]

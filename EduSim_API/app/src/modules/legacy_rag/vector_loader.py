@@ -9,6 +9,7 @@ from typing import Dict, Any, Tuple
 
 from .embedder import get_embeddings
 from .retriever import get_retriever
+from .vector_store import INDEX_PATH, INDEX_FILE, METADATA_FILE, is_index_ready
 
 VECTORSTORE_DIR = Path("vectorstore")
 
@@ -39,42 +40,68 @@ class VectorStoreManager:
         logger.info("Preloading FAISS Vector Databases")
         logger.info("=========================================")
         
-        self._embeddings_model = get_embeddings()
-        
-        if not VECTORSTORE_DIR.exists():
-            logger.warning(f"[WARNING] Vectorstore directory {VECTORSTORE_DIR} not found. Please run create_embeddings.py")
+        try:
+            self._embeddings_model = get_embeddings()
+        except Exception as e:
+            logger.warning(f"Could not initialize embeddings model: {e}")
+            self._is_loaded = True
             return
-            
-        # Load each subject
+
         loaded_subjects = []
-        for subject_dir in VECTORSTORE_DIR.iterdir():
-            if subject_dir.is_dir():
-                subject = subject_dir.name
-                index_path = subject_dir / "index.faiss"
-                meta_path = subject_dir / "index.pkl"
-                
-                if index_path.exists() and meta_path.exists():
-                    try:
-                        logger.info(f"Loading '{subject}' index...")
-                        index = faiss.read_index(str(index_path))
-                        with open(meta_path, "rb") as f:
-                            metadata = pickle.load(f)
+
+        # 1. Check INDEX_PATH first
+        if INDEX_FILE.exists() and METADATA_FILE.exists():
+            try:
+                logger.info(f"Loading FAISS index from {INDEX_PATH}...")
+                index = faiss.read_index(str(INDEX_FILE))
+                with open(METADATA_FILE, "rb") as f:
+                    metadata = pickle.load(f)
+                self._indices["physics"] = index
+                self._metadata["physics"] = metadata
+                self._retrievers["physics"] = get_retriever(
+                    index, metadata, self._embeddings_model, k=5
+                )
+                loaded_subjects.append("physics")
+            except Exception as e:
+                logger.error(f"[ERROR] Failed to load index from {INDEX_PATH}: {e}")
+
+        # 2. Check VECTORSTORE_DIR if exists
+        if VECTORSTORE_DIR.exists():
+            for subject_dir in VECTORSTORE_DIR.iterdir():
+                if subject_dir.is_dir():
+                    subject = subject_dir.name
+                    index_path = subject_dir / "index.faiss"
+                    meta_path = subject_dir / "index.pkl"
+                    
+                    if index_path.exists() and meta_path.exists() and subject not in self._retrievers:
+                        try:
+                            logger.info(f"Loading '{subject}' index...")
+                            index = faiss.read_index(str(index_path))
+                            with open(meta_path, "rb") as f:
+                                metadata = pickle.load(f)
+                                
+                            self._indices[subject] = index
+                            self._metadata[subject] = metadata
                             
-                        self._indices[subject] = index
-                        self._metadata[subject] = metadata
-                        
-                        # Create retriever closure (k=5 for richer context retrieval)
-                        self._retrievers[subject] = get_retriever(
-                            index, metadata, self._embeddings_model, k=5
-                        )
-                        loaded_subjects.append(subject)
-                    except Exception as e:
-                        logger.error(f"[ERROR] Failed to load index for {subject}: {e}")
-                        
+                            self._retrievers[subject] = get_retriever(
+                                index, metadata, self._embeddings_model, k=5
+                            )
+                            loaded_subjects.append(subject)
+                        except Exception as e:
+                            logger.error(f"[ERROR] Failed to load index for {subject}: {e}")
+
+        if not loaded_subjects:
+            logger.warning(
+                f"[WARNING] FAISS vector index not found at {INDEX_PATH} or {VECTORSTORE_DIR}. "
+                "RAG search endpoints will return 503 'index not built' until built."
+            )
+        else:
+            logger.info(f"[SUCCESS] Successfully preloaded subjects: {', '.join(loaded_subjects)}")
+            
         self._is_loaded = True
-        logger.info(f"[SUCCESS] Successfully preloaded subjects: {', '.join(loaded_subjects) if loaded_subjects else 'None'}")
 
     def get_retriever(self, subject: str = None):
+
         """
         Get the preloaded retriever for a specific subject. 
         If subject is None or not found, defaults to 'physics' or the first available.

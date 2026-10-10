@@ -9,15 +9,23 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 
-env_path = Path(__file__).resolve().parents[3] / ".env"
+BASE_DIR = Path(__file__).resolve().parents[3]
+env_path = BASE_DIR / ".env"
 load_dotenv(env_path)
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if not DATABASE_URL:
-    db_file = Path(__file__).resolve().parents[3] / "edusim.db"
-    DATABASE_URL = f"sqlite:///{db_file}"
+    db_file = BASE_DIR / "edusim.db"
+    DATABASE_URL = f"sqlite:///{db_file.as_posix()}"
     logger.info(f"[Database] DATABASE_URL is not set. Falling back to local SQLite database: {db_file}")
+elif DATABASE_URL.startswith("sqlite:///") and not DATABASE_URL.startswith("sqlite:////") and ":memory:" not in DATABASE_URL:
+    raw_path = DATABASE_URL[len("sqlite:///"):]
+    if not os.path.isabs(raw_path):
+        abs_db_path = (BASE_DIR / raw_path).resolve()
+        DATABASE_URL = f"sqlite:///{abs_db_path.as_posix()}"
+
+DB_SSLMODE = os.getenv("DB_SSLMODE")
 
 if DATABASE_URL.startswith("sqlite"):
     engine = create_engine(
@@ -25,11 +33,15 @@ if DATABASE_URL.startswith("sqlite"):
         connect_args={"check_same_thread": False}
     )
 else:
+    connect_args = {}
+    if DB_SSLMODE:
+        connect_args["sslmode"] = DB_SSLMODE
     engine = create_engine(
         DATABASE_URL,
         pool_pre_ping=True,
-        connect_args={"sslmode": "require"}
+        connect_args=connect_args
     )
+
 
 SessionLocal = sessionmaker(
     autocommit=False,

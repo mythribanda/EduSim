@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BookOpen, CheckCircle2, XCircle, ArrowRight, Sparkles, Loader2 } from "lucide-react";
+import { BookOpen, CheckCircle2, XCircle, ArrowRight, Sparkles, Loader2, Flame, Trophy, Target } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { DynamicParsedFormula } from "@/utils/DynamicFormulaExtractor";
 import { getApiUrl } from "@/config/api";
+import { useAuthStore } from "@/store/useAuthStore";
 
 interface QASectionProps {
   topic: string;
@@ -16,6 +18,7 @@ type QuestionType = "multiple-choice" | "fill-blanks" | "concept";
 
 interface QuizQuestion {
   id: string;
+  backendId?: number;
   type: QuestionType;
   question: string;
   options?: string[];
@@ -23,7 +26,15 @@ interface QuizQuestion {
   explanation: string;
 }
 
+interface SubmitResult {
+  is_correct: boolean;
+  mastery_score?: number;
+  streak?: number;
+  recommended_next?: string;
+}
+
 export default function QASection({ topic, chapter, subject, formulas }: QASectionProps) {
+  const { user, token } = useAuthStore();
   const isNewton = topic.toLowerCase().includes("newton") || 
                    (formulas && formulas.some(f => f.title?.toLowerCase().includes("newton")));
 
@@ -89,7 +100,26 @@ export default function QASection({ topic, chapter, subject, formulas }: QASecti
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState<Record<string, boolean>>({});
+  const [submitFeedback, setSubmitFeedback] = useState<Record<string, SubmitResult>>({});
+  const [latestMastery, setLatestMastery] = useState<{ score: number; streak: number; recommended?: string } | null>(null);
   const [score, setScore] = useState(0);
+
+  const parseQuestionsResponse = (data: any): QuizQuestion[] => {
+    const rawList = Array.isArray(data) ? data : (Array.isArray(data?.questions) ? data.questions : []);
+    if (!rawList || rawList.length === 0) return [];
+    return rawList.map((q: any) => {
+      const hasOptions = Array.isArray(q.options) && q.options.length > 0;
+      return {
+        id: q.id ? `q-${q.id}` : `q-${Math.random().toString(36).substring(2, 9)}`,
+        backendId: typeof q.id === "number" ? q.id : undefined,
+        type: hasOptions ? "multiple-choice" : "fill-blanks",
+        question: q.question,
+        options: hasOptions ? q.options : undefined,
+        correctAnswer: q.correct || q.answer || "",
+        explanation: q.explanation || ""
+      };
+    });
+  };
 
   // Load initial questions
   const loadInitialQuestions = async () => {
@@ -98,7 +128,10 @@ export default function QASection({ topic, chapter, subject, formulas }: QASecti
     try {
       const response = await fetch(getApiUrl("/api/questions/generate"), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({
           subject: subject || "physics",
           chapter: chapter || "",
@@ -112,19 +145,9 @@ export default function QASection({ topic, chapter, subject, formulas }: QASecti
 
       if (!response.ok) throw new Error("Failed to generate questions");
       const data = await response.json();
+      const mapped = parseQuestionsResponse(data);
       
-      if (data && Array.isArray(data.questions) && data.questions.length > 0) {
-        const mapped = data.questions.map((q: any) => {
-          const hasOptions = Array.isArray(q.options) && q.options.length > 0;
-          return {
-            id: `q-${Math.random().toString(36).substring(2, 9)}`,
-            type: hasOptions ? "multiple-choice" : "fill-blanks",
-            question: q.question,
-            options: hasOptions ? q.options : undefined,
-            correctAnswer: q.answer,
-            explanation: q.explanation
-          };
-        });
+      if (mapped.length > 0) {
         setQuestions(mapped);
       } else {
         setQuestions(isNewton ? demoQuestions : genericQuestions);
@@ -143,6 +166,8 @@ export default function QASection({ topic, chapter, subject, formulas }: QASecti
     setCurrentIndex(0);
     setAnswers({});
     setSubmitted({});
+    setSubmitFeedback({});
+    setLatestMastery(null);
     setScore(0);
   }, [topic]);
 
@@ -154,7 +179,10 @@ export default function QASection({ topic, chapter, subject, formulas }: QASecti
       const shownQuestions = questions.map(q => q.question);
       const response = await fetch(getApiUrl("/api/questions/generate"), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({
           subject: subject || "physics",
           chapter: chapter || "",
@@ -168,20 +196,9 @@ export default function QASection({ topic, chapter, subject, formulas }: QASecti
 
       if (!response.ok) throw new Error("Failed to generate more questions");
       const data = await response.json();
+      const mapped = parseQuestionsResponse(data);
 
-      if (data && Array.isArray(data.questions) && data.questions.length > 0) {
-        const mapped = data.questions.map((q: any) => {
-          const hasOptions = Array.isArray(q.options) && q.options.length > 0;
-          return {
-            id: `q-${Math.random().toString(36).substring(2, 9)}`,
-            type: hasOptions ? "multiple-choice" : "fill-blanks",
-            question: q.question,
-            options: hasOptions ? q.options : undefined,
-            correctAnswer: q.answer,
-            explanation: q.explanation
-          };
-        });
-        
+      if (mapped.length > 0) {
         const prevLength = questions.length;
         setQuestions(prev => [...prev, ...mapped]);
         
@@ -213,7 +230,10 @@ export default function QASection({ topic, chapter, subject, formulas }: QASecti
 
   const currentQ = questions[currentIndex];
   const isSubmitted = currentQ ? submitted[currentQ.id] : false;
-  const isCorrect = isSubmitted && currentQ && answers[currentQ.id]?.toLowerCase().trim() === currentQ.correctAnswer.toLowerCase().trim();
+  const submitInfo = currentQ ? submitFeedback[currentQ.id] : undefined;
+  const isCorrect = isSubmitted && currentQ && (
+    submitInfo ? submitInfo.is_correct : answers[currentQ.id]?.toLowerCase().trim() === currentQ.correctAnswer.toLowerCase().trim()
+  );
 
   const handleSelectOption = (option: string) => {
     if (isSubmitted) return;
@@ -225,11 +245,46 @@ export default function QASection({ topic, chapter, subject, formulas }: QASecti
     setAnswers(prev => ({ ...prev, [currentQ.id]: value }));
   };
 
-  const handleSubmit = () => {
-    if (!answers[currentQ.id]) return;
+  const handleSubmit = async () => {
+    if (!answers[currentQ.id] || isSubmitted) return;
+    const selected = answers[currentQ.id];
     setSubmitted(prev => ({ ...prev, [currentQ.id]: true }));
-    if (answers[currentQ.id]?.toLowerCase().trim() === currentQ.correctAnswer.toLowerCase().trim()) {
+
+    const localCorrect = selected.toLowerCase().trim() === currentQ.correctAnswer.toLowerCase().trim();
+    if (localCorrect) {
       setScore(s => s + 1);
+    }
+
+    try {
+      const response = await fetch(getApiUrl("/api/questions/submit"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          topic: topic || "Physics",
+          selected_option: selected,
+          question_id: currentQ.backendId,
+          correct_option: currentQ.correctAnswer,
+          student_id: user?.id
+        })
+      });
+
+        if (response.ok) {
+          const result: any = await response.json();
+          setSubmitFeedback(prev => ({ ...prev, [currentQ.id]: result }));
+          const resolvedStreak = result.correct_streak ?? result.streak ?? 1;
+          if (result.mastery_score !== undefined) {
+            setLatestMastery({
+              score: result.mastery_score,
+              streak: resolvedStreak,
+              recommended: result.recommended_next
+            });
+          }
+        }
+    } catch (err) {
+      console.warn("Could not post answer to /api/questions/submit:", err);
     }
   };
 
@@ -254,6 +309,19 @@ export default function QASection({ topic, chapter, subject, formulas }: QASecti
           </div>
         </div>
         <div className="flex items-center gap-4">
+          {latestMastery && (
+            <div className="hidden sm:flex items-center gap-3 bg-secondary/60 border border-border px-3.5 py-1.5 rounded-2xl">
+              <div className="flex items-center gap-1 text-xs font-bold text-amber-500">
+                <Flame className="w-4 h-4" />
+                <span>{latestMastery.streak} Streak</span>
+              </div>
+              <div className="h-3 w-[1px] bg-border" />
+              <div className="flex items-center gap-1 text-xs font-bold text-violet-500">
+                <Trophy className="w-4 h-4" />
+                <span>{latestMastery.score.toFixed(0)}% Mastery</span>
+              </div>
+            </div>
+          )}
           <button
             onClick={generateMoreQuestions}
             disabled={loadingMore}
@@ -348,16 +416,16 @@ export default function QASection({ topic, chapter, subject, formulas }: QASecti
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mt-8"
+                className="mt-8 space-y-6"
               >
                 <div className={`p-5 rounded-2xl border ${
                   isCorrect ? 'bg-green-50 border-green-150 text-green-800' : 'bg-red-50 border-red-150 text-red-800'
                 }`}>
                   <div className="flex items-start gap-4">
                     {isCorrect ? (
-                      <CheckCircle2 className="w-6 h-6 text-green-500 mt-0.5" />
+                      <CheckCircle2 className="w-6 h-6 text-green-500 mt-0.5 shrink-0" />
                     ) : (
-                      <XCircle className="w-6 h-6 text-red-500 mt-0.5" />
+                      <XCircle className="w-6 h-6 text-red-500 mt-0.5 shrink-0" />
                     )}
                     <div>
                       <p className={`text-lg font-bold ${isCorrect ? 'text-green-700' : 'text-red-700'}`}>
@@ -373,21 +441,52 @@ export default function QASection({ topic, chapter, subject, formulas }: QASecti
                 {currentIndex < questions.length - 1 ? (
                   <button
                     onClick={handleNext}
-                    className="mt-6 flex items-center gap-2 rounded-xl bg-slate-900 text-white hover:bg-slate-800 px-8 py-3 font-bold shadow-md transition-all active:scale-95"
+                    className="flex items-center gap-2 rounded-xl bg-slate-900 text-white hover:bg-slate-800 px-8 py-3 font-bold shadow-md transition-all active:scale-95"
                   >
                     Next Question <ArrowRight className="w-4 h-4" />
                   </button>
                 ) : (
-                  <div className="mt-8 flex flex-col items-center justify-center p-8 bg-gradient-to-br from-violet-50 to-indigo-50 border border-violet-100 rounded-2xl text-center shadow-lg shadow-violet-100/10 gap-3">
-                    <h4 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-indigo-650 mb-2">🎉 Practice Complete!</h4>
+                  <div className="flex flex-col items-center justify-center p-8 bg-gradient-to-br from-violet-50 to-indigo-50 border border-violet-100 rounded-2xl text-center shadow-lg shadow-violet-100/10 gap-4">
+                    <h4 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-indigo-650">🎉 Practice Complete!</h4>
                     <p className="text-base text-slate-600 font-semibold">You scored <span className="font-extrabold text-violet-600">{score}</span> out of <span className="font-extrabold text-slate-800">{questions.length}</span></p>
+
+                    {latestMastery && (
+                      <div className="flex items-center gap-4 bg-white/80 border border-violet-200/60 rounded-2xl px-6 py-3 shadow-sm">
+                        <div className="flex items-center gap-2 text-sm font-bold text-amber-600">
+                          <Flame className="w-5 h-5 fill-amber-500 text-amber-500" />
+                          <span>{latestMastery.streak} Day Streak</span>
+                        </div>
+                        <div className="h-4 w-[1px] bg-slate-200" />
+                        <div className="flex items-center gap-2 text-sm font-bold text-violet-600">
+                          <Trophy className="w-5 h-5 text-violet-600" />
+                          <span>{latestMastery.score.toFixed(0)}% Mastery Score</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {latestMastery?.recommended && (
+                      <div className="mt-2 p-4 rounded-2xl bg-white/90 border border-violet-200 max-w-md w-full text-center space-y-2">
+                        <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-violet-600 uppercase tracking-wider">
+                          <Target className="w-4 h-4" /> Recommended Next Topic
+                        </div>
+                        <p className="text-sm font-bold text-slate-800">{latestMastery.recommended}</p>
+                        <Link
+                          to="/simulation/$topic"
+                          params={{ topic: latestMastery.recommended }}
+                          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs shadow-md transition-all active:scale-95"
+                        >
+                          Launch Next Simulation <ArrowRight className="w-3.5 h-3.5" />
+                        </Link>
+                      </div>
+                    )}
                     
-                    <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm justify-center mt-3">
+                    <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm justify-center mt-2">
                       <button
                         onClick={() => {
                           setCurrentIndex(0);
                           setAnswers({});
                           setSubmitted({});
+                          setSubmitFeedback({});
                           setScore(0);
                         }}
                         className="flex-1 px-6 py-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-755 font-bold transition-all active:scale-95 shadow-sm"
@@ -417,3 +516,4 @@ export default function QASection({ topic, chapter, subject, formulas }: QASecti
     </div>
   );
 }
+

@@ -1,3 +1,0 @@
-from typing import Any
-
-def load_dotenv(*args: Any, **kwargs: Any) -> bool: ...

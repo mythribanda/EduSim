@@ -1,0 +1,20 @@
+[
+  {
+    "name": "Hooke's Law and Spring Constant",
+    "subject": "Physics",
+    "chapter": "Mechanical Properties of Solids",
+    "grade": "Class 11"
+  },
+  {
+    "name": "Ohm's Law and Resistance",
+    "subject": "Physics",
+    "chapter": "Current Electricity",
+    "grade": "Class 12"
+  },
+  {
+    "name": "Photosynthesis: Light and Dark Reactions",
+    "subject": "Biology",
+    "chapter": "Plant Physiology",
+    "grade": "Class 11"
+  }
+]

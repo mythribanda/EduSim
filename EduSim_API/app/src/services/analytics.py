@@ -1,5 +1,5 @@
 """
-services/analytics.py — Pure Python / SQLAlchemy Class Analytics Service for EduSim.
+app/src/services/analytics.py — Pure Python / SQLAlchemy Class Analytics Service for EduSim.
 
 Computes comprehensive class-level analytics, topic breakdowns, engagement metrics,
 most asked topics, assignment submission counts, and at-risk student rosters using deterministic database queries.
@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 from app.src.config.database import SessionLocal
 from app.src.models.persistence import SessionEvent, Topic, ChatHistory
 from app.src.models.user import User
-from models import Class, StudentEnrollment, StudentTopicMastery, Assignment, Submission
+from app.src.models.school import Class, StudentEnrollment, StudentTopicMastery, Assignment, Submission
 
 logger = logging.getLogger("EduSim.services.analytics")
 
@@ -410,3 +410,6 @@ def export_class_analytics_csv(
         writer.writerow([rank, topic])
 
     return output.getvalue()
+
+
+__all__ = ["get_class_analytics", "export_class_analytics_csv", "format_last_active", "resolve_topic_name"]

@@ -69,24 +69,31 @@ def _write_store(items: list[dict[str, Any]]):
     with open(PERSISTENCE_FILE, "w", encoding="utf-8") as file:
         json.dump(items, file, indent=2, ensure_ascii=True)
 
+from .templates import get_precompiled_template
+
 async def generate_simulation_synthesis(prompt: str, topic: str | None = None):
-    """Full generation flow with persistence."""
-    # 1. Retrieve
-    context = retrieve_context(prompt, topic)
-    
-    # 2. Build Prompt
-    dsl_prompt = build_dsl_prompt(prompt, context)
-    
-    # 3. Generate
-    raw_text = generate_llm_text(dsl_prompt, temperature=0.2, max_output_tokens=3500)
-    
-    # 4. Sanitize
-    parsed_json = sanitize_json(raw_text)
-    
-    # 5. Validate
-    valid_response = validate_simulation(parsed_json)
-    if not valid_response["success"]:
-        raise ValueError(f"DSL validation failed: {valid_response['errors']}")
+    """Full generation flow with persistence and fast template caching."""
+    # 0. Check precompiled templates first for instant zero-latency loading
+    precompiled = get_precompiled_template(topic or prompt)
+    if precompiled:
+        valid_response = validate_simulation(precompiled)
+    else:
+        # 1. Retrieve
+        context = retrieve_context(prompt, topic)
+        
+        # 2. Build Prompt
+        dsl_prompt = build_dsl_prompt(prompt, context)
+        
+        # 3. Generate
+        raw_text = generate_llm_text(dsl_prompt, temperature=0.2, max_output_tokens=3500)
+        
+        # 4. Sanitize
+        parsed_json = sanitize_json(raw_text)
+        
+        # 5. Validate
+        valid_response = validate_simulation(parsed_json)
+        if not valid_response["success"]:
+            raise ValueError(f"DSL validation failed: {valid_response['errors']}")
 
     # 6. Physical Compiler Pipeline & Initial Observable State Pre-computation
     try:
@@ -150,27 +157,34 @@ def _format_sse_event(event_type: str, data: str | dict) -> str:
         data = json.dumps(data)
     return f"event: {event_type}\ndata: {data}\n\n"
 
-def generate_simulation_synthesis_stream(prompt: str, topic: str | None = None):
+async def generate_simulation_synthesis_stream(prompt: str, topic: str | None = None):
     try:
         simulation_id = str(uuid4())
         yield _format_sse_event("started", {"id": simulation_id, "stage": "Initializing..."})
         
-        # 1. Retrieve
-        yield _format_sse_event("progress", {"stage": "Retrieving textbook context..."})
-        context = retrieve_context(prompt, topic)
-        yield _format_sse_event("progress", {"stage": "Context retrieved."})
+        precompiled = get_precompiled_template(topic or prompt)
+        if precompiled:
+            yield _format_sse_event("progress", {"stage": "Loading verified Physics template..."})
+            valid_response = validate_simulation(precompiled)
+            if not valid_response["success"]:
+                raise ValueError(f"Template validation failed: {valid_response['errors']}")
+        else:
+            # 1. Retrieve
+            yield _format_sse_event("progress", {"stage": "Retrieving textbook context..."})
+            context = retrieve_context(prompt, topic)
+            yield _format_sse_event("progress", {"stage": "Context retrieved."})
 
-        # 2. Build Prompt
-        yield _format_sse_event("progress", {"stage": "Synthesizing Architecture..."})
-        dsl_prompt = build_dsl_prompt(prompt, context)
+            # 2. Build Prompt
+            yield _format_sse_event("progress", {"stage": "Synthesizing Architecture..."})
+            dsl_prompt = build_dsl_prompt(prompt, context)
 
-        # 3. Generate
-        raw_generated = generate_dsl(dsl_prompt)
+            # 3. Generate
+            raw_generated = generate_dsl(dsl_prompt)
 
-        # 4. Sanitize & 5. Validate
-        yield _format_sse_event("progress", {"stage": "Validating EduSim Contract..."})
-        response_json = sanitize_dsl(raw_generated)
-        valid_response = validate_dsl(response_json)
+            # 4. Sanitize & 5. Validate
+            yield _format_sse_event("progress", {"stage": "Validating EduSim Contract..."})
+            response_json = sanitize_dsl(raw_generated)
+            valid_response = validate_dsl(response_json)
 
         # 6. Save
         yield _format_sse_event("progress", {"stage": "Saving to store..."})
@@ -204,7 +218,7 @@ def generate_simulation_synthesis_stream(prompt: str, topic: str | None = None):
             "payload": compiled_payload
         }
 
-        with _store_lock:
+        async with _store_lock:
             items = _read_store()
             items.insert(0, item)
             _write_store(items)

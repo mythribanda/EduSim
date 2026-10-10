@@ -177,8 +177,8 @@ export default function ClassDetailPage({
 
       // Fetch class metadata & students list in parallel
       const [classRes, studentsRes] = await Promise.all([
-        fetch(`${API_URL}/classes/${classId}`, { credentials: "omit", headers }),
-        fetch(`${API_URL}/classes/${classId}/students`, { credentials: "omit", headers }),
+        fetch(`${API_URL}/api/classes/${classId}`, { credentials: "omit", headers }),
+        fetch(`${API_URL}/api/classes/${classId}/students`, { credentials: "omit", headers }),
       ]);
 
       if (!classRes.ok) {
@@ -230,7 +230,7 @@ export default function ClassDetailPage({
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
       const res = await fetch(
-        `${API_URL}/classes/${classId}/recent-activity?limit=20`,
+        `${API_URL}/api/classes/${classId}/recent-activity?limit=20`,
         { credentials: "omit", headers }
       );
       if (!res.ok) {

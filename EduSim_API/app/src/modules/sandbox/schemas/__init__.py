@@ -22,7 +22,7 @@ from .object_schema import (
     Vector2D,
 )
 
-from .constaraint_schema import (
+from .constraint_schema import (
     SandboxConstraint,
     ConstraintAnchor,
     ConstraintEducation,

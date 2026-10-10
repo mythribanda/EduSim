@@ -60,6 +60,12 @@ DATABASE_URL=postgresql://username:password@localhost:5432/edusim
 ```
 *If `DATABASE_URL` is omitted, the application will default to a local SQLite database (`edusim.db`).*
 
+### 4. Run Database Migrations
+Apply database migrations using Alembic to set up or update the schema:
+```bash
+alembic upgrade head
+```
+
 ---
 
 ## Running the Server

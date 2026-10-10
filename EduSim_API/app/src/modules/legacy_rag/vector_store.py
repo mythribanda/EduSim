@@ -7,14 +7,34 @@ import pickle
 import shutil
 from pathlib import Path
 
+import os
+from pathlib import Path
+
 # =========================================================
 # VECTOR STORE PATHS
 # =========================================================
-INDEX_PATH = Path("faiss_index")
+EDUSIM_API_DIR = Path(__file__).resolve().parents[4]
+
+FAISS_INDEX_DIR_ENV = os.getenv("FAISS_INDEX_DIR")
+if FAISS_INDEX_DIR_ENV:
+    INDEX_PATH = Path(FAISS_INDEX_DIR_ENV).resolve()
+else:
+    INDEX_PATH = (EDUSIM_API_DIR / "faiss_index").resolve()
+
+TEXTBOOKS_DIR_ENV = os.getenv("TEXTBOOKS_DIR")
+if TEXTBOOKS_DIR_ENV:
+    TEXTBOOKS_DIR = Path(TEXTBOOKS_DIR_ENV).resolve()
+else:
+    TEXTBOOKS_DIR = (EDUSIM_API_DIR / "textbooks").resolve()
 
 INDEX_FILE = INDEX_PATH / "index.faiss"
-
 METADATA_FILE = INDEX_PATH / "metadata.pkl"
+
+
+def is_index_ready() -> bool:
+    """Check if the FAISS index and metadata files are present."""
+    return INDEX_FILE.exists() and METADATA_FILE.exists()
+
 
 
 # =========================================================
