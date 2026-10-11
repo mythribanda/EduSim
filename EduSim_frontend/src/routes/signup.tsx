@@ -34,6 +34,7 @@ function Signup() {
   const navigate = useNavigate();
   const { register, loginWithGoogle, isLoading } = useAuthStore();
 
+  const [selectedRole, setSelectedRole] = useState<"student" | "teacher">("student");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
@@ -74,7 +75,7 @@ function Signup() {
   }, []);
 
   const handleGoogleSignInSuccess = async (credential: string) => {
-    const success = await loginWithGoogle(credential);
+    const success = await loginWithGoogle(credential, selectedRole);
     if (success) {
       toast.success("Welcome to EduSim!");
       navigate({ to: "/dashboard" });
@@ -196,6 +197,7 @@ function Signup() {
         name: name.trim(),
         email: email.trim(),
         password,
+        role: selectedRole,
         mobile: passwordChecks.digitsOnly || undefined,
       });
 
@@ -330,6 +332,32 @@ function Signup() {
               <Sparkles className="w-5 h-5 text-primary animate-pulse" />
             </h3>
             <p className="text-xs text-muted-foreground">Unlock interactive educational simulations</p>
+          </div>
+
+          {/* Role Segmented Picker */}
+          <div className="mb-4 p-1 bg-secondary rounded-2xl flex gap-1 border border-border/60">
+            <button
+              type="button"
+              onClick={() => setSelectedRole("student")}
+              className={`flex-1 py-2 text-xs font-semibold rounded-xl transition-all duration-200 cursor-pointer ${
+                selectedRole === "student"
+                  ? "bg-primary text-white shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Student
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedRole("teacher")}
+              className={`flex-1 py-2 text-xs font-semibold rounded-xl transition-all duration-200 cursor-pointer ${
+                selectedRole === "teacher"
+                  ? "bg-primary text-white shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Teacher
+            </button>
           </div>
 
           <form onSubmit={handleSignupSubmit} className="space-y-4 text-left" noValidate>

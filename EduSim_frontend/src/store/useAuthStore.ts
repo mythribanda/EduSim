@@ -26,9 +26,9 @@ interface AuthState {
   hasHydrated: boolean;
   
   // Actions
-  login: (credentials: { email: string; password: string }) => Promise<boolean>;
-  loginWithGoogle: (idToken: string) => Promise<boolean>;
-  register: (data: { name: string; email: string; password: string; role?: string; mobile?: string; mobile_number?: string }) => Promise<boolean>;
+  login: (credentials: { email: string; password: string; role?: "student" | "teacher" }) => Promise<boolean>;
+  loginWithGoogle: (idToken: string, role?: "student" | "teacher") => Promise<boolean>;
+  register: (data: { name: string; email: string; password: string; role?: "student" | "teacher"; mobile?: string; mobile_number?: string }) => Promise<boolean>;
   logout: () => void;
   checkAuth: () => Promise<boolean>;
   
@@ -82,14 +82,14 @@ export const useAuthStore = create<AuthState>()(
         set({ hasHydrated: hydrated });
       },
 
-      login: async ({ email, password }) => {
+      login: async ({ email, password, role }) => {
         set({ isLoading: true });
         
         try {
           const response = await fetchJsonWithRetry<any>(getApiUrl("/api/auth/login"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, password }),
+            body: JSON.stringify({ email, password, ...(role ? { role } : {}) }),
           });
 
           const { access_token, refresh_token, user } = response;
@@ -128,7 +128,10 @@ export const useAuthStore = create<AuthState>()(
           set({ isLoading: false });
           let msg = error.message || "Unable to login. Please try again";
           const lowerMsg = msg.toLowerCase();
-          if (lowerMsg.includes("invalid") || lowerMsg.includes("wrong") || lowerMsg.includes("credential")) {
+          if (lowerMsg.includes("registered as")) {
+            // Keep specific backend role mismatch message (e.g. "This account is registered as a teacher")
+            msg = error.message;
+          } else if (lowerMsg.includes("invalid") || lowerMsg.includes("wrong") || lowerMsg.includes("credential")) {
             msg = "Invalid email or password";
           } else if (lowerMsg.includes("not found") || lowerMsg.includes("does not exist") || lowerMsg.includes("no account")) {
             msg = "Account does not exist";
@@ -146,14 +149,14 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      loginWithGoogle: async (idToken) => {
+      loginWithGoogle: async (idToken, role) => {
         set({ isLoading: true });
         
         try {
           const response = await fetchJsonWithRetry<any>(getApiUrl("/api/auth/google"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id_token: idToken }),
+            body: JSON.stringify({ id_token: idToken, ...(role ? { role } : {}) }),
           });
 
           const { access_token, refresh_token, user } = response;

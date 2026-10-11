@@ -1,0 +1,29 @@
+# Root-level .dockerignore to ensure docker build never picks up textbooks or runtime caches
+.git
+.gitignore
+.vscode
+.idea
+
+# Textbooks PDFs — NEVER copy into images
+textbooks/
+*.pdf
+
+# Python caches
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Node caches
+node_modules/
+.vite/
+.output/
+.wrangler/
+dist/
+
+# Local databases
+*.db
+*.sqlite3
+
+# FAISS indices
+faiss_index/

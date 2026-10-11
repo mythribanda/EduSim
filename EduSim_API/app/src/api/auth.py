@@ -40,7 +40,7 @@ class RegisterRequest(BaseModel):
     name: str = Field(..., min_length=2, max_length=100)
     email: EmailStr
     password: str = Field(..., min_length=8, max_length=72)
-    role: str = Field("student", pattern="^(student|teacher|educator|admin)$")
+    role: str = Field("student", pattern="^(student|teacher)$")
     mobile_number: Optional[str] = None
 
     @model_validator(mode="before")
@@ -56,10 +56,12 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+    role: Optional[str] = None
 
 
 class GoogleLoginRequest(BaseModel):
     id_token: str
+    role: Optional[str] = Field(None, pattern="^(student|teacher)$")
 
 
 class RefreshTokenRequest(BaseModel):
@@ -82,11 +84,13 @@ class ResetPasswordRequest(BaseModel):
 class SendOtpRequest(BaseModel):
     country_code: str = Field("+91")
     mobile_number: str = Field(..., min_length=5, max_length=15)
+    role: Optional[str] = Field(None, pattern="^(student|teacher)$")
 
 
 class VerifyOtpRequest(BaseModel):
     mobile_number: str
     otp_code: str = Field(..., min_length=6, max_length=6)
+    role: Optional[str] = Field(None, pattern="^(student|teacher)$")
 
 
 class UserResponse(BaseModel):
@@ -115,6 +119,7 @@ class TokenResponse(BaseModel):
     refresh_token: str
     token_type: str = "bearer"
     user: UserResponse
+    role: Optional[str] = None
 
 
 class RegisterResponse(BaseModel):
@@ -264,6 +269,12 @@ def login(request: LoginRequest, http_request: Request, db: Session = Depends(ge
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password"
         )
+
+    if request.role and request.role != user.role:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"This account is registered as a {user.role}",
+        )
         
     # Generate tokens
     access_token = create_access_token(data={"sub": str(user.id), "role": user.role})
@@ -302,6 +313,7 @@ def login(request: LoginRequest, http_request: Request, db: Session = Depends(ge
         "refresh_token": refresh_token,
         "token_type": "bearer",
         "user": user,
+        "role": user.role,
         "message": "Welcome back!"
     }
 
@@ -360,11 +372,12 @@ def google_login(request: GoogleLoginRequest, http_request: Request, db: Session
     # 3. Create user if not exists
     if not user:
         sentinel_pwd = "OAUTH_GOOGLE_SENTINEL_" + uuid.uuid4().hex
+        assigned_role = request.role if request.role else "student"
         user = User(
             name=name,
             email=email,
             password_hash=sentinel_pwd,
-            role="student",
+            role=assigned_role,
             is_email_verified=True,
             avatar=avatar
         )
@@ -418,6 +431,7 @@ def google_login(request: GoogleLoginRequest, http_request: Request, db: Session
         "refresh_token": refresh_token,
         "token_type": "bearer",
         "user": user,
+        "role": user.role,
         "message": "Welcome!"
     }
 
@@ -473,7 +487,8 @@ def refresh_token(request: RefreshTokenRequest, db: Session = Depends(get_db)):
         "access_token": access_token,
         "refresh_token": new_refresh_token,
         "token_type": "bearer",
-        "user": user
+        "user": user,
+        "role": user.role,
     }
 
 
@@ -564,11 +579,12 @@ def send_otp(request: SendOtpRequest, db: Session = Depends(get_db)):
         mock_email = f"mobile_{request.mobile_number[-4:]}@edusim.local"
         user = db.query(User).filter(User.email == mock_email).first()
         if not user:
+            assigned_role = request.role if request.role else "student"
             user = User(
-                name="Mobile Student",
+                name="Mobile Student" if assigned_role == "student" else "Mobile Teacher",
                 email=mock_email,
                 password_hash=hash_password("MobilePass123!"),
-                role="student",
+                role=assigned_role,
                 mobile_number=request.mobile_number,
                 is_email_verified=True,
                 is_mobile_verified=False
@@ -686,6 +702,7 @@ def verify_otp(request: VerifyOtpRequest, db: Session = Depends(get_db)):
         "refresh_token": refresh_token,
         "token_type": "bearer",
         "user": user,
+        "role": user.role,
         "message": "Welcome back!"
     }
 

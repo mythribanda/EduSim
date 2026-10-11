@@ -1,0 +1,13 @@
+.git
+.gitignore
+.vscode
+.idea
+node_modules
+.wrangler
+.output
+.vite
+dist
+.env
+.env.*
+*.pdf
+textbooks/

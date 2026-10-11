@@ -12,14 +12,8 @@ from app.src.models.persistence import (
     SessionEvent,
 )
 from app.src.models.school import (
-    Class,
-    TeacherClassSubject,
-    StudentEnrollment,
     StudentTopicMastery,
-    Assignment,
-    Submission,
     Question,
-    generate_join_code,
 )
 
 __all__ = [
@@ -34,12 +28,6 @@ __all__ = [
     "UserSetting",
     "UserSession",
     "SessionEvent",
-    "Class",
-    "TeacherClassSubject",
-    "StudentEnrollment",
     "StudentTopicMastery",
-    "Assignment",
-    "Submission",
     "Question",
-    "generate_join_code",
 ]

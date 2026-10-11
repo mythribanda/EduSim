@@ -29,7 +29,6 @@ node_modules/
 .turbo/
 .parcel-cache/
 .output/
-package-lock.json
 yarn.lock
 pnpm-lock.yaml
 
@@ -86,6 +85,8 @@ htmlcov/
 .nyc_output/
 coverage/
 *.tsbuildinfo
+test-results/
+.tanstack/
 
 # ---------------------------------------------------------------------------
 # Scratch / dev playgrounds  (both sub-projects have these)

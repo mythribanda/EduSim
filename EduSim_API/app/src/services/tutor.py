@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from app.src.config.database import SessionLocal
 from app.src.models.user import User
 from app.src.models.persistence import ChatHistory, Topic
-from app.src.models.school import StudentTopicMastery, Class, StudentEnrollment
+from app.src.models.school import StudentTopicMastery
 from app.src.services.mastery import get_weak_topics, update_mastery, TopicMasteryItem
 from app.src.services.ai_router import call_ai
 
@@ -175,26 +175,8 @@ def build_tutor_prompt(
         user = db.query(User).filter(User.id == uid).first()
         student_name = getattr(user, "name", "Student") if user else "Student"
 
-        # Determine class level (e.g., 'Class 10')
+        # Determine class level (default: 'Class 10')
         class_level = "Class 10"
-        enrollment = (
-            db.query(StudentEnrollment)
-            .filter(
-                StudentEnrollment.student_id == uid,
-                StudentEnrollment.status == "active",
-            )
-            .first()
-        )
-        if enrollment and enrollment.class_:
-            grade = enrollment.class_.grade_level
-            if grade:
-                class_level = f"Class {grade}" if not str(grade).lower().startswith("class") else str(grade)
-            elif enrollment.class_.name:
-                class_level = enrollment.class_.name
-        elif user and user.class_id:
-            cls = db.query(Class).filter(Class.id == user.class_id).first()
-            if cls and cls.grade_level:
-                class_level = f"Class {cls.grade_level}" if not str(cls.grade_level).lower().startswith("class") else str(cls.grade_level)
 
         # Retrieve weak topics and topic masteries
         weak_topics: List[TopicMasteryItem] = get_weak_topics(uid, db=db)

@@ -42,10 +42,10 @@ final_output.json
 # REVIEW: Ignoring the entire "data/" directory makes the "!data/README.md" negation
 #         above (line 15) dead. Confirm this is intentional.
 data/
-# REVIEW: Ignoring the entire "tests/" directory means test files will never be
-#         committed. For a shared/open-source project this is usually unintentional.
-#         Consider ignoring only test *output* (e.g. .pytest_cache/, htmlcov/) instead.
-tests/
+# test output ignored
+.pytest_cache/
+htmlcov/
+.coverage
 v*_test_output.json
 v*_test_.json
 test_v2_suite.py

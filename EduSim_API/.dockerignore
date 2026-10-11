@@ -1,0 +1,37 @@
+# Git & editor
+.git
+.gitignore
+.vscode
+.idea
+
+# Python artifacts
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache
+.coverage
+htmlcov
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Local databases & runtime caches
+*.db
+*.sqlite3
+
+# Textbook PDFs - NEVER copy into image
+textbooks/
+data/physics/
+data/textbooks/
+*.pdf
+
+# Local FAISS indices
+faiss_index/
+vectorstore/
+
+# Scratch & test scripts
+scratch/
+test-results/

@@ -1,21 +1,11 @@
 from app.src.middleware.rbac import (
-    normalize_role,
-    require_role,
+    get_current_user,
     require_admin,
-    require_educator,
-    require_student,
-    check_class_membership,
-    require_class_member,
-    require_student_or_teacher,
+    require_self_or_admin,
 )
 
 __all__ = [
-    "normalize_role",
-    "require_role",
+    "get_current_user",
     "require_admin",
-    "require_educator",
-    "require_student",
-    "check_class_membership",
-    "require_class_member",
-    "require_student_or_teacher",
+    "require_self_or_admin",
 ]

@@ -1,6 +1,7 @@
 import { User, Menu, Sun, Moon } from "lucide-react";
 import { GlobalSearch } from "./GlobalSearch";
 import { useSidebarStore } from "@/store/useSidebarStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import { motion } from "framer-motion";
 import { useRouterState, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
@@ -32,6 +33,8 @@ export function Navbar() {
     return "EduSim";
   };
 
+  const { user } = useAuthStore();
+
   if (isDesktop) {
     return (
       <div className="fixed top-4 left-0 right-0 z-[50] pointer-events-none px-4 md:px-0">
@@ -58,6 +61,12 @@ export function Navbar() {
           </div>
 
           <div className="flex items-center gap-3 shrink-0 pointer-events-auto">
+            {user?.role && (
+              <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-secondary border border-border text-primary capitalize tracking-wide">
+                {user.role}
+              </span>
+            )}
+
             <button
               onClick={toggleTheme}
               className="w-11 h-11 rounded-xl flex items-center justify-center bg-card border border-border shadow-sm hover:bg-secondary/50 transition-all hover:scale-105 active:scale-95 cursor-pointer"
@@ -111,6 +120,12 @@ export function Navbar() {
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
+          {user?.role && (
+            <span className="hidden xs:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-secondary border border-border text-primary capitalize">
+              {user.role}
+            </span>
+          )}
+
           <button
             onClick={toggleTheme}
             className="w-10 h-10 rounded-full bg-card border border-border/85 flex items-center justify-center hover:bg-secondary/50 transition-all hover:scale-105 active:scale-95 cursor-pointer"

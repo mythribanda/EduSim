@@ -49,6 +49,8 @@ Thumbs.db
 # Coverage and test reports
 coverage/
 .nyc_output/
+.tanstack/
+test-results/
 
 # Bundler / package manager
 .pnp.cjs

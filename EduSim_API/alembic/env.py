@@ -10,7 +10,7 @@ from sqlalchemy import engine_from_config, pool
 from app.src.config.database import Base, DATABASE_URL
 from app.src.models import user as user_models  # noqa: F401
 from app.src.models import persistence as persistence_models  # noqa: F401
-from app.src.models.school import Class, TeacherClassSubject, StudentEnrollment, StudentTopicMastery, Assignment, Submission, Question  # noqa: F401
+from app.src.models.school import StudentTopicMastery, Question  # noqa: F401
 
 
 

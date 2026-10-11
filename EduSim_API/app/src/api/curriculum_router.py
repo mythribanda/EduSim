@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.src.config.database import get_db
 from app.src.models.persistence import CurriculumClass, Subject, Chapter, Topic
 from app.src.models.user import User
-from app.src.middleware.rbac import require_role
+from app.src.middleware.rbac import require_admin
 
 router = APIRouter(prefix="/curriculum", tags=["Curriculum"])
 
@@ -126,7 +126,7 @@ class ClassPayload(BaseModel):
 @router.post("/seed")
 def seed_curriculum(
     payload: List[ClassPayload],
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
     for c_order, c in enumerate(payload):

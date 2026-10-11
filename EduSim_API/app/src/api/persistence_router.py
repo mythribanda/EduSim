@@ -1003,7 +1003,7 @@ def create_session_event(
         }
     except Exception as e:
         db.rollback()
-        logger.error(f"[Database] Failed to write session_event: {e}")
+        logger.error(f"[Database] Failed to write session_event: {e}", exc_info=True)
         from fastapi.responses import JSONResponse
         return JSONResponse(
             status_code=500,

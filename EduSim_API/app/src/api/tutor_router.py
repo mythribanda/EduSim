@@ -281,7 +281,7 @@ async def analyze_query(
                 )
         except Exception as e:
             db.rollback()
-            logger.error(f"Exception during save: {repr(e)}")
+            logger.error(f"Exception during save: {repr(e)}", exc_info=True)
             from fastapi.responses import JSONResponse
             return JSONResponse(status_code=500, content={"success": False, "message": "Failed to save learning summary."})
     
@@ -333,7 +333,7 @@ async def get_tutor_guide(
                 db.commit()
             except Exception as e:
                 db.rollback()
-                logger.error(f"Exception during save guide activity: {repr(e)}")
+                logger.error(f"Exception during save guide activity: {repr(e)}", exc_info=True)
                 
         return {
             "success": True,

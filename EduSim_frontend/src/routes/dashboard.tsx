@@ -157,14 +157,14 @@ function Dashboard() {
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary border border-border text-xs text-primary font-mono mb-4">
               <GraduationCap className="w-3.5 h-3.5" />
-              {user?.role === "teacher" ? "TEACHER DASHBOARD" : "STUDENT DASHBOARD"}
+              {user?.role === "teacher" ? "TEACHER" : "STUDENT"}
             </div>
             <motion.h1 
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               className="text-4xl font-bold mb-3 tracking-tight text-foreground flex items-center gap-2"
             >
-              Welcome back, <span className="text-primary font-extrabold">{user?.name || "Explorer"}</span>! 
+              Welcome, <span className="text-primary font-extrabold">{user?.name || "Explorer"}</span> · {user?.role === "teacher" ? "Teacher" : "Student"}
               <motion.span 
                 className="inline-block cursor-grab active:cursor-grabbing"
                 animate={{

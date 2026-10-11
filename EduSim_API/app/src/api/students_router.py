@@ -41,8 +41,8 @@ from app.src.models.persistence import (
     UserSession,
 )
 from app.src.models.user import User
-from app.src.middleware.rbac import require_student_or_teacher, require_role, normalize_role
-from app.src.models.school import Class, StudentEnrollment, StudentTopicMastery, TeacherClassSubject
+from app.src.middleware.rbac import get_current_user, require_self_or_admin
+from app.src.models.school import StudentTopicMastery
 
 logger = logging.getLogger("EduSim.api.students")
 
@@ -100,51 +100,17 @@ def resolve_topic_name(topic_id: str, db: Session) -> str:
 
 def resolve_student_class_name(student_uuid: uuid.UUID, student_user: User, db: Session) -> str:
     """
-    Resolve human-readable class name (e.g. '10-A') for the student.
-    Prioritizes active StudentEnrollment -> Class model -> user.class_id -> 'Unassigned'.
+    Resolve human-readable class name (e.g. 'Class 10') for the student.
+    Matches against CurriculumClass or falls back to 'Class 10'.
     """
-    # 1. Active enrollment in Class table
     try:
-        enrollment = (
-            db.query(StudentEnrollment)
-            .join(Class, StudentEnrollment.class_id == Class.id)
-            .filter(
-                StudentEnrollment.student_id == student_uuid,
-                StudentEnrollment.status == "active",
-            )
-            .order_by(StudentEnrollment.enrolled_at.desc())
-            .first()
-        )
-        if enrollment and enrollment.class_ and enrollment.class_.name:
-            return enrollment.class_.name
-    except Exception as e:
-        logger.debug(f"Error querying StudentEnrollment: {e}")
+        curr_rec = db.query(CurriculumClass).order_by(CurriculumClass.grade.asc()).first()
+        if curr_rec and curr_rec.name:
+            return curr_rec.name
+    except Exception:
+        pass
 
-    # 2. Match user.class_id against Class or CurriculumClass
-    user_class_id = getattr(student_user, "class_id", None)
-    if user_class_id:
-        try:
-            # Check Class table
-            cls_rec = db.query(Class).filter(Class.id == user_class_id).first()
-            if cls_rec and cls_rec.name:
-                return cls_rec.name
-        except Exception:
-            pass
-
-        try:
-            # Check CurriculumClass table
-            curr_rec = db.query(CurriculumClass).filter(
-                (CurriculumClass.id == user_class_id) | (CurriculumClass.name == str(user_class_id))
-            ).first()
-            if curr_rec and curr_rec.name:
-                return curr_rec.name
-        except Exception:
-            pass
-
-        return str(user_class_id)
-
-    # 3. Fallback default
-    return "10-A"
+    return "Class 10"
 
 
 def calculate_streak_days(student_uuid: uuid.UUID, db: Session) -> int:
@@ -354,7 +320,7 @@ def determine_recommended_next(
 @router.get("/{student_id}/profile", summary="Get Student Profile for AI Tutor & Learning Path")
 def get_student_profile(
     student_id: str,
-    current_user: User = Depends(require_student_or_teacher("student_id")),
+    current_user: User = Depends(require_self_or_admin("student_id")),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """
@@ -446,116 +412,6 @@ def get_student_profile(
     }
 
 
-class StudentNotifyRequest(BaseModel):
-    message: Optional[str] = Field(None, description="Custom reminder message")
-    topic: Optional[str] = Field(None, description="Related topic for practice")
-    type: Optional[str] = Field("reminder", description="Notification type")
 
-
-@router.post("/{student_id}/notify")
-def notify_student(
-    student_id: str = Path(..., description="Student UUID or ID"),
-    payload: Optional[StudentNotifyRequest] = Body(default=None),
-    current_user: User = Depends(require_role("educator", "admin")),
-    db: Session = Depends(get_db),
-):
-    """
-    Send an academic reminder or nudge to an at-risk student.
-    Records a notification session event and returns delivery status.
-    """
-    try:
-        student_uuid = uuid.UUID(str(student_id))
-    except (ValueError, TypeError):
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Invalid student UUID format.",
-        )
-
-    student = db.query(User).filter(User.id == student_uuid).first()
-    if not student:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Student with ID '{student_id}' not found.",
-        )
-
-    user_role = normalize_role(getattr(current_user, "role", None))
-    if user_role != "admin":
-        is_authorized = False
-        # Matches educator_id directly
-        if getattr(student, "educator_id", None) and str(student.educator_id) == str(current_user.id):
-            is_authorized = True
-        # Matches class_id
-        elif (
-            getattr(current_user, "class_id", None)
-            and getattr(student, "class_id", None)
-            and str(current_user.class_id) == str(student.class_id)
-        ):
-            is_authorized = True
-        else:
-            try:
-                from app.src.models.school import Class, StudentEnrollment, TeacherClassSubject
-                created_class_ids = {
-                    row[0] for row in db.query(Class.id).filter(Class.created_by == current_user.id).all()
-                }
-                taught_class_ids = {
-                    row[0] for row in db.query(TeacherClassSubject.class_id).filter(TeacherClassSubject.teacher_id == current_user.id).all()
-                }
-                all_teacher_class_ids = created_class_ids | taught_class_ids
-                if all_teacher_class_ids:
-                    enrolled = db.query(StudentEnrollment).filter(
-                        StudentEnrollment.student_id == student_uuid,
-                        StudentEnrollment.class_id.in_(all_teacher_class_ids),
-                        StudentEnrollment.status == "active",
-                    ).first()
-                    if enrolled:
-                        is_authorized = True
-                    elif getattr(student, "class_id", None) and (
-                        student.class_id in all_teacher_class_ids or
-                        any(str(student.class_id) == str(cid) for cid in all_teacher_class_ids)
-                    ):
-                        is_authorized = True
-            except Exception as e:
-                logger.error(f"Error checking student enrollment: {e}", exc_info=True)
-
-        if not is_authorized:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied. You are not an authorized teacher for this student.",
-            )
-
-    student_name = student.name or student.email or "Student"
-    topic_str = payload.topic if payload and payload.topic else "physics concepts"
-    msg_text = (
-        payload.message
-        if payload and payload.message
-        else f"Hi {student_name}, your teacher noticed you might need some extra practice on {topic_str}. Try asking the AI Tutor or running a simulation!"
-    )
-
-    try:
-        # Record notification event in session_events
-        event = SessionEvent(
-            id=uuid.uuid4(),
-            student_id=student_uuid,
-            event_type="teacher_reminder",
-            payload={
-                "message": msg_text,
-                "topic": topic_str,
-                "sent_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            },
-            created_at=datetime.datetime.now(datetime.timezone.utc),
-        )
-        db.add(event)
-        db.commit()
-    except Exception as e:
-        logger.warning(f"Could not persist notification session event: {e}")
-        db.rollback()
-
-    return {
-        "success": True,
-        "message": f"Reminder sent to {student_name}.",
-        "student_id": str(student_uuid),
-        "student_name": student_name,
-        "sent_message": msg_text,
-    }
 
 

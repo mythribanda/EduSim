@@ -1,0 +1,119 @@
+services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL Database (Version 16)
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: edusim_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-edusim_secret_password}
+      POSTGRES_DB: ${POSTGRES_DB:-edusim}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-edusim}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - edusim_net
+
+  # ---------------------------------------------------------------------------
+  # EduSim_API (FastAPI Backend)
+  # ---------------------------------------------------------------------------
+  api:
+    build:
+      context: ./EduSim_API
+      dockerfile: Dockerfile
+    container_name: edusim_api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8001:8001"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-edusim_secret_password}@postgres:5432/${POSTGRES_DB:-edusim}
+      JWT_SECRET: ${JWT_SECRET:-edusim_super_secure_jwt_secret_key_at_least_32_chars_long}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-edusim_super_secure_jwt_secret_key_at_least_32_chars_long}
+      ALLOWED_ORIGINS: http://localhost:8080,http://frontend:8080
+      FRONTEND_URL: http://localhost:8080
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_TIMEOUT: "60"
+      TEXTBOOKS_DIR: /data/textbooks
+      FAISS_INDEX_DIR: /app/faiss_index
+      USE_CLOUD_AI: ${USE_CLOUD_AI:-false}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+    volumes:
+      - ./textbooks:/data/textbooks:ro
+      - faiss_index_data:/app/faiss_index
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8001/api/db/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - edusim_net
+
+  # ---------------------------------------------------------------------------
+  # EduSim_frontend (Single React/Vite/Bun Frontend)
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./EduSim_frontend
+      dockerfile: Dockerfile
+    container_name: edusim_frontend
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      VITE_API_URL: http://localhost:8001
+      NODE_ENV: production
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:8080 > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - edusim_net
+
+  # ---------------------------------------------------------------------------
+  # Optional Ollama Local LLM Inference Service (Behind compose profile)
+  # ---------------------------------------------------------------------------
+  ollama:
+    image: ollama/ollama:latest
+    container_name: edusim_ollama
+    profiles:
+      - ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - edusim_net
+
+# -----------------------------------------------------------------------------
+# Named Volumes & Networks
+# -----------------------------------------------------------------------------
+volumes:
+  postgres_data:
+    name: edusim_postgres_data
+  faiss_index_data:
+    name: edusim_faiss_index_data
+  ollama_data:
+    name: edusim_ollama_data
+
+networks:
+  edusim_net:
+    name: edusim_net
+    driver: bridge
