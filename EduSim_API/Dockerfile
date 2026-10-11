@@ -31,6 +31,9 @@ RUN grep -v '^torch==' requirements.txt > requirements-no-torch.txt && \
     pip install --no-cache-dir -r requirements-no-torch.txt && \
     rm requirements-no-torch.txt
 
+# Pre-download SentenceTransformers model so startup does not download from HuggingFace
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
+
 # Create non-root user and group
 RUN groupadd -r edusim && useradd -r -g edusim -u 1000 -d /app edusim
 

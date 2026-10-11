@@ -67,6 +67,9 @@ services:
     build:
       context: ./EduSim_frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8001}
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-1095504585852-r7ort3l6fmt852hi1paapo3k601d9f4o.apps.googleusercontent.com}
     container_name: edusim_frontend
     restart: unless-stopped
     depends_on:

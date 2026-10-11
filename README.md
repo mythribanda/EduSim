@@ -223,7 +223,34 @@ cd EduSim
 
 ---
 
-## ☁️ Running Without Ollama (Cloud-Only Mode)
+## 🐳 Running with Docker
+
+EduSim is fully Dockerized with multi-container orchestration via Docker Compose.
+
+### Quick Start
+1. Ensure Docker and Docker Compose are installed.
+2. (Optional) Create local `.env` files if customizing secrets:
+   - `EduSim_API/.env` (see `EduSim_API/.env.example`)
+   - `EduSim_frontend/.env` (see `EduSim_frontend/.env.example`)
+3. Build and launch all services:
+   ```bash
+   docker compose up --build
+   ```
+
+### Services & Port Mappings
+| Service | Host Port | Container Port | Purpose |
+|---|---|---|---|
+| **edusim_frontend** | `http://localhost:8080` | `8080` | Single unified React + TanStack application |
+| **edusim_api** | `http://localhost:8001` | `8001` | FastAPI backend, RAG, and physics engine |
+| **edusim_postgres** | `localhost:5432` | `5432` | PostgreSQL 16 database |
+| **edusim_ollama** (optional) | `localhost:11434` | `11434` | Local LLM inference (`--profile ollama`) |
+
+### Health Checks & Startup Order
+- Postgres starts first and verifies readiness via `pg_isready`.
+- `edusim_api` waits for healthy Postgres, runs Alembic migrations (`alembic upgrade head`), and starts Uvicorn.
+- `edusim_frontend` depends on `edusim_api` healthy condition before starting its service.
+
+---
 
 If you are running on a machine without a local GPU/Ollama setup, you can switch the entire platform to cloud AI inference in seconds:
 

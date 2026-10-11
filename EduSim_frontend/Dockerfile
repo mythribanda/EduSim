@@ -4,9 +4,16 @@
 # =============================================================================
 
 # --- Stage 1: Build with Node.js and npm ---
-FROM node:22-alpine AS builder
+FROM node:22-bookworm-slim AS builder
 
 WORKDIR /app
+
+# Accept build-time API URL and Google Client ID for Vite bundling
+ARG VITE_API_URL=http://localhost:8001
+ENV VITE_API_URL=$VITE_API_URL
+
+ARG VITE_GOOGLE_CLIENT_ID=1095504585852-r7ort3l6fmt852hi1paapo3k601d9f4o.apps.googleusercontent.com
+ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
 
 # Copy dependency manifests
 COPY package.json package-lock.json* ./
@@ -21,7 +28,7 @@ COPY . .
 RUN npm run build
 
 # --- Stage 2: Production Runner ---
-FROM node:22-alpine AS runner
+FROM node:22-bookworm-slim AS runner
 
 WORKDIR /app
 
@@ -30,8 +37,7 @@ ENV NODE_ENV=production \
     PORT=8080
 
 # Create a non-root user and group
-RUN addgroup -S edusim && adduser -S edusim -G edusim
-
+RUN groupadd -r edusim && useradd -r -g edusim -u 1001 -d /app edusim
 # Copy required files and built artifacts from builder
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/node_modules ./node_modules
