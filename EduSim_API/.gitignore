@@ -42,6 +42,8 @@ final_output.json
 # REVIEW: Ignoring the entire "data/" directory makes the "!data/README.md" negation
 #         above (line 15) dead. Confirm this is intentional.
 data/
+textbooks/
+tessdata/
 # test output ignored
 .pytest_cache/
 htmlcov/

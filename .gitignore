@@ -92,3 +92,7 @@ test-results/
 # Scratch / dev playgrounds  (both sub-projects have these)
 # ---------------------------------------------------------------------------
 scratch/
+data/
+textbooks/
+EduSim_API/textbooks/
+EduSim_API/data/
