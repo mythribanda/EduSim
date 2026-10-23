@@ -210,7 +210,8 @@ def test_golden_kemh1_ch1_ch2():
     for Class 11 Maths (kemh1) Chapters 1 and 2 from printed contents page.
     """
     import json
-    book_file = Path("curriculum_pipeline/output/curriculum/books/kemh1.json")
+    from curriculum_pipeline.pipeline_config import PIPELINE_OUTPUT_ROOT
+    book_file = PIPELINE_OUTPUT_ROOT / "curriculum" / "books" / "kemh1.json"
     if not book_file.exists():
         pytest.skip("kemh1.json not generated yet")
 
@@ -291,7 +292,8 @@ def test_golden_kech1_ch1():
     from printed contents page.
     """
     import json
-    book_file = Path("curriculum_pipeline/output/curriculum/books/kech1.json")
+    from curriculum_pipeline.pipeline_config import PIPELINE_OUTPUT_ROOT
+    book_file = PIPELINE_OUTPUT_ROOT / "curriculum" / "books" / "kech1.json"
     if not book_file.exists():
         pytest.skip("kech1.json not generated yet")
 
@@ -597,5 +599,59 @@ def test_unmapped_file_detection_and_failure(tmp_path):
     with pytest.raises(ValueError) as exc:
         build_books_catalog(inventory_csv_path=fake_inv)
     assert "unmapped file(s)" in str(exc.value).lower()
+
+
+def test_cap_node_page_ends_retains_parent_enclosure():
+    """Regression test: capping page ends to end matter does not break parent-child enclosure."""
+    builder = CurriculumTreeBuilder("test_b1")
+    parent = {
+        "id": "top_1",
+        "page_start": 100,
+        "page_end": 105,
+        "nodes": [
+            {
+                "id": "subh_1",
+                "page_start": 103,
+                "page_end": 103,
+                "nodes": [],
+            }
+        ]
+    }
+    # If end matter starts on page 103
+    builder._cap_node_page_ends(parent, end_page=103)
+    # Child was on page 103, parent must encompass it (page_end >= 103)
+    assert parent["page_end"] >= parent["nodes"][0]["page_end"]
+    assert parent["nodes"][0]["page_end"] <= parent["page_end"]
+
+
+def test_full_book_assembly_fegp1_and_jesc1():
+    """Validates full-book assembly of Class 6 Maths (fegp1) and Class 10 Science (jesc1)."""
+    import json
+    from curriculum_pipeline.pipeline_config import PIPELINE_OUTPUT_ROOT
+
+    for code, exp_chaps, exp_pages in [("fegp1", 10, 392), ("jesc1", 13, 217)]:
+        b_path = PIPELINE_OUTPUT_ROOT / "curriculum" / "books" / f"{code}.json"
+        if not b_path.exists():
+            pytest.skip(f"{code}.json not assembled yet (PDFs or output absent)")
+
+        with open(b_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        assert data.get("book_code") == code
+        assert data.get("extraction_status") == "ok"
+        assert data.get("total_pages") == exp_pages
+
+        chapters = data.get("chapters", [])
+        assert len(chapters) == exp_chaps, f"Expected {exp_chaps} chapters for {code}, got {len(chapters)}"
+
+        # Check contiguous page coverage and chapter numbers
+        for i, ch in enumerate(chapters):
+            expected_num = str(i + 1)
+            assert ch.get("official_number") == expected_num
+            if i > 0:
+                prev_end = chapters[i - 1]["page_end"]
+                curr_start = ch["page_start"]
+                assert curr_start == prev_end + 1, f"Gap or overlap between Ch {i} and Ch {i+1}: {prev_end} -> {curr_start}"
+
 
 

@@ -371,10 +371,21 @@ class CurriculumTreeBuilder:
     def _cap_node_page_ends(self, parent_node: Dict[str, Any], end_page: int):
         """Caps page_end of children so none extend into or past end_page."""
         for child in parent_node.get("nodes", []):
+            self._cap_node_page_ends(child, end_page)
             if child.get("page_start", 0) < end_page:
                 child["page_end"] = min(child.get("page_end", end_page - 1), end_page - 1)
                 child["page_end"] = max(child["page_start"], child["page_end"])
-            self._cap_node_page_ends(child, end_page)
+            # Child must encompass all of its own sub-nodes
+            sub_nodes = child.get("nodes", [])
+            if sub_nodes:
+                child["page_end"] = max(child["page_end"], max(sn["page_end"] for sn in sub_nodes))
+                child["page_start"] = min(child["page_start"], min(sn["page_start"] for sn in sub_nodes))
+
+        # Parent must encompass all its children
+        children = parent_node.get("nodes", [])
+        if children:
+            parent_node["page_end"] = max(parent_node.get("page_end", 0), max(c["page_end"] for c in children))
+            parent_node["page_start"] = min(parent_node.get("page_start", 1), min(c["page_start"] for c in children))
 
     def _adjust_page_ends(self, parent_node: Dict[str, Any], chapter_max_page: int):
         """Recursively update page_end of children to span until next sibling or parent end."""
