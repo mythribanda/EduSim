@@ -15,6 +15,7 @@ from pathlib import Path
 # ── Repo root (two levels up from this file: curriculum_pipeline/ → EduSim_API/)
 REPO_ROOT: Path = Path(__file__).resolve().parents[2]
 API_ROOT: Path  = Path(__file__).resolve().parents[1]   # EduSim_API/
+PIPELINE_VERSION: str = "2.0.0"
 
 # ── Source textbooks folder (read-only, NEVER written to)
 _env_tb = os.getenv("TEXTBOOKS_DIR", "")

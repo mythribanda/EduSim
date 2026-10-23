@@ -15,6 +15,10 @@ from app.src.models.school import (
     StudentTopicMastery,
     Question,
 )
+from app.src.models.curriculum_pipeline_models import (
+    Book,
+    CurriculumNode,
+)
 
 __all__ = [
     "User",
@@ -30,4 +34,6 @@ __all__ = [
     "SessionEvent",
     "StudentTopicMastery",
     "Question",
+    "Book",
+    "CurriculumNode",
 ]

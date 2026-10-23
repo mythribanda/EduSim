@@ -359,13 +359,13 @@ class CurriculumTreeBuilder:
         counts: Dict[Tuple[str, str], int] = {}
         for child in children:
             lvl = child.get("level", "")
-            tit = child.get("official_title", "").strip().lower()
-            key = (lvl, tit)
+            norm_t = re.sub(r"\s+", " ", child.get("normalized_title") or child.get("official_title", "")).strip().lower()
+            key = (lvl, norm_t)
             idx = counts.get(key, 0)
             child["occurrence_index"] = idx
             counts[key] = idx + 1
             num_part = f"{child.get('official_number')}:" if child.get("official_number") else ""
-            child["identity_key"] = f"{lvl}:{num_part}{tit}:{idx}"
+            child["identity_key"] = f"{lvl}:{num_part}{norm_t}:{idx}"
             self._assign_ordinals_and_identity(child)
 
     def _cap_node_page_ends(self, parent_node: Dict[str, Any], end_page: int):

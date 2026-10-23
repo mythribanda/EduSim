@@ -477,6 +477,20 @@ def cmd_report(args: argparse.Namespace):
         print("Coverage summary not found. Run extract first.")
 
 
+def cmd_load(args: argparse.Namespace):
+    from curriculum_pipeline.loader import run_load_pipeline
+    tb_books = Path(args.input).resolve() if getattr(args, "input", None) else None
+    results = run_load_pipeline(
+        books_dir=tb_books,
+        only_book=args.only,
+        include_review=args.include_review,
+        force=args.force,
+        dry_run=args.dry_run,
+    )
+    if any(r["status"] == "error" for r in results):
+        sys.exit(1)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="EduSim Curriculum Extractor CLI (Stage 2)",
@@ -501,6 +515,15 @@ def main():
     p_validate.add_argument("--only", type=str, help="Validate only a specific file (e.g. aejm1.json or aejm101.pdf).")
     p_validate.add_argument("--input", type=str, help="Override books directory.")
     p_validate.set_defaults(func=cmd_validate)
+
+    # load command
+    p_load = subparsers.add_parser("load", help="Load validated curriculum JSON into the database.")
+    p_load.add_argument("--only", type=str, help="Load only a specific book code (e.g. aejm1).")
+    p_load.add_argument("--include-review", action="store_true", help="Include books marked as needs_review.")
+    p_load.add_argument("--force", action="store_true", help="Force reload even if sha256 and version are unchanged.")
+    p_load.add_argument("--dry-run", action="store_true", help="Simulate load without modifying database.")
+    p_load.add_argument("--input", type=str, help="Override books directory.")
+    p_load.set_defaults(func=cmd_load)
 
     # report command
     p_report = subparsers.add_parser("report", help="Print extraction and coverage report.")
