@@ -73,6 +73,7 @@ class CurriculumTreeBuilder:
 
         if not raw_candidates:
             chapter_node["structure_unresolved"] = True
+            self._assign_source_pages(chapter_node, chapter_page_start)
             return chapter_node
 
         # Filter out candidates that start strictly after end_matter_page
@@ -107,9 +108,10 @@ class CurriculumTreeBuilder:
                 if not chapter_node.get("wrapper"):
                     chapter_node["wrapper"] = title.strip()
                 continue
-            if cand_norm == norm_ch_title or (norm_wrapper and cand_norm == norm_wrapper):
-                # Never fabricate/duplicate the chapter title as a topic or subtopic!
-                continue
+            if not num:
+                if cand_norm == norm_ch_title or (norm_wrapper and cand_norm == norm_wrapper):
+                    # Never fabricate/duplicate the unnumbered chapter title as a topic or subtopic!
+                    continue
 
             # On chapter start page, suppress candidates that are fragments of chapter title or wrapper or chapter labels
             if page == chapter_page_start:
@@ -306,11 +308,30 @@ class CurriculumTreeBuilder:
             max_node_page = max(_get_max_page_end(c) for c in chapter_node["nodes"])
 
         if max_node_page > 0 and max_node_page < chapter_page_end:
-            label = end_matter_label or "SUMMARY"
+            raw_label = (end_matter_label or "SUMMARY").strip().upper()
+            # Collapse letter-spaced words e.g. 'S U M M A R Y' -> 'SUMMARY'
+            if re.search(r"\b[A-Z]\s+[A-Z]\b", raw_label):
+                norm_label = re.sub(r"(?<=[A-Z])\s+(?=[A-Z])", "", raw_label)
+            else:
+                norm_label = raw_label
+            clean_token = re.sub(r"[^\w]", "", norm_label)
+            if "SUMMARY" in clean_token:
+                norm_label = "SUMMARY"
+            elif "EXERCISE" in clean_token:
+                norm_label = "EXERCISES"
+            elif "SOLUTION" in clean_token:
+                norm_label = "SOLUTIONS"
+            elif "ANSWER" in clean_token:
+                norm_label = "ANSWERS"
+            elif clean_token.startswith("WHATYOUHAVELEARN"):
+                norm_label = "WHAT YOU HAVE LEARNT"
+            elif clean_token.startswith("POINTSTOPONDER"):
+                norm_label = "POINTS TO PONDER"
+
             chapter_node["unstructured_ranges"].append({
                 "page_start": max_node_page + 1,
                 "page_end": chapter_page_end,
-                "reason": label,
+                "reason": norm_label,
             })
 
         # Assign stable occurrence ordinals and identity keys to all sibling nodes
@@ -350,6 +371,9 @@ class CurriculumTreeBuilder:
                             "found_text": f"Topic '{top_node['official_title']}' has {sh_cnt} subheadings (> 40)",
                             "suggested_action": "Audit subheadings; check for body text promotion",
                         })
+
+        # Assign source_page_start and source_page_end (local pages within file)
+        self._assign_source_pages(chapter_node, chapter_page_start)
 
         return chapter_node
 
@@ -404,6 +428,9 @@ class CurriculumTreeBuilder:
 
         # 2. Sequential sibling adjustment
         for i, child in enumerate(children):
+            if child.get("level") == "activity" and (self.book_code.startswith("ssc_") or child.get("single_page")):
+                child["page_end"] = child.get("page_start", 1)
+                continue
             if i + 1 < len(children):
                 next_start = children[i + 1]["page_start"]
                 if next_start > child["page_end"]:
@@ -422,7 +449,24 @@ class CurriculumTreeBuilder:
 
         # 4. Final clamp to guarantee child is strictly within parent
         for child in children:
-            if "page_end" in parent_node:
+            if child.get("level") == "activity" and (self.book_code.startswith("ssc_") or child.get("single_page")):
+                child["page_end"] = child.get("page_start", 1)
+            elif "page_end" in parent_node:
                 child["page_end"] = min(child["page_end"], parent_node["page_end"])
             if "page_start" in parent_node:
                 child["page_start"] = max(child["page_start"], parent_node["page_start"])
+
+    def _assign_source_pages(self, node: Dict[str, Any], chapter_start: int):
+        """Assigns 1-based source_page_start and source_page_end within the node's source file."""
+        is_ssc = self.book_code.startswith("ssc_")
+        if is_ssc:
+            node["source_page_start"] = node.get("page_start", 1)
+            node["source_page_end"] = node.get("page_end", 1)
+        else:
+            p_s = node.get("page_start", chapter_start)
+            p_e = node.get("page_end", chapter_start)
+            node["source_page_start"] = max(1, p_s - chapter_start + 1)
+            node["source_page_end"] = max(node["source_page_start"], p_e - chapter_start + 1)
+
+        for child in node.get("nodes", []):
+            self._assign_source_pages(child, chapter_start)

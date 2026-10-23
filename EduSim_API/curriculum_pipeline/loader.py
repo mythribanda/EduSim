@@ -97,6 +97,8 @@ class CurriculumDatabaseLoader:
                 "occurrence_index": occ_idx,
                 "page_start": node.get("page_start", 0),
                 "page_end": node.get("page_end", 0),
+                "source_page_start": node.get("source_page_start", node.get("page_start", 1)),
+                "source_page_end": node.get("source_page_end", node.get("page_end", 1)),
                 "source_file": node.get("source_file"),
                 "ocr_needed": bool(node.get("ocr_needed", False)),
                 "metadata_json": meta,
@@ -187,6 +189,8 @@ class CurriculumDatabaseLoader:
             return stats
 
         # 4. Upsert Book record
+        ocr_cnt = int(book_data.get("ocr_page_count", 0))
+        t_qual = book_data.get("text_quality")
         if not existing_book:
             existing_book = Book(
                 id=uuid.uuid4(),
@@ -198,6 +202,8 @@ class CurriculumDatabaseLoader:
                 language=book_data.get("medium", "en"),
                 part=book_data.get("part"),
                 total_pages=int(book_data.get("total_pages", 0)),
+                ocr_page_count=ocr_cnt,
+                text_quality=t_qual,
                 sha256=incoming_sha,
                 extraction_status=status,
                 pipeline_version=PIPELINE_VERSION,
@@ -208,6 +214,9 @@ class CurriculumDatabaseLoader:
         else:
             existing_book.title = book_data.get("title") or book_data.get("book_title", existing_book.title)
             existing_book.total_pages = int(book_data.get("total_pages", existing_book.total_pages))
+            existing_book.ocr_page_count = ocr_cnt
+            if t_qual:
+                existing_book.text_quality = t_qual
             existing_book.sha256 = incoming_sha
             existing_book.extraction_status = status
             existing_book.pipeline_version = PIPELINE_VERSION
@@ -248,6 +257,8 @@ class CurriculumDatabaseLoader:
                     ex_node.title != inc["title"]
                     or ex_node.page_start != inc["page_start"]
                     or ex_node.page_end != inc["page_end"]
+                    or getattr(ex_node, "source_page_start", None) != inc["source_page_start"]
+                    or getattr(ex_node, "source_page_end", None) != inc["source_page_end"]
                     or ex_node.official_number != inc["official_number"]
                     or ex_node.order_index != inc["order_index"]
                     or ex_node.source_file != inc["source_file"]
@@ -260,6 +271,8 @@ class CurriculumDatabaseLoader:
                     ex_node.normalized_title = inc["normalized_title"]
                     ex_node.page_start = inc["page_start"]
                     ex_node.page_end = inc["page_end"]
+                    ex_node.source_page_start = inc["source_page_start"]
+                    ex_node.source_page_end = inc["source_page_end"]
                     ex_node.official_number = inc["official_number"]
                     ex_node.order_index = inc["order_index"]
                     ex_node.source_file = inc["source_file"]
@@ -320,6 +333,8 @@ class CurriculumDatabaseLoader:
                     ex_item.identity_key = inc_item["identity_key"]
                     ex_item.page_start = inc_item["page_start"]
                     ex_item.page_end = inc_item["page_end"]
+                    ex_item.source_page_start = inc_item["source_page_start"]
+                    ex_item.source_page_end = inc_item["source_page_end"]
                     ex_item.order_index = inc_item["order_index"]
                     ex_item.source_file = inc_item["source_file"]
                     ex_item.ocr_needed = inc_item["ocr_needed"]
@@ -347,6 +362,8 @@ class CurriculumDatabaseLoader:
                 occurrence_index=inc["occurrence_index"],
                 page_start=inc["page_start"],
                 page_end=inc["page_end"],
+                source_page_start=inc["source_page_start"],
+                source_page_end=inc["source_page_end"],
                 source_file=inc["source_file"],
                 ocr_needed=inc["ocr_needed"],
                 metadata_json=inc["metadata_json"],

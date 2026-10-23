@@ -654,4 +654,169 @@ def test_full_book_assembly_fegp1_and_jesc1():
                 assert curr_start == prev_end + 1, f"Gap or overlap between Ch {i} and Ch {i+1}: {prev_end} -> {curr_start}"
 
 
+def test_duplicate_identity_keys_collapsed_whitespace():
+    """Regression test for Pre-step A: whitespace differences in titles must yield distinct occurrence_index."""
+    from curriculum_pipeline.tree_builder import CurriculumTreeBuilder
+
+    tb = CurriculumTreeBuilder("fegp1")
+    parent = {
+        "id": "ch_1",
+        "level": "chapter",
+        "nodes": [
+            {"level": "activity", "official_title": "Example:  Find the sum of 1", "normalized_title": "Example: Find the sum of 1", "page_start": 5, "page_end": 5},
+            {"level": "activity", "official_title": "Example: Find the sum of 1", "normalized_title": "Example: Find the sum of 1", "page_start": 6, "page_end": 6},
+        ]
+    }
+    tb._assign_ordinals_and_identity(parent)
+    c1, c2 = parent["nodes"]
+    assert c1["occurrence_index"] == 0
+    assert c2["occurrence_index"] == 1
+    assert c1["identity_key"] != c2["identity_key"]
+
+
+def test_local_source_pages_chapter_and_nodes():
+    """Regression test for Pre-step D: node local source pages within chapter PDF."""
+    from curriculum_pipeline.tree_builder import CurriculumTreeBuilder
+
+    tb = CurriculumTreeBuilder("fegp1")
+    ch_info = {
+        "id": "fegp1_ch_5",
+        "official_number": "5",
+        "official_title": "PRIME TIME",
+    }
+    raw = [
+        {"level": "topic", "official_number": "5.1", "official_title": "Common Multiples", "page": 147, "normalized_title": "Common Multiples"},
+        {"level": "topic", "official_number": "5.2", "official_title": "Prime Numbers", "page": 152, "normalized_title": "Prime Numbers"},
+    ]
+    ch_node = tb.build_chapter_tree(ch_info, raw, chapter_page_start=147, chapter_page_end=179)
+    assert ch_node["source_page_start"] == 1
+    assert ch_node["source_page_end"] == 33
+    t1 = ch_node["nodes"][0]
+    assert t1["source_page_start"] == 1
+    assert t1["source_page_end"] == 5
+    t2 = ch_node["nodes"][1]
+    assert t2["source_page_start"] == 6
+
+
+def test_solutions_detected_as_end_matter():
+    """Regression test for Pre-step E & F: solutions heading caps topics and produces normalized reason."""
+    from curriculum_pipeline.adapters.specialized_adapters import MathsAdapter
+    from curriculum_pipeline.tree_builder import CurriculumTreeBuilder
+
+    adapter = MathsAdapter(style_profile={})
+    adapter.reset_chapter_state(chapter_number=5)
+
+    # Line with solutions
+    lines = [
+        {"text": "5.1 First Section", "spans": [{"text": "5.1 First Section", "size": 14.0, "flags": 2}]},
+        {"text": "CHAPTER 5 — SOLUTIONS", "spans": [{"text": "CHAPTER 5 — SOLUTIONS", "size": 16.0, "flags": 2}]},
+    ]
+    nodes_p1 = adapter.extract_nodes_from_lines(1, [lines[0]])
+    assert len(nodes_p1) == 1
+
+    # End matter reached on p.23
+    adapter.extract_nodes_from_lines(23, [lines[1]])
+    assert adapter.end_of_chapter_reached is True
+    assert adapter.end_matter_page == 23
+    assert adapter.end_matter_label == "SOLUTIONS"
+
+    # Tree builder unstructured_ranges
+    tb = CurriculumTreeBuilder("fegp1")
+    ch_node = tb.build_chapter_tree(
+        {"id": "ch5", "official_number": "5", "official_title": "Prime Time"},
+        raw_candidates=nodes_p1,
+        chapter_page_start=1,
+        chapter_page_end=33,
+        end_matter_page=23,
+        end_matter_label="S U M M A R Y",
+    )
+    assert len(ch_node["unstructured_ranges"]) == 1
+    assert ch_node["unstructured_ranges"][0]["reason"] == "SUMMARY"
+
+
+def test_chapter_prefix_enforcement_on_topics():
+    """Regression test for Pre-step E: optical table decimal entries rejected in Chapter 9."""
+    from curriculum_pipeline.adapters.specialized_adapters import ScienceAdapter
+
+    adapter = ScienceAdapter(style_profile={})
+    adapter.reset_chapter_state(chapter_number=9)
+
+    # Valid topic 9.1
+    t91 = adapter.parse_numbered_heading("9.1 REFLECTION OF LIGHT")
+    assert t91 is not None
+    assert t91[1] == "9.1"
+
+    # Bogus refractive index entries from table
+    assert adapter.parse_numbered_heading("1.33 Water") is None
+    assert adapter.parse_numbered_heading("1.54 Alcohol") is None
+    assert adapter.parse_numbered_heading("1.63 Carbon disulphide") is None
+
+
+def test_ssc_activity_single_page():
+    """Regression test for Pre-step C: SSC activities do not stretch across siblings."""
+    from curriculum_pipeline.tree_builder import CurriculumTreeBuilder
+
+    tb = CurriculumTreeBuilder("ssc_1eng")
+    parent = {
+        "id": "ssc_ch1",
+        "level": "chapter",
+        "page_start": 1,
+        "page_end": 50,
+        "nodes": [
+            {"level": "activity", "official_title": "Sing the song", "page_start": 17, "page_end": 17, "single_page": True},
+            {"level": "activity", "official_title": "Sing and dance", "page_start": 26, "page_end": 26, "single_page": True},
+        ]
+    }
+    tb._adjust_page_ends(parent, chapter_max_page=50)
+    a1, a2 = parent["nodes"]
+    assert a1["page_start"] == 17
+    assert a1["page_end"] == 17
+    assert a2["page_start"] == 26
+    assert a2["page_end"] == 26
+
+
+def test_validator_new_warnings():
+    """Regression test for Pre-step E: node_spans_many_pages and chapter_missing_end_matter."""
+    from curriculum_pipeline.validator import CurriculumValidator
+
+    validator = CurriculumValidator()
+
+    # Book with topic spanning 15 pages and chapter without end matter
+    book = {
+        "board": "ncert",
+        "class": 6,
+        "subject": "maths",
+        "book_title": "Maths Book",
+        "book_code": "test_math",
+        "source_sha256": "fake_sha",
+        "total_pages": 40,
+        "chapters": [
+            {
+                "id": "ch_1",
+                "level": "chapter",
+                "official_number": "1",
+                "official_title": "Chapter 1",
+                "page_start": 1,
+                "page_end": 20,
+                "unstructured_ranges": [],
+                "nodes": [
+                    {
+                        "id": "top_1",
+                        "level": "topic",
+                        "official_number": "1.1",
+                        "official_title": "Huge Topic",
+                        "page_start": 1,
+                        "page_end": 20,
+                        "nodes": []
+                    }
+                ]
+            }
+        ]
+    }
+    issues = validator.validate_data(book)
+    rule_ids = [i.rule_id for i in issues]
+    assert "node_spans_many_pages" in rule_ids
+    assert "chapter_missing_end_matter" in rule_ids
+
+
 

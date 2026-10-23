@@ -31,8 +31,10 @@ class BaseSubjectAdapter:
         self.end_matter_page = None
         self.end_matter_label = None
         self.last_topic_tuple = None
+        self.current_chapter_number: Optional[str] = None
 
-    def reset_chapter_state(self):
+    def reset_chapter_state(self, chapter_number: Optional[Any] = None):
+        self.current_chapter_number = str(chapter_number) if chapter_number is not None else None
         self.end_of_chapter_reached = False
         self.end_matter_page = None
         self.end_matter_label = None
@@ -213,6 +215,12 @@ class BaseSubjectAdapter:
         # Reject 0.x section numbers (chapters are 1+)
         if num.startswith("0."):
             return None
+
+        # Enforce chapter prefix matching for numbered sections in chapter C
+        if self.current_chapter_number and self.current_chapter_number.isdigit():
+            ch_prefix = num.split(".")[0]
+            if ch_prefix != self.current_chapter_number:
+                return None
 
         # Extract heading phrase if followed by multiple spaces or run-in sentence
         if "  " in title:
@@ -503,18 +511,30 @@ class BaseSubjectAdapter:
 
             # Check for exercise/summary section boundaries (end of chapter)
             clean_lower = re.sub(r"[^\w]", "", line.strip().lower())
-            if (
+            is_end_section = (
                 clean_lower in [
                     "summary", "exercises", "exercises.", "whatyouhavelearnt",
                     "whatyouhavelearned", "pointstoponder", "आपनेक्यासीखा",
-                    "सारांश", "అభ్యాసం", "మనంఏంచర్చించాం"
+                    "सारांश", "అభ్యాసం", "మనంఏంచర్చించాం", "solutions", "answers"
                 ]
                 or clean_lower.startswith("whatyouhavelearnt")
                 or clean_lower.startswith("whatyouhavelearned")
                 or clean_lower.startswith("pointstoponder")
-            ):
+                or re.search(r"^(chapter\s*\d+\s*[-–—]?\s*)?(solutions|answers)$", line.strip(), re.I)
+                or (("solutions" in clean_lower or "answers" in clean_lower) and "chapter" in clean_lower and not re.search(r"\d+\.\d+", line))
+            )
+            if is_end_section:
                 self.end_of_chapter_reached = True
-                self.end_matter_label = line.strip().upper()
+                norm_lbl = line.strip().upper()
+                if "SOLUTION" in norm_lbl:
+                    norm_lbl = "SOLUTIONS"
+                elif "ANSWER" in norm_lbl:
+                    norm_lbl = "ANSWERS"
+                elif "SUMMARY" in re.sub(r"[^\w]", "", norm_lbl):
+                    norm_lbl = "SUMMARY"
+                elif "EXERCISE" in re.sub(r"[^\w]", "", norm_lbl):
+                    norm_lbl = "EXERCISES"
+                self.end_matter_label = norm_lbl
                 if self.end_matter_page is None or page_no < self.end_matter_page:
                     self.end_matter_page = page_no
                 continue

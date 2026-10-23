@@ -240,6 +240,32 @@ class CurriculumValidator:
                 )
             )
 
+        # WARNING: Chapter with no unstructured_ranges whose last node ends on the chapter's final page
+        unstruct = ch.get("unstructured_ranges", [])
+        ch_end = ch.get("page_end", 0)
+
+        def _get_max_child_end(n: Dict[str, Any]) -> int:
+            m = n.get("page_end", 0)
+            for c in n.get("nodes", []):
+                m = max(m, _get_max_child_end(c))
+            return m
+
+        ch_nodes = ch.get("nodes", [])
+        max_node_end = max((_get_max_child_end(n) for n in ch_nodes), default=0)
+        if len(unstruct) == 0 and max_node_end == ch_end and len(ch_nodes) > 0:
+            self.issues.append(
+                ValidationIssue(
+                    severity="WARNING",
+                    rule_id="chapter_missing_end_matter",
+                    message=f"Chapter '{ch_title}' has no unstructured_ranges and its last node ends on chapter end (page {ch_end})",
+                    node_id=ch_id,
+                    node_title=ch_title,
+                    level="chapter",
+                    page=ch_end,
+                    file=ch_source,
+                )
+            )
+
         # 3. Recursively validate children
         self._validate_children(ch, parent=ch, file_ctx=file_ctx)
 
@@ -387,6 +413,23 @@ class CurriculumValidator:
                     file=source_file,
                 )
             )
+
+        # WARNING: Node spans many pages (> 12 pages for topic or subtopic)
+        if level in ["topic", "subtopic"]:
+            p_span = page_end - page_start + 1
+            if p_span > 12:
+                self.issues.append(
+                    ValidationIssue(
+                        severity="WARNING",
+                        rule_id="node_spans_many_pages",
+                        message=f"{level.capitalize()} '{title}' spans {p_span} pages (> 12 pages, {page_start}-{page_end})",
+                        node_id=node_id,
+                        node_title=title,
+                        level=level,
+                        page=page_start,
+                        file=source_file,
+                    )
+                )
 
         # WARNING: Numbered subtopic X.Y.Z whose parent topic is not X.Y
         if parent is not None and level == "subtopic":

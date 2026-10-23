@@ -290,7 +290,7 @@ def test_full_book_fixtures_load_cleanly(memory_db):
     loader = CurriculumDatabaseLoader()
     run_id = str(uuid.uuid4())
 
-    for bcode, exp_nodes in [("fegp1", 134), ("jesc1", 330)]:
+    for bcode, exp_nodes in [("fegp1", 178), ("jesc1", 304)]:
         bpath = PIPELINE_OUTPUT_ROOT / "curriculum" / "books" / f"{bcode}.json"
         if not bpath.exists():
             pytest.skip(f"{bcode}.json not available for test")

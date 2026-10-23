@@ -236,7 +236,7 @@ class CurriculumExtractorEngine:
                 })
 
             # Extract raw node candidates from chapter pages
-            adapter.reset_chapter_state()
+            adapter.reset_chapter_state(chapter_number=ch_no)
             raw_candidates = []
             for p in pages:
                 page_actual = ch_start + p.get("page_no", 1) - 1
@@ -278,8 +278,9 @@ class CurriculumExtractorEngine:
                     if re.match(r"^chapter\s*(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|\d+)\b", c_title.strip(), re.I):
                         continue
 
-                if norm_c == norm_ch_title or (norm_wrapper and norm_c == norm_wrapper):
-                    continue
+                if not c.get("official_number"):
+                    if norm_c == norm_ch_title or (norm_wrapper and norm_c == norm_wrapper):
+                        continue
                 if re.match(r"^chapter\s*\d+$", c_title.strip(), re.I):
                     continue
                 c_page_local = c_page - ch_start + 1
@@ -432,8 +433,14 @@ class CurriculumExtractorEngine:
         chapter_ranges: List[Tuple[str, int, int, str]] = []  # (title, start, end, source)
 
         if toc_outline:
-            # Filter level 1 entries
-            l1 = [e for e in toc_outline if e[0] == 1]
+            # Filter level 1 entries and exclude front-matter/prelim/appendix/total-book
+            l1 = [
+                e for e in toc_outline
+                if e[0] == 1
+                and e[2] > 0
+                and not any(x in e[1].lower() for x in ["initial", "total book", "prelim", "appendix", "cover"])
+                and e[1].strip() != "00"
+            ]
             for i, entry_toc in enumerate(l1):
                 t_title = entry_toc[1].strip()
                 t_start = entry_toc[2]
@@ -461,26 +468,112 @@ class CurriculumExtractorEngine:
         if not chapter_ranges:
             chapter_ranges = [(book_title, 1, len(pages), "fallback_single_chapter")]
 
+        # Build printed TOC mapping from early pages if available
+        printed_toc_map: Dict[int, str] = {}
+        months_set = {"january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"}
+        for p in pages[:15]:
+            p_text = p.get("text", "")
+            if "index" in p_text.lower() or "contents" in p_text.lower():
+                lines = [l.strip() for l in p_text.splitlines() if l.strip()]
+                for i_l, l_str in enumerate(lines):
+                    m1 = re.match(r"^(\d{1,2})\s+([A-Za-z][A-Za-z\s\-–—&,\(\)]+)$", l_str)
+                    if m1 and int(m1.group(1)) <= 30 and len(m1.group(2).strip()) > 2:
+                        printed_toc_map[int(m1.group(1))] = m1.group(2).strip()
+                    elif l_str.isdigit() and int(l_str) <= 30 and i_l + 1 < len(lines):
+                        nxt = lines[i_l + 1]
+                        if re.match(r"^[A-Za-z][A-Za-z\s\-–—&,\(\)]+$", nxt) and not nxt.isdigit() and len(nxt) > 2 and "government" not in nxt.lower():
+                            c_num = int(l_str)
+                            if c_num not in printed_toc_map:
+                                printed_toc_map[c_num] = nxt.strip()
+
         tree_builder = CurriculumTreeBuilder(book_code)
         chapters: List[Dict[str, Any]] = []
 
         for idx, (c_title, c_start, c_end, c_src) in enumerate(chapter_ranges):
             # 2.6d SSC books: TOC-driven only. Extract clean title and wrapper from page c_start if outline is a filename/unit tag
             clean_ch_title = c_title
+            ch_idx = idx + 1
+            is_bad_outline = (
+                not clean_ch_title
+                or clean_ch_title.endswith(".pdf")
+                or clean_ch_title.isdigit()
+                or re.match(r"^(lesson|unit|chapter)[-_ ]?\d+(\.pdf)?$", clean_ch_title, re.I)
+            )
+
+            # Check printed TOC first
+            if is_bad_outline and ch_idx in printed_toc_map:
+                cand_t = printed_toc_map[ch_idx]
+                if not any(m in cand_t.lower() for m in months_set) and len(cand_t) > 3:
+                    clean_ch_title = cand_t
+                    is_bad_outline = False
+
             wrapper = None
-            p_start_rec = next((p for p in pages if p.get("page_no") == c_start), None)
-            if p_start_rec:
-                for line in p_start_rec.get("text", "").splitlines():
-                    ls = line.strip()
-                    if re.match(r"^UNIT\s*[-–—]?\s*\d+", ls, re.I):
-                        wrapper = ls
-                    elif len(ls) >= 3 and ls.isupper() and "GOVERNMENT" not in ls and "TELANGANA" not in ls:
-                        if not clean_ch_title or "Edited_" in clean_ch_title or ".pdf" in clean_ch_title or "Unit" in clean_ch_title or "Lesson" in clean_ch_title:
-                            clean_ch_title = ls
+            if is_bad_outline or not clean_ch_title:
+                # Inspect c_start and c_start + 1
+                for p_check in [c_start, c_start + 1]:
+                    p_rec = next((p for p in pages if p.get("page_no") == p_check), None)
+                    if not p_rec:
+                        continue
+                    p_text_lines = [l.strip() for l in p_rec.get("text", "").splitlines() if l.strip()]
+                    # If this page is a unit reading-selection divider e.g. "A - ...", "B - ...", skip to next page
+                    if any(l.startswith(("A - ", "B - ", "A. ", "B. ")) for l in p_text_lines):
+                        continue
+                    for line in p_rec.get("text", "").splitlines():
+                        ls = line.strip()
+                        if not ls or len(ls) < 3:
+                            continue
+                        if re.match(r"^UNIT\s*[-–—]?\s*\d+", ls, re.I):
+                            wrapper = ls
+                            continue
+                        if any(x in ls.lower() for x in ["government", "progress", "free distribution", "gift", "telangana", "fig-"]):
+                            continue
+                        if ls.isdigit() or re.match(r"^\d+\.\d+", ls):
+                            continue
+                        if re.match(r"^(lesson|unit|chapter)\s*[-–—]?\s*\d*$", ls, re.I):
+                            continue
+                        if ls.startswith(("A - ", "B - ", "C - ", "A. ", "B. ", "C. ")):
+                            continue
+                        # Match '1. Personality Development'
+                        m_num = re.match(r"^\d{1,2}\.?\s+([A-Za-z][A-Za-z\s\-–—&,\(\)]+)$", ls)
+                        if m_num:
+                            cand = m_num.group(1).strip()
+                            if not any(m in cand.lower() for m in months_set) and len(cand) > 3:
+                                clean_ch_title = cand
+                                is_bad_outline = False
+                                break
+                        # Match plain title
+                        if re.match(r"^[A-Za-z][A-Za-z\s\-–—&,\(\)]+$", ls):
+                            if not any(m in ls.lower() for m in months_set) and len(ls) > 3:
+                                if ls.lower() not in ["chapter", "lesson", "unit", "index", "contents"]:
+                                    clean_ch_title = ls
+                                    is_bad_outline = False
+                                    break
+                    if not is_bad_outline:
+                        break
 
             norm_c_title = re.sub(r"[^\w]", "", clean_ch_title).lower()
             ocr_pages_set = {p.get("page_no") for p in pages if p.get("ocr_needed")}
             ch_ocr_needed = any(p_no in ocr_pages_set for p_no in range(c_start, c_end + 1))
+
+            # Extract raw node candidates from chapter pages
+            adapter.reset_chapter_state(chapter_number=idx + 1)
+            raw_candidates = []
+            for p_no in range(c_start, c_end + 1):
+                p_rec = next((p for p in pages if p.get("page_no") == p_no), None)
+                if not p_rec:
+                    continue
+                method = p_rec.get("method", "")
+                garbled_ratio = p_rec.get("garbled_ratio", 0.0)
+                garbled_pct = p_rec.get("garbled_pct", 0.0)
+                ocr_needed = p_rec.get("ocr_needed", False)
+                if "ocr_needed" in str(method) or ocr_needed or garbled_ratio > 0.05 or garbled_pct > 5.0:
+                    continue
+                lines_data = p_rec.get("lines", [])
+                if lines_data:
+                    nodes = adapter.extract_nodes_from_lines(p_no, lines_data)
+                else:
+                    nodes = adapter.extract_nodes_from_lines(p_no, [{"text": l, "spans": p_rec.get("spans", [])} for l in p_rec.get("text", "").splitlines()])
+                raw_candidates.extend(nodes)
 
             filtered_candidates = []
             for c in raw_candidates:
@@ -491,6 +584,8 @@ class CurriculumExtractorEngine:
                     if any(re.match(rf"^{re.escape(kw)}\b", act_title, re.I) for kw in adapter.activity_keywords):
                         c["ocr_needed"] = c.get("page", 0) in ocr_pages_set
                         c["source_file"] = fn
+                        c["single_page"] = True
+                        c["page_end"] = c.get("page", 0)
                         filtered_candidates.append(c)
 
             ch_info = {
