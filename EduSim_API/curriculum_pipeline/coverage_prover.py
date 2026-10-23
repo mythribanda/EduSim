@@ -180,6 +180,8 @@ class CoverageProver:
                     status = "needs_review"
                     status_reasons.append(f"TOC match ratio {toc_match_ratio:.2f} < 0.95")
 
+        unstructured_ranges = [r for ch in chapters for r in ch.get("unstructured_ranges", [])]
+
         return {
             "pages_total": total_pages,
             "pages_with_text": pages_with_text,
@@ -189,6 +191,7 @@ class CoverageProver:
             "chapters_expected": expected_chapters_count,
             "headings_per_chapter": headings_per_chapter,
             "unassigned_ranges": unassigned_ranges,
+            "unstructured_ranges": unstructured_ranges,
             "toc_match_ratio": toc_match_ratio,
             "toc_missing": toc_missing,
             "toc_extra": toc_extra,

@@ -481,3 +481,90 @@ def test_warning_subtopic_parent_number_mismatch(validator):
     warns = [i for i in issues_warn if i.rule_id == "subtopic_parent_number_mismatch"]
     assert len(warns) == 1
     assert warns[0].severity == "WARNING"
+
+
+def test_warning_dangling_function_word(validator):
+    # Failing cases with dangling function words
+    dangling_examples = [
+        ("1.3", "Properties of Matter and"),
+        ("1.5", "Laws of"),
+        ("1.5.4", "Gay Lussac's Law of"),
+        ("1.9.1", "Empirical Formula for"),
+        ("1.10", "Stoichiometry with"),
+        ("1.1", "Between"),
+    ]
+    for num, title in dangling_examples:
+        data = create_base_chapter(
+            nodes=[
+                {"id": "top_d", "level": "topic", "official_number": num, "official_title": title, "page_start": 2, "page_end": 2, "source_file": "t.pdf", "nodes": []}
+            ]
+        )
+        issues = validator.validate_data(data)
+        warns = [i for i in issues if i.rule_id == "dangling_function_word"]
+        assert len(warns) >= 1, f"Expected dangling warning for '{title}'"
+        assert warns[0].severity == "WARNING"
+
+    # Passing cases
+    pass_examples = [
+        ("1.3", "Properties of Matter and their Measurement"),
+        ("1.5", "Laws of Chemical Combinations"),
+        ("1.5.4", "Gay Lussac's Law of Gaseous Volumes"),
+    ]
+    for num, title in pass_examples:
+        data = create_base_chapter(
+            nodes=[
+                {"id": "top_p", "level": "topic", "official_number": num, "official_title": title, "page_start": 2, "page_end": 2, "source_file": "t.pdf", "nodes": []}
+            ]
+        )
+        issues = validator.validate_data(data)
+        warns = [i for i in issues if i.rule_id == "dangling_function_word"]
+        assert len(warns) == 0, f"Unexpected dangling warning for '{title}'"
+
+
+def test_plausibility_checks(validator):
+    # 1. Lowercase start
+    d_lower = create_base_chapter(nodes=[{"id": "n1", "level": "subtopic", "official_title": "an iron nail", "page_start": 2, "page_end": 2, "source_file": "t.pdf", "nodes": []}])
+    assert any(i.rule_id == "title_starts_lowercase" for i in validator.validate_data(d_lower))
+
+    # 2. Ends in comma
+    d_comma = create_base_chapter(nodes=[{"id": "n2", "level": "subtopic", "official_title": "Properties of matter,", "page_start": 2, "page_end": 2, "source_file": "t.pdf", "nodes": []}])
+    assert any(i.rule_id == "title_ends_comma" for i in validator.validate_data(d_comma))
+
+    # 3. Unbalanced quotes
+    d_quotes = create_base_chapter(nodes=[{"id": "n3", "level": "subtopic", "official_title": 'Definition of "Atom', "page_start": 2, "page_end": 2, "source_file": "t.pdf", "nodes": []}])
+    assert any(i.rule_id == "unbalanced_quotes" for i in validator.validate_data(d_quotes))
+
+    # 4. Sentence boundary inside title
+    d_sent = create_base_chapter(nodes=[{"id": "n4", "level": "subtopic", "official_title": "Mass and Weight. Next we consider", "page_start": 2, "page_end": 2, "source_file": "t.pdf", "nodes": []}])
+    assert any(i.rule_id == "title_contains_sentence_boundary" for i in validator.validate_data(d_sent))
+
+    # 5. Word count > 12
+    long_t = "One two three four five six seven eight nine ten eleven twelve thirteen"
+    d_long = create_base_chapter(nodes=[{"id": "n5", "level": "subtopic", "official_title": long_t, "page_start": 2, "page_end": 2, "source_file": "t.pdf", "nodes": []}])
+    assert any(i.rule_id == "title_word_count_exceeded" for i in validator.validate_data(d_long))
+
+    # 6. Bare UNIT token
+    d_unit = create_base_chapter(nodes=[{"id": "n6", "level": "subheading", "official_title": "UNIT - 1", "page_start": 2, "page_end": 2, "source_file": "t.pdf", "nodes": []}])
+    assert any(i.rule_id == "bare_unit_token" for i in validator.validate_data(d_unit))
+
+
+def test_suspicion_score_threshold(validator):
+    # Book with 10 nodes, 2 suspicious (>10%)
+    nodes = [{"id": f"n_{i}", "level": "subtopic", "official_title": f"Topic {i}", "page_start": i+1, "page_end": i+1, "source_file": "t.pdf", "nodes": []} for i in range(8)]
+    nodes.append({"id": "susp_1", "level": "subtopic", "official_title": "an iron nail", "page_start": 9, "page_end": 9, "source_file": "t.pdf", "nodes": []})
+    nodes.append({"id": "susp_2", "level": "subtopic", "official_title": "ends with comma,", "page_start": 10, "page_end": 10, "source_file": "t.pdf", "nodes": []})
+    book_data = {"book_code": "test_susp", "chapters": [create_base_chapter(nodes=nodes)]}
+
+    validator.validate_data(book_data)
+    score, status = validator.get_suspicion_metrics()
+    assert score > 0.10
+    assert status == "needs_review"
+
+    # Clean book
+    clean_nodes = [{"id": f"cn_{i}", "level": "subtopic", "official_title": f"Valid Topic {i}", "page_start": i+1, "page_end": i+1, "source_file": "t.pdf", "nodes": []} for i in range(10)]
+    clean_data = {"book_code": "test_clean", "chapters": [create_base_chapter(nodes=clean_nodes)]}
+    validator.validate_data(clean_data)
+    clean_score, clean_status = validator.get_suspicion_metrics()
+    assert clean_score == 0.0
+    assert clean_status == "ok"
+

@@ -461,28 +461,39 @@ class CurriculumExtractorEngine:
         chapters: List[Dict[str, Any]] = []
 
         for idx, (c_title, c_start, c_end, c_src) in enumerate(chapter_ranges):
-            # Filter candidates: remove duplicate of chapter title or wrapper, add file_id and ocr_needed
-            norm_c_title = re.sub(r"[^\w]", "", c_title).lower()
+            # 2.6d SSC books: TOC-driven only. Extract clean title and wrapper from page c_start if outline is a filename/unit tag
+            clean_ch_title = c_title
+            wrapper = None
+            p_start_rec = next((p for p in pages if p.get("page_no") == c_start), None)
+            if p_start_rec:
+                for line in p_start_rec.get("text", "").splitlines():
+                    ls = line.strip()
+                    if re.match(r"^UNIT\s*[-–—]?\s*\d+", ls, re.I):
+                        wrapper = ls
+                    elif len(ls) >= 3 and ls.isupper() and "GOVERNMENT" not in ls and "TELANGANA" not in ls:
+                        if not clean_ch_title or "Edited_" in clean_ch_title or ".pdf" in clean_ch_title or "Unit" in clean_ch_title or "Lesson" in clean_ch_title:
+                            clean_ch_title = ls
+
+            norm_c_title = re.sub(r"[^\w]", "", clean_ch_title).lower()
             ocr_pages_set = {p.get("page_no") for p in pages if p.get("ocr_needed")}
             ch_ocr_needed = any(p_no in ocr_pages_set for p_no in range(c_start, c_end + 1))
 
             filtered_candidates = []
             for c in raw_candidates:
-                cand_title = c.get("official_title", "")
-                norm_cand = re.sub(r"[^\w]", "", cand_title).lower()
-                if norm_cand == norm_c_title:
-                    continue
-                if re.match(r"^chapter\s*\d+$", cand_title.strip(), re.I):
-                    continue
-                c["ocr_needed"] = c.get("page", 0) in ocr_pages_set
-                c["source_file"] = fn
-                filtered_candidates.append(c)
+                # 2.6d: Do NOT infer Topic/Subtopic/Activity from font size in SSC books.
+                # Only keep Activity nodes matching controlled keyword list.
+                if c.get("level") == "activity":
+                    act_title = c.get("official_title", "").strip()
+                    if any(re.match(rf"^{re.escape(kw)}\b", act_title, re.I) for kw in adapter.activity_keywords):
+                        c["ocr_needed"] = c.get("page", 0) in ocr_pages_set
+                        c["source_file"] = fn
+                        filtered_candidates.append(c)
 
             ch_info = {
                 "id": f"{book_code}_ch_{idx + 1}",
                 "official_number": str(idx + 1),
-                "official_title": c_title,
-                "wrapper": None,
+                "official_title": clean_ch_title,
+                "wrapper": wrapper,
                 "evidence": f"TOC {c_src}: {c_title} (p.{c_start}-{c_end})",
                 "confidence": 0.95 if c_src == "outline" else 0.75,
                 "rule_id": f"rule_ssc_chapter_{c_src}",
@@ -530,6 +541,7 @@ class CurriculumExtractorEngine:
             "medium": medium,
             "book_title": book_title,
             "adapter": adapter.adapter_name,
+            "extraction_status": "needs_review",
             "source_sha256": extract_res.get("sha256", ""),
             "chapters": chapters,
             "coverage_proof": coverage_proof,

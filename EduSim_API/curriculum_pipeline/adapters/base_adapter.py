@@ -313,6 +313,50 @@ class BaseSubjectAdapter:
         return clean_t0
 
 
+    @staticmethod
+    def check_plausibility(title: str, level: str = "") -> Optional[Tuple[str, str]]:
+        """
+        Validates title plausibility.
+        Returns (rule_id, error_message) if invalid, or None if valid.
+        """
+        t = title.strip()
+        if not t:
+            return ("empty_title", "Title is empty or whitespace-only")
+
+        # 1. Title starting with lowercase letter (ASCII alphabetic)
+        if t[0].isascii() and t[0].isalpha() and t[0].islower():
+            return ("title_starts_lowercase", f"Title '{t}' starts with a lowercase letter")
+
+        # 2. Title ending in a comma
+        if t.rstrip().endswith(","):
+            return ("title_ends_comma", f"Title '{t}' ends in a comma")
+
+        # 3. Unbalanced quotes
+        # Strip word-internal apostrophes (straight or curly) e.g. Dalton's, don't, Gauss's, Dalton’s
+        s = re.sub(r"[a-zA-Z][\x27\u2019][a-zA-Z]?", "", t)
+        if s.count('"') % 2 != 0:
+            return ("unbalanced_quotes", f"Title '{t}' contains unbalanced double quotes")
+        if s.count('“') != s.count('”'):
+            return ("unbalanced_quotes", f"Title '{t}' contains unbalanced curly double quotes")
+        if s.count('‘') != s.count('’'):
+            return ("unbalanced_quotes", f"Title '{t}' contains unbalanced curly single quotes")
+        if s.count("'") % 2 != 0:
+            return ("unbalanced_quotes", f"Title '{t}' contains unbalanced single quotes")
+
+        # 4. Title containing a sentence boundary (". " followed by a letter)
+        if re.search(r"\.\s+[A-Za-z]", t):
+            return ("title_contains_sentence_boundary", f"Title '{t}' contains a sentence boundary")
+
+        # 5. Titles of more than 12 words at the Subtopic and Subheading levels
+        if level in ["subtopic", "subheading"] and len(t.split()) > 12:
+            return ("title_word_count_exceeded", f"Title '{t}' exceeds 12 words at level '{level}' ({len(t.split())} words)")
+
+        # 6. Bare "UNIT" / "Unit N" token as heading
+        if re.match(r"^UNIT(\s*[-–—]\s*\d+|\s+\d+)?$", t, re.I):
+            return ("bare_unit_token", f"Title '{t}' is a bare UNIT token")
+
+        return None
+
     def classify_line_style(self, line_text: str, spans: List[Dict[str, Any]]) -> Optional[str]:
         """Classify line as H1, H2, H3, or bold-body based on style profile."""
         if not spans:
@@ -458,8 +502,17 @@ class BaseSubjectAdapter:
             prev_y1 = bbox[3] if bbox else prev_y1
 
             # Check for exercise/summary section boundaries (end of chapter)
-            clean_lower = re.sub(r"\s+", "", line.strip().lower())
-            if clean_lower in ["summary", "exercises", "exercises.", "सारांश", "అభ్యాసం"]:
+            clean_lower = re.sub(r"[^\w]", "", line.strip().lower())
+            if (
+                clean_lower in [
+                    "summary", "exercises", "exercises.", "whatyouhavelearnt",
+                    "whatyouhavelearned", "pointstoponder", "आपनेक्यासीखा",
+                    "सारांश", "అభ్యాసం", "మనంఏంచర్చించాం"
+                ]
+                or clean_lower.startswith("whatyouhavelearnt")
+                or clean_lower.startswith("whatyouhavelearned")
+                or clean_lower.startswith("pointstoponder")
+            ):
                 self.end_of_chapter_reached = True
                 self.end_matter_label = line.strip().upper()
                 if self.end_matter_page is None or page_no < self.end_matter_page:
@@ -558,13 +611,23 @@ class BaseSubjectAdapter:
                     nxt_bbox = nxt.get("bbox", [0, 0, 0, 0])
                     if not nxt_txt or not nxt_spans:
                         break
-                    if nxt_bbox[1] < last_y1 or (nxt_bbox[1] - last_y1) > 22.0:
+                    y_diff = nxt_bbox[1] - last_y1
+                    if y_diff < -4.0 or y_diff > 22.0:
                         break
                     nxt_s0 = nxt_spans[0]
                     nxt_size = nxt_s0.get("size", 10.0)
-                    nxt_font = nxt_s0.get("font", "").lower()
-                    nxt_bold = bool(nxt_s0.get("flags", 0) & 2 or "bold" in nxt_font or "demi" in nxt_font)
-                    if abs(nxt_size - h_size) <= 0.6 and nxt_bold == h_bold and nxt_size > (self.body_size + 0.5):
+                    if h_bold:
+                        nxt_bold = all(
+                            bool(s.get("flags", 0) & 2 or "bold" in s.get("font", "").lower() or "demi" in s.get("font", "").lower())
+                            for s in nxt_spans
+                        )
+                    else:
+                        nxt_font = nxt_s0.get("font", "").lower()
+                        nxt_bold = bool(nxt_s0.get("flags", 0) & 2 or "bold" in nxt_font or "demi" in nxt_font)
+                    size_matches = abs(nxt_size - h_size) <= 0.6
+                    bold_matches = (nxt_bold == h_bold)
+                    is_heading_weight = h_bold or (h_size > self.body_size + 0.5)
+                    if size_matches and bold_matches and is_heading_weight:
                         if self.parse_numbered_heading(nxt_txt) or self.is_activity_heading(nxt_txt)[0]:
                             break
                         if nxt_txt.endswith((".", ":", ";")):
@@ -600,6 +663,8 @@ class BaseSubjectAdapter:
             # 3. Run-in bold heading detection (e.g. "Intersection of sets. The ...")
             run_in_title = self.detect_run_in_bold(line, spans)
             if run_in_title and len(run_in_title.split()) <= 8:
+                if self.check_plausibility(run_in_title, "subheading") is not None:
+                    continue
                 first_span = spans[0] if spans else {}
                 candidates.append({
                     "level": "subheading",
@@ -631,6 +696,8 @@ class BaseSubjectAdapter:
 
                 if style_rank in ["H1", "H2", "H3"]:
                     lvl = "topic" if style_rank == "H1" else ("subtopic" if style_rank == "H2" else "subheading")
+                    if self.check_plausibility(line, lvl) is not None:
+                        continue
                     first_span = spans[0] if spans else {}
                     candidates.append({
                         "level": lvl,

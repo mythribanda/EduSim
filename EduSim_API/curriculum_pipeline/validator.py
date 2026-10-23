@@ -42,6 +42,64 @@ LEVEL_RANKS: Dict[str, int] = {
     "subheading": 4,
 }
 
+PLAUSIBILITY_RULES = {
+    "title_starts_lowercase",
+    "title_ends_comma",
+    "unbalanced_quotes",
+    "title_contains_sentence_boundary",
+    "title_word_count_exceeded",
+    "bare_unit_token",
+    "dangling_function_word",
+}
+
+DANGLING_FUNCTION_WORDS_REGEX = re.compile(
+    r"\b(and|of|the|for|in|to|a|an|with|or|on|by|from|between|laws?\s+of)\s*$",
+    re.I,
+)
+
+
+def check_title_plausibility(title: str, level: str = "") -> Optional[Tuple[str, str]]:
+    t = str(title or "").strip()
+    if not t:
+        return ("empty_title", "Title is empty or whitespace-only")
+
+    # 1. Title starting with lowercase letter (ASCII alphabetic)
+    if t[0].isascii() and t[0].isalpha() and t[0].islower():
+        return ("title_starts_lowercase", f"Title '{t}' starts with a lowercase letter")
+
+    # 2. Title ending in a comma
+    if t.rstrip().endswith(","):
+        return ("title_ends_comma", f"Title '{t}' ends in a comma")
+
+    # 3. Unbalanced quotes
+    # Strip word-internal apostrophes (straight or curly) e.g. Dalton's, don't, Gauss's, Dalton’s
+    s = re.sub(r"[a-zA-Z][\x27\u2019][a-zA-Z]?", "", t)
+    if s.count('"') % 2 != 0:
+        return ("unbalanced_quotes", f"Title '{t}' contains unbalanced double quotes")
+    if s.count('“') != s.count('”'):
+        return ("unbalanced_quotes", f"Title '{t}' contains unbalanced curly double quotes")
+    if s.count('‘') != s.count('’'):
+        return ("unbalanced_quotes", f"Title '{t}' contains unbalanced curly single quotes")
+    if s.count("'") % 2 != 0:
+        return ("unbalanced_quotes", f"Title '{t}' contains unbalanced single quotes")
+
+    # 4. Title containing a sentence boundary (". " followed by a letter)
+    if re.search(r"\.\s+[A-Za-z]", t):
+        return ("title_contains_sentence_boundary", f"Title '{t}' contains a sentence boundary")
+
+    # 5. Titles of more than 12 words at the Subtopic and Subheading levels
+    if level in ["subtopic", "subheading"] and len(t.split()) > 12:
+        return (
+            "title_word_count_exceeded",
+            f"Title '{t}' exceeds 12 words at level '{level}' ({len(t.split())} words)",
+        )
+
+    # 6. Bare "UNIT" / "Unit N" token as heading
+    if re.match(r"^UNIT(\s*[-–—]\s*\d+|\s+\d+)?$", t, re.I):
+        return ("bare_unit_token", f"Title '{t}' is a bare UNIT token")
+
+    return None
+
 
 @dataclass
 class ValidationIssue:
@@ -79,6 +137,14 @@ class CurriculumValidator:
 
     def __init__(self):
         self.issues: List[ValidationIssue] = []
+        self.total_nodes_count: int = 0
+        self.suspicious_node_ids: set = set()
+
+    def get_suspicion_metrics(self, is_ssc: bool = False) -> Tuple[float, str]:
+        """Returns (suspicion_score, extraction_status)."""
+        score = len(self.suspicious_node_ids) / max(1, self.total_nodes_count)
+        status = "needs_review" if (score > 0.10 or is_ssc) else "ok"
+        return round(score, 4), status
 
     def validate_file(self, file_path: Path) -> List[ValidationIssue]:
         """Validates a book JSON file or chapter JSON file."""
@@ -113,6 +179,8 @@ class CurriculumValidator:
     def validate_data(self, data: Dict[str, Any], source_filename: str = "") -> List[ValidationIssue]:
         """Validates book or chapter dictionary."""
         self.issues = []
+        self.total_nodes_count = 0
+        self.suspicious_node_ids = set()
 
         # If data is a book curriculum with chapters list
         if "chapters" in data and isinstance(data["chapters"], list):
@@ -360,6 +428,46 @@ class CurriculumValidator:
                 )
             )
 
+        self.total_nodes_count += 1
+
+        # WARNING: Numbered heading ending with dangling function word
+        c_num = node.get("official_number")
+        if c_num and isinstance(c_num, str):
+            if DANGLING_FUNCTION_WORDS_REGEX.search(title.strip()):
+                self.issues.append(
+                    ValidationIssue(
+                        severity="WARNING",
+                        rule_id="dangling_function_word",
+                        message=f"Numbered heading '{title}' ({c_num}) ends with a dangling function word",
+                        node_id=node_id,
+                        node_title=title,
+                        level=level,
+                        page=page_start,
+                        file=source_file,
+                    )
+                )
+                if node_id:
+                    self.suspicious_node_ids.add(node_id)
+
+        # WARNING: Plausibility checks on title
+        p_res = check_title_plausibility(title, level)
+        if p_res:
+            p_rule, p_msg = p_res
+            self.issues.append(
+                ValidationIssue(
+                    severity="WARNING",
+                    rule_id=p_rule,
+                    message=f"Node '{node_id}' ({level}) '{title}' failed plausibility: {p_msg}",
+                    node_id=node_id,
+                    node_title=title,
+                    level=level,
+                    page=page_start,
+                    file=source_file,
+                )
+            )
+            if node_id:
+                self.suspicious_node_ids.add(node_id)
+
     def _validate_children(self, parent_node: Dict[str, Any], parent: Dict[str, Any], file_ctx: str):
         children = parent_node.get("nodes", [])
         if not children:
@@ -515,6 +623,7 @@ def run_validation(
         "total_errors": 0,
         "total_warnings": 0,
         "issues_by_file": {},
+        "suspicion_scores": {},
     }
 
     total_errors = 0
@@ -527,6 +636,14 @@ def run_validation(
 
         total_errors += len(errors)
         total_warnings += len(warnings)
+
+        score, status = validator.get_suspicion_metrics(is_ssc="ssc" in bf.name.lower())
+        report["suspicion_scores"][bf.name] = {
+            "score": score,
+            "suspicious_nodes": len(validator.suspicious_node_ids),
+            "total_nodes": validator.total_nodes_count,
+            "status": status,
+        }
 
         if errors:
             report["files_with_errors"] += 1

@@ -433,10 +433,18 @@ def cmd_validate(args: argparse.Namespace):
     files_err = report.get("files_with_errors", 0)
     files_warn = report.get("files_with_warnings", 0)
 
-    for fname, issues in report.get("issues_by_file", {}).items():
+    susp_scores = report.get("suspicion_scores", {})
+    all_seen_files = set(list(report.get("issues_by_file", {}).keys()) + list(susp_scores.keys()))
+    for fname in sorted(all_seen_files):
+        issues = report.get("issues_by_file", {}).get(fname, [])
         errs = [i for i in issues if i["severity"] == "ERROR"]
         warns = [i for i in issues if i["severity"] == "WARNING"]
-        print(f"\n[{fname}] - {len(errs)} error(s), {len(warns)} warning(s)")
+        s_info = susp_scores.get(fname, {})
+        s_score = s_info.get("score", 0.0)
+        s_status = s_info.get("status", "ok")
+        s_pct = round(s_score * 100.0, 1)
+
+        print(f"\n[{fname}] - {len(errs)} error(s), {len(warns)} warning(s) | Suspicion: {s_pct}% ({s_status})")
         for err in errs:
             print(f"  ❌ [ERROR] {err['rule_id']}: {err['message']}")
         for warn in warns:

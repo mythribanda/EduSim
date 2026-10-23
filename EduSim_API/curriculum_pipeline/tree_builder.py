@@ -103,6 +103,10 @@ class CurriculumTreeBuilder:
             cand_ocr = bool(cand.get("ocr_needed", False))
 
             cand_norm = re.sub(r"[^\w]", "", title).lower()
+            if re.match(r"^UNIT(\s*[-–—]\s*\d+|\s+\d+)?$", title.strip(), re.I):
+                if not chapter_node.get("wrapper"):
+                    chapter_node["wrapper"] = title.strip()
+                continue
             if cand_norm == norm_ch_title or (norm_wrapper and cand_norm == norm_wrapper):
                 # Never fabricate/duplicate the chapter title as a topic or subtopic!
                 continue
@@ -289,9 +293,22 @@ class CurriculumTreeBuilder:
         chapter_node["unstructured_ranges"] = []
         if end_matter_page is not None and chapter_page_start <= end_matter_page <= chapter_page_end:
             self._cap_node_page_ends(chapter_node, end_matter_page)
+
+        # Determine uncovered trailing pages (Summary/Exercises/Back Matter)
+        def _get_max_page_end(n: Dict[str, Any]) -> int:
+            mp = n.get("page_end", 0)
+            for child in n.get("nodes", []):
+                mp = max(mp, _get_max_page_end(child))
+            return mp
+
+        max_node_page = 0
+        if chapter_node.get("nodes"):
+            max_node_page = max(_get_max_page_end(c) for c in chapter_node["nodes"])
+
+        if max_node_page > 0 and max_node_page < chapter_page_end:
             label = end_matter_label or "SUMMARY"
             chapter_node["unstructured_ranges"].append({
-                "page_start": end_matter_page,
+                "page_start": max_node_page + 1,
                 "page_end": chapter_page_end,
                 "reason": label,
             })
@@ -352,10 +369,11 @@ class CurriculumTreeBuilder:
             self._assign_ordinals_and_identity(child)
 
     def _cap_node_page_ends(self, parent_node: Dict[str, Any], end_page: int):
-        """Caps page_end of children so none extend past end_page."""
+        """Caps page_end of children so none extend into or past end_page."""
         for child in parent_node.get("nodes", []):
-            if child.get("page_start", 0) <= end_page:
-                child["page_end"] = min(child.get("page_end", end_page), end_page)
+            if child.get("page_start", 0) < end_page:
+                child["page_end"] = min(child.get("page_end", end_page - 1), end_page - 1)
+                child["page_end"] = max(child["page_start"], child["page_end"])
             self._cap_node_page_ends(child, end_page)
 
     def _adjust_page_ends(self, parent_node: Dict[str, Any], chapter_max_page: int):
