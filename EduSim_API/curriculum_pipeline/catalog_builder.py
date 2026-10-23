@@ -24,6 +24,7 @@ from curriculum_pipeline.pipeline_config import (
     NCERT_PATTERN,
     PIPELINE_OUTPUT_ROOT,
     TEXTBOOKS_DIR,
+    get_ssc_book_code,
 )
 
 CATALOG_CSV_PATH = PIPELINE_OUTPUT_ROOT / "catalog" / "books_catalog.csv"
@@ -180,8 +181,7 @@ def build_books_catalog(
         medium = book_meta.get("medium", "en")
         title = book_meta.get("title", Path(fn).stem)
 
-        clean_code = re.sub(r"[^a-zA-Z0-9]+", "_", Path(fn).stem).lower()[:48]
-        bcode = f"ssc_{clean_code}"
+        bcode = get_ssc_book_code(fn)
 
         catalog_rows.append({
             "book_code": bcode,

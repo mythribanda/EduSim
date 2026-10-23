@@ -50,6 +50,16 @@ class CurriculumExtractorEngine:
         BOOKS_OUT_DIR.mkdir(parents=True, exist_ok=True)
         REPORTS_OUT_DIR.mkdir(parents=True, exist_ok=True)
 
+        self.preflight_by_file: Dict[str, Dict[str, Any]] = {}
+        preflight_csv = REPORTS_OUT_DIR / "preflight.csv"
+        if preflight_csv.exists():
+            try:
+                with open(preflight_csv, "r", encoding="utf-8") as pf:
+                    for row in csv.DictReader(pf):
+                        self.preflight_by_file[row["file"]] = row
+            except Exception:
+                pass
+
     def extract_ncert_chapter_title_from_p1(self, pages: List[Dict[str, Any]], ch_no: int) -> Tuple[str, Optional[str], Optional[str]]:
         """
         Extracts chapter title and wrapper (Unit/Theme) from first page(s).
@@ -165,6 +175,48 @@ class CurriculumExtractorEngine:
             return int(m.group(5)) if m else 0
 
         file_entries_sorted = sorted(file_entries, key=get_ch_num)
+
+        # Check text quality from preflight
+        book_tq = "ok"
+        tq_reason = ""
+        for fe in file_entries_sorted:
+            fn = fe.get("file", "")
+            pf = self.preflight_by_file.get(fn)
+            if pf and pf.get("classification") != "ok":
+                book_tq = pf.get("classification")
+                tq_reason = pf.get("notes", "")
+                break
+
+        if book_tq != "ok":
+            print(f"  [SKIP] Skipping {book_code} ({book_title}) due to text_quality='{book_tq}' ({tq_reason})")
+            coverage_proof = self.coverage_prover.prove_coverage(
+                book_code=book_code,
+                chapters=[],
+                pages_records=[],
+                expected_chapters_count=0,
+                is_flagged_book=True,
+            )
+            result = {
+                "book_code": book_code,
+                "board": "ncert",
+                "class": cls,
+                "subject": subject,
+                "medium": medium,
+                "book_title": book_title,
+                "adapter": "none",
+                "source_files": [fe["file"] for fe in file_entries_sorted],
+                "source_sha256": "",
+                "text_quality": book_tq,
+                "extraction_status": f"skipped_{book_tq}",
+                "notes": tq_reason,
+                "total_pages": sum(int(fe.get("pages") or 0) for fe in file_entries_sorted),
+                "chapters": [],
+                "coverage_proof": coverage_proof,
+            }
+            b_out = BOOKS_OUT_DIR / f"{book_code}.json"
+            with open(b_out, "w", encoding="utf-8") as f:
+                json.dump(result, f, indent=2, ensure_ascii=False)
+            return result
 
         tasks = []
         for entry in file_entries_sorted:
@@ -370,6 +422,49 @@ class CurriculumExtractorEngine:
 
         return book_curriculum
 
+    def extract_ssc_printed_toc(self, pdf_path: Path) -> Dict[int, str]:
+        """Extracts chapter titles from printed TOC table using PyMuPDF blocks."""
+        toc_map: Dict[int, str] = {}
+        try:
+            doc = fitz.open(pdf_path)
+        except Exception:
+            return toc_map
+
+        months_set = {
+            "january", "february", "march", "april", "may", "june",
+            "july", "august", "september", "october", "november", "december"
+        }
+        for pno in range(min(15, len(doc))):
+            page = doc[pno]
+            txt = page.get_text()
+            if "index" in txt.lower() or "contents" in txt.lower():
+                blocks = page.get_text("blocks")
+                for b in blocks:
+                    btext = b[4].strip()
+                    lines = [l.strip() for l in btext.splitlines() if l.strip()]
+                    if not lines:
+                        continue
+                    m = re.match(r"^0?(\d{1,2})$", lines[0])
+                    if m:
+                        c_num = int(m.group(1))
+                        title_parts = []
+                        for l in lines[1:]:
+                            if l.isdigit() or re.match(r"^\d+\s*[-–—]\s*\d+$", l):
+                                continue
+                            if any(mth in l.lower() for mth in months_set):
+                                continue
+                            if re.match(r"^(june|july|august|september|october|november|december)", l.lower()):
+                                continue
+                            title_parts.append(l)
+                        clean_title = " ".join(title_parts).strip()
+                        if clean_title and len(clean_title) > 2:
+                            toc_map[c_num] = clean_title
+                    elif "mathematical modelling" in btext.lower():
+                        toc_map[15] = "Mathematical Modelling"
+                if toc_map:
+                    break
+        return toc_map
+
     def process_ssc_book(
         self,
         book_info: Dict[str, Any],
@@ -385,14 +480,22 @@ class CurriculumExtractorEngine:
         book_title = book_info["book_title"]
         cls = book_info["class"]
 
+        # Check preflight text quality
+        pf = self.preflight_by_file.get(fn)
+        ssc_tq = pf.get("classification", "ok") if pf else "ok"
+        tq_reason = pf.get("notes", "") if pf else ""
+
         is_flagged = (
             "errata" in fn.lower()
             or fn == "5em.pdf"
             or fn == "English - Class VI - Total Book - 08.11.2024.pdf"
+            or ssc_tq != "ok"
         )
 
         if is_flagged:
-            # Step A.2 & A.3: keep flagged, do not process nodes
+            # Step A.2 & A.3 & Fix A: keep flagged/skipped, do not process nodes
+            status = f"skipped_{ssc_tq}" if ssc_tq != "ok" else "flagged"
+            print(f"  [SKIP] Skipping SSC book {book_code} ({book_title}) due to text_quality='{ssc_tq}' / flagged ({tq_reason})")
             coverage_proof = self.coverage_prover.prove_coverage(
                 book_code=book_code,
                 chapters=[],
@@ -400,7 +503,7 @@ class CurriculumExtractorEngine:
                 expected_chapters_count=0,
                 is_flagged_book=True,
             )
-            return {
+            result = {
                 "book_code": book_code,
                 "board": "ssc",
                 "class": cls,
@@ -408,10 +511,18 @@ class CurriculumExtractorEngine:
                 "medium": medium,
                 "book_title": book_title,
                 "adapter": "none",
+                "source_files": [fn],
                 "source_sha256": entry.get("sha256", ""),
+                "text_quality": ssc_tq,
+                "extraction_status": status,
+                "notes": tq_reason,
                 "chapters": [],
                 "coverage_proof": coverage_proof,
             }
+            b_out = BOOKS_OUT_DIR / f"{book_code}.json"
+            with open(b_out, "w", encoding="utf-8") as f:
+                json.dump(result, f, indent=2, ensure_ascii=False)
+            return result
 
         # Extract pages
         extract_res = self.page_extractor.extract_file(pdf_path, file_id=fn, force=not self.resume)
@@ -478,22 +589,39 @@ class CurriculumExtractorEngine:
             chapter_ranges = [(book_title, 1, len(pages), "fallback_single_chapter")]
 
         # Build printed TOC mapping from early pages if available
-        printed_toc_map: Dict[int, str] = {}
+        printed_toc_map = self.extract_ssc_printed_toc(pdf_path)
         months_set = {"january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"}
-        for p in pages[:15]:
-            p_text = p.get("text", "")
-            if "index" in p_text.lower() or "contents" in p_text.lower():
-                lines = [l.strip() for l in p_text.splitlines() if l.strip()]
-                for i_l, l_str in enumerate(lines):
-                    m1 = re.match(r"^(\d{1,2})\s+([A-Za-z][A-Za-z\s\-–—&,\(\)]+)$", l_str)
-                    if m1 and int(m1.group(1)) <= 30 and len(m1.group(2).strip()) > 2:
-                        printed_toc_map[int(m1.group(1))] = m1.group(2).strip()
-                    elif l_str.isdigit() and int(l_str) <= 30 and i_l + 1 < len(lines):
-                        nxt = lines[i_l + 1]
-                        if re.match(r"^[A-Za-z][A-Za-z\s\-–—&,\(\)]+$", nxt) and not nxt.isdigit() and len(nxt) > 2 and "government" not in nxt.lower():
-                            c_num = int(l_str)
-                            if c_num not in printed_toc_map:
-                                printed_toc_map[c_num] = nxt.strip()
+        dangling_prep = re.compile(r"\b(in|of|and|the|for|to|with)\s*$", re.I)
+
+        if not printed_toc_map:
+            for p in pages[:15]:
+                p_text = p.get("text", "")
+                if "index" in p_text.lower() or "contents" in p_text.lower():
+                    lines = [l.strip() for l in p_text.splitlines() if l.strip()]
+                    for i_l, l_str in enumerate(lines):
+                        m1 = re.match(r"^(\d{1,2})\s+([A-Za-z][A-Za-z\s\-–—&,\(\)]+)$", l_str)
+                        if m1 and int(m1.group(1)) <= 30 and len(m1.group(2).strip()) > 2:
+                            c_num = int(m1.group(1))
+                            c_t = m1.group(2).strip()
+                            if not any(m in c_t.lower() for m in months_set):
+                                printed_toc_map[c_num] = c_t
+                        elif l_str.isdigit() and int(l_str) <= 30 and i_l + 1 < len(lines):
+                            nxt = lines[i_l + 1]
+                            if re.match(r"^[A-Za-z][A-Za-z\s\-–—&,\(\)]+$", nxt) and not nxt.isdigit() and len(nxt) > 2 and "government" not in nxt.lower():
+                                c_num = int(l_str)
+                                if c_num not in printed_toc_map:
+                                    cand_title = nxt.strip()
+                                    if dangling_prep.search(cand_title):
+                                        for k in range(i_l + 2, min(i_l + 8, len(lines))):
+                                            c_line = lines[k]
+                                            if c_line.isdigit() and int(c_line) <= 30:
+                                                break
+                                            if re.match(r"^[A-Za-z][A-Za-z\s\-–—&,\(\)]+$", c_line) and not any(m in c_line.lower() for m in months_set) and len(c_line) > 2 and "government" not in c_line.lower():
+                                                cand_title = f"{cand_title} {c_line.strip()}"
+                                                break
+                                    printed_toc_map[c_num] = cand_title
+                        elif "mathematical modelling" in l_str.lower():
+                            printed_toc_map[15] = "Mathematical Modelling"
 
         tree_builder = CurriculumTreeBuilder(book_code)
         chapters: List[Dict[str, Any]] = []
@@ -515,6 +643,11 @@ class CurriculumExtractorEngine:
                 if not any(m in cand_t.lower() for m in months_set) and len(cand_t) > 3:
                     clean_ch_title = cand_t
                     is_bad_outline = False
+
+            # Exclude back matter / answers / solutions / instructions from curriculum chapters
+            norm_lower = clean_ch_title.strip().lower()
+            if norm_lower in ["answers", "answer", "solutions", "revision", "syllabus", "academic standards", "instructions", "front pages", "0 front pages"] or norm_lower.startswith("answers"):
+                continue
 
             wrapper = None
             if is_bad_outline or not clean_ch_title:
@@ -559,6 +692,11 @@ class CurriculumExtractorEngine:
                                     break
                     if not is_bad_outline:
                         break
+
+            # Second check: exclude back matter / answers / solutions / instructions resolved from page text
+            norm_lower = clean_ch_title.strip().lower()
+            if norm_lower in ["answers", "answer", "solutions", "revision", "syllabus", "academic standards", "instructions", "front pages", "0 front pages"] or norm_lower.startswith("answers"):
+                continue
 
             norm_c_title = re.sub(r"[^\w]", "", clean_ch_title).lower()
             ocr_pages_set = {p.get("page_no") for p in pages if p.get("ocr_needed")}

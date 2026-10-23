@@ -151,6 +151,12 @@ class CurriculumDatabaseLoader:
             book_data = json.load(f)
 
         status = book_data.get("extraction_status", "ok")
+        t_qual = book_data.get("text_quality", "ok")
+        if t_qual != "ok" or status.startswith("skipped_"):
+            stats["status"] = "skipped"
+            stats["reason"] = f"Book text_quality is '{t_qual}' (skipped to prevent loading non-ok text quality)"
+            return stats
+
         is_ssc = book_data.get("board") == "ssc" or book_code.startswith("ssc_")
         if (status == "needs_review" or is_ssc) and not include_review:
             stats["status"] = "refused"

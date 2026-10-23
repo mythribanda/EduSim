@@ -65,6 +65,11 @@ if MAPPING_YAML_PATH.exists():
 # ── NCERT filename regex
 NCERT_PATTERN: re.Pattern = re.compile(_ncert_pat_str, re.IGNORECASE)
 
+# ── SSC book code helper
+def get_ssc_book_code(filename: str) -> str:
+    clean = re.sub(r"[^a-zA-Z0-9]+", "_", Path(filename).stem).lower()[:48]
+    return f"ssc_{clean}"
+
 # ── NCERT class code (a=1 … l=12)
 NCERT_CLASS_MAP: dict[str, int] = _class_map
 

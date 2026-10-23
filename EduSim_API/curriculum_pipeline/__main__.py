@@ -34,6 +34,7 @@ from curriculum_pipeline.pipeline_config import (
     NCERT_PATTERN,
     PIPELINE_OUTPUT_ROOT,
     TEXTBOOKS_DIR,
+    get_ssc_book_code,
 )
 
 CURRICULUM_DIR = PIPELINE_OUTPUT_ROOT / "curriculum"
@@ -79,9 +80,7 @@ def cmd_extract(args: argparse.Namespace):
             c, lang, code, part, ch = m.groups()
             bcode = f"{c.lower()}{lang.lower()}{code.lower()}{part}"
         else:
-            clean_code = Path(fn).stem.lower()
-            clean_code = "".join(ch if ch.isalnum() else "_" for ch in clean_code)[:48]
-            bcode = f"ssc_{clean_code}"
+            bcode = get_ssc_book_code(fn)
         files_by_book.setdefault(bcode, []).append(r)
 
     engine = CurriculumExtractorEngine(textbooks_dir=tb_dir, resume=args.resume, workers=getattr(args, "workers", 1))
@@ -504,12 +503,12 @@ def cmd_preflight(args: argparse.Namespace):
     """Runs text quality preflight classification over textbook PDFs."""
     from curriculum_pipeline.preflight import run_preflight
     tb_dir = Path(args.input).resolve() if getattr(args, "input", None) else None
-    res = run_preflight(textbooks_dir=tb_dir)
+    records, summary = run_preflight(textbooks_dir=tb_dir)
     print("\n" + "=" * 70)
     print("  Text Quality Preflight Summary")
     print("=" * 70)
-    print(f"  Total PDFs scanned   : {res.get('total_scanned', 0)}")
-    for k, v in res.get("classification_counts", {}).items():
+    print(f"  Total PDFs scanned   : {summary.get('total_scanned', len(records))}")
+    for k, v in summary.get("classification_counts", {}).items():
         print(f"    - {k:<20}: {v}")
     print(f"  Output CSV           : {REPORTS_DIR / 'preflight.csv'}")
     print("=" * 70)

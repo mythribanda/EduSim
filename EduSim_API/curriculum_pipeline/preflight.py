@@ -72,8 +72,8 @@ def analyze_pdf_text_quality(pdf_path: Path, expected_lang: str) -> Dict[str, An
             "pua_ratio": 0.0,
             "replacement_ratio": 0.0,
             "latin1_symbol_ratio": 0.0,
-            "classification": "scanned_image_only",
-            "notes": "Missing or empty PDF file",
+            "classification": "unreadable",
+            "notes": "Missing or zero-byte PDF file (needs re-supply)",
         }
 
     try:
@@ -87,8 +87,8 @@ def analyze_pdf_text_quality(pdf_path: Path, expected_lang: str) -> Dict[str, An
             "pua_ratio": 0.0,
             "replacement_ratio": 0.0,
             "latin1_symbol_ratio": 0.0,
-            "classification": "scanned_image_only",
-            "notes": f"MuPDF open error: {str(e)[:50]}",
+            "classification": "unreadable",
+            "notes": f"MuPDF open error: {str(e)[:50]} (needs re-supply)",
         }
 
     total_pages = len(doc)
@@ -101,8 +101,8 @@ def analyze_pdf_text_quality(pdf_path: Path, expected_lang: str) -> Dict[str, An
             "pua_ratio": 0.0,
             "replacement_ratio": 0.0,
             "latin1_symbol_ratio": 0.0,
-            "classification": "scanned_image_only",
-            "notes": "Zero pages in document",
+            "classification": "unreadable",
+            "notes": "Zero pages in document (needs re-supply)",
         }
 
     # Sample up to 5 pages (e.g. pages 2, 4, 6, 8, 10 or evenly spaced)
@@ -216,7 +216,13 @@ def run_preflight(
         raise FileNotFoundError(f"Inventory CSV not found at {inv_path}")
 
     records: List[Dict[str, Any]] = []
-    classification_counts: Dict[str, int] = {"ok": 0, "legacy_encoding": 0, "scanned_image_only": 0, "mixed": 0}
+    classification_counts: Dict[str, int] = {
+        "ok": 0,
+        "legacy_encoding": 0,
+        "scanned_image_only": 0,
+        "unreadable": 0,
+        "mixed": 0,
+    }
     by_class_lang: Dict[Tuple[str, str, str], int] = {}
 
     with open(inv_path, "r", encoding="utf-8-sig") as f:
@@ -266,7 +272,12 @@ def run_preflight(
         records.append(rec)
 
         if idx % 100 == 0 or idx == len(reader):
-            print(f"  [{idx:3d}/{len(reader):3d}] Preflight in progress... (OK: {classification_counts['ok']}, Legacy: {classification_counts['legacy_encoding']}, Scanned: {classification_counts['scanned_image_only']}, Mixed: {classification_counts['mixed']})")
+            print(
+                f"  [{idx:3d}/{len(reader):3d}] Preflight in progress... "
+                f"(OK: {classification_counts['ok']}, Legacy: {classification_counts['legacy_encoding']}, "
+                f"Unreadable: {classification_counts['unreadable']}, Scanned: {classification_counts['scanned_image_only']}, "
+                f"Mixed: {classification_counts['mixed']})"
+            )
 
     # Write preflight.csv
     cols = [

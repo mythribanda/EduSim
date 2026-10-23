@@ -73,6 +73,14 @@ def generate_qa_report(
         except Exception:
             pass
 
+    needs_resupply_files = [
+        {"file": fn, "reason": "Zero bytes / unopenable (needs re-supply)"}
+        for fn, cls in preflight_by_file.items()
+        if cls == "unreadable"
+    ]
+    resupply_names = {x["file"] for x in needs_resupply_files}
+    unmapped_files = [u for u in unmapped_files if u.get("file") not in resupply_names]
+
     # 3. Scan book files
     book_files = sorted(list(b_dir.glob("*.json"))) if b_dir.exists() else []
 
@@ -144,27 +152,35 @@ def generate_qa_report(
             total_level_counts[k] += v
         total_ocr_pages += book_ocr_pages
 
-        # Validate book
-        val_issues = validator.validate_data(bdata, source_filename=bfile.name)
-        val_errors = [i for i in val_issues if i.severity == "ERROR"]
-        val_warnings = [i for i in val_issues if i.severity == "WARNING"]
-        total_val_errors += len(val_errors)
-        total_val_warnings += len(val_warnings)
-
-        is_ssc = (board.lower() == "ssc")
-        suspicion_score, calc_status = validator.get_suspicion_metrics(is_ssc=is_ssc)
-
         # Text quality determination
         src_files = bdata.get("source_files", [])
         primary_file = src_files[0] if src_files else f"{bcode}.pdf"
         t_quality = preflight_by_file.get(primary_file, bdata.get("text_quality", "ok"))
+
+        # Fix A: If book is non-ok text quality or explicitly skipped, do not validate nodes into garbage errors
+        is_skipped = bdata.get("extraction_status", "").startswith("skipped_") or t_quality != "ok"
+        if is_skipped:
+            val_errors = []
+            val_warnings = []
+            suspicion_score = 0.0
+            calc_status = bdata.get("extraction_status", f"skipped_{t_quality}")
+        else:
+            val_issues = validator.validate_data(bdata, source_filename=bfile.name)
+            val_errors = [i for i in val_issues if i.severity == "ERROR"]
+            val_warnings = [i for i in val_issues if i.severity == "WARNING"]
+            total_val_errors += len(val_errors)
+            total_val_warnings += len(val_warnings)
+
+            is_ssc = (board.lower() == "ssc")
+            suspicion_score, calc_status = validator.get_suspicion_metrics(is_ssc=is_ssc)
 
         if len(chapters) == 0:
             zero_chapter_books.append({
                 "book_code": bcode,
                 "title": btitle,
                 "file": primary_file,
-                "status": bdata.get("extraction_status", "unknown"),
+                "status": bdata.get("extraction_status", calc_status),
+                "notes": bdata.get("notes", f"text_quality={t_quality}"),
             })
 
         book_reports.append({
@@ -190,6 +206,7 @@ def generate_qa_report(
         "total_nodes_by_level": total_level_counts,
         "total_ocr_needed_pages": total_ocr_pages,
         "zero_chapter_books": zero_chapter_books,
+        "needs_resupply_files": needs_resupply_files,
         "unmapped_files_count": len(unmapped_files),
         "total_validator_errors": total_val_errors,
         "total_validator_warnings": total_val_warnings,
@@ -213,10 +230,11 @@ def generate_qa_report(
         f"(Chapters: {total_level_counts['chapter']}, Topics: {total_level_counts['topic']}, "
         f"Subtopics: {total_level_counts['subtopic']}, Activities: {total_level_counts['activity']}, "
         f"Subheadings: {total_level_counts['subheading']})",
-        f"- **Zero-Chapter Books**: {len(zero_chapter_books)}",
+        f"- **Zero-Chapter Books (Skipped / Flagged)**: {len(zero_chapter_books)}",
+        f"- **Books Needing Re-Supply**: {len(needs_resupply_files)}",
         f"- **OCR-Needed Pages**: {total_ocr_pages}",
         f"- **Unmapped Files**: {len(unmapped_files)}",
-        f"- **Validator Issues**: {total_val_errors} Error(s), {total_val_warnings} Warning(s)",
+        f"- **Validator Issues (ok books)**: {total_val_errors} Error(s), {total_val_warnings} Warning(s)",
         "",
         "## Book Extraction Summary Table",
         "",
@@ -253,12 +271,23 @@ def generate_qa_report(
 
     md_lines.extend([
         "",
-        "## Zero-Chapter Files",
+        "## Books Needing Re-Supply (Unreadable / Zero Bytes)",
+        "",
+    ])
+    if needs_resupply_files:
+        for nr in needs_resupply_files:
+            md_lines.append(f"- `{nr['file']}` — {nr['reason']}")
+    else:
+        md_lines.append("No unreadable files detected.")
+
+    md_lines.extend([
+        "",
+        "## Zero-Chapter Books (Skipped / Flagged)",
         "",
     ])
     if zero_chapter_books:
         for z in zero_chapter_books:
-            md_lines.append(f"- `{z['book_code']}` ({z['title']}) — Status: `{z['status']}`, File: `{z['file']}`")
+            md_lines.append(f"- `{z['book_code']}` ({z['title']}) — Status: `{z['status']}`, Note: {z.get('notes', 'none')}")
     else:
         md_lines.append("Zero unparseable or zero-chapter files detected.")
 
@@ -273,6 +302,7 @@ def generate_qa_report(
     print(f"  Books Audited        : {len(book_files)}")
     print(f"  Total Nodes          : {sum(total_level_counts.values())}")
     print(f"  Zero-Chapter Books   : {len(zero_chapter_books)}")
+    print(f"  Needs Re-Supply      : {len(needs_resupply_files)}")
     print(f"  OCR-Needed Pages     : {total_ocr_pages}")
     print(f"  Validator Issues     : {total_val_errors} Error(s), {total_val_warnings} Warning(s)")
     print(f"  Low-Density Chapters : {len(low_density_chapters)}")
