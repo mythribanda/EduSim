@@ -1,0 +1,438 @@
+"""
+EduSim Curriculum Pipeline — Base Subject Adapter
+Provides robust multi-level heading detection, numbered extraction, run-in bold extraction,
+activity classification, and tree node generation across all levels:
+Chapter -> Topic -> Subtopic -> Activity -> Subheading.
+"""
+
+from __future__ import annotations
+
+import re
+import yaml
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+from curriculum_pipeline.pipeline_config import API_ROOT
+
+KEYWORDS_FILE = API_ROOT / "curriculum_pipeline" / "config" / "activity_keywords.yaml"
+
+
+class BaseSubjectAdapter:
+    adapter_name: str = "base"
+
+    def __init__(self, style_profile: Dict[str, Any], language: str = "en"):
+        self.profile = style_profile
+        self.language = language or "en"
+        self.ranks = style_profile.get("ranks", {})
+        self.body_size = style_profile.get("body_size", 10.0)
+        self.activity_keywords = self._load_activity_keywords()
+        self.end_of_chapter_reached = False
+        self.end_matter_page = None
+        self.last_topic_tuple = None
+
+    def reset_chapter_state(self):
+        self.end_of_chapter_reached = False
+        self.end_matter_page = None
+        self.last_topic_tuple = None
+
+    def _load_activity_keywords(self) -> List[str]:
+        if not KEYWORDS_FILE.exists():
+            return ["Activity", "Let us do", "Exercise", "Project", "Experiment", "Example"]
+        try:
+            with open(KEYWORDS_FILE, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f)
+            kws = list(data.get(self.language, []))
+            if self.language != "en":
+                kws.extend(data.get("en", []))
+            return [k.strip() for k in kws if k.strip()]
+        except Exception:
+            return ["Activity", "Let us do", "Exercise", "Project", "Experiment", "Example"]
+
+    def is_activity_heading(self, line: str) -> Tuple[bool, Optional[str], Optional[str], Optional[str], Optional[str]]:
+        """
+        Checks if line is an activity heading.
+        Returns (is_activity, kind, official_number, title, preview).
+        Title is strictly label + number only (e.g. 'Definition 1', 'Example 2', 'EXERCISE 2.1').
+        Body text goes in preview (max 80 chars).
+        """
+        line_clean = line.strip()
+
+        # 1. Example (strictly require a digit for numbered examples e.g. Example 1, Example 2.1)
+        m_ex = re.match(r"^(Example|उदाहरण|ఉదాహరణ|مثال)\s*([0-9]+(?:\.[0-9]+)*[a-zA-Z]?)\b(?:\s*[:\.\-–—]\s*|\s*)(.*)$", line_clean, re.I)
+        if m_ex:
+            lbl = m_ex.group(1).capitalize()
+            num = m_ex.group(2)
+            rest = m_ex.group(3).strip()
+            title = f"{lbl} {num}" if num else lbl
+            preview = rest[:80] if rest else None
+            return True, "example", num, title, preview
+
+        # 2. Exercise
+        m_exercise = re.match(r"^(Exercise|Miscellaneous\s+Exercise|अभ्यास|అభ్యాసం|مشق)\s*([0-9\.]+)?\b(?:\s*[:\.\-–—]\s*|\s*)(.*)$", line_clean, re.I)
+        if m_exercise:
+            lbl = m_exercise.group(1).strip()
+            num = m_exercise.group(2)
+            rest = m_exercise.group(3).strip()
+            title = f"{lbl} {num}" if num else lbl
+            preview = rest[:80] if rest else None
+            return True, "exercise", num, title, preview
+
+        # 3. Theorem
+        m_thm = re.match(r"^(Theorem|Proposition|Corollary|प्रमेय|సిద్ధాంతం)\s*([0-9\.]+)?\b(?:\s*[:\.\-–—]\s*|\s*)(.*)$", line_clean, re.I)
+        if m_thm:
+            lbl = m_thm.group(1).capitalize()
+            num = m_thm.group(2)
+            rest = m_thm.group(3).strip()
+            title = f"{lbl} {num}" if num else lbl
+            preview = rest[:80] if rest else None
+            return True, "theorem", num, title, preview
+
+        # 4. Definition
+        m_def = re.match(r"^(Definition|परिभाषा|నిర్వచనం)\s*([0-9\.]+)?\b(?:\s*[:\.\-–—]\s*|\s*)(.*)$", line_clean, re.I)
+        if m_def:
+            lbl = m_def.group(1).capitalize()
+            num = m_def.group(2)
+            rest = m_def.group(3).strip()
+            title = f"{lbl} {num}" if num else lbl
+            preview = rest[:80] if rest else None
+            return True, "definition", num, title, preview
+
+        # 5. Configurable keywords
+        for kw in self.activity_keywords:
+            if re.match(rf"^\s*{re.escape(kw)}\b", line_clean, re.I):
+                if len(line_clean.split()) > 12 and line_clean.endswith("."):
+                    continue
+                m_act = re.match(rf"^\s*({re.escape(kw)})\s*([0-9\.]+)?\b(?:\s*[:\.\-–—]\s*|\s*)(.*)$", line_clean, re.I)
+                if m_act:
+                    lbl = m_act.group(1).strip()
+                    num = m_act.group(2)
+                    rest = m_act.group(3).strip()
+                    title = f"{lbl} {num}" if num else lbl
+                    preview = rest[:80] if rest else None
+                    return True, "activity", num, title, preview
+
+        return False, None, None, None, None
+
+    def is_noise_or_annotation(self, line: str) -> Tuple[bool, Optional[str]]:
+        """
+        Detects if line is page number, figure caption, reprint, single letters,
+        math equations, measurement lines, table cells, or 'Do you know?' box.
+        """
+        line_s = line.strip()
+
+        # Page numbers (e.g. 1 to 999)
+        if re.match(r"^\d+$", line_s):
+            return True, "page_number"
+
+        # Reject lines < 3 chars
+        if len(line_s) < 3:
+            return True, "too_short"
+
+        # Reject lines ending in comma
+        if line_s.endswith(","):
+            return True, "ends_in_comma"
+
+        # Lone section numbers e.g. '1.1' or '2.4'
+        if re.match(r"^\d+(\.\d+){1,3}$", line_s):
+            return True, "lone_section_number"
+
+        # Reprint / copyright
+        if re.search(r"\b(Reprint\s+\d+|Rationalised|ISBN|Published by)\b", line_s, re.I):
+            return True, "copyright"
+
+        # Figure / Table caption or table cells
+        if re.match(r"^(Fig\.|Figure|Table|Box|Chart|Graph)\s*\d+(\.\d+)?", line_s, re.I):
+            return True, "figure_or_table_caption"
+        if " | " in line_s or line_s.startswith("|") or "\t\t" in line:
+            return True, "table_cell"
+        if "\t" in line:
+            if not re.match(r"^(\d{1,2}(?:\.\d{1,2}){1,3})\.?\s*", line_s):
+                parts = [p.strip() for p in line.split("\t") if p.strip()]
+                if len(parts) >= 2 and all(len(p) <= 15 for p in parts):
+                    return True, "table_cell"
+
+        # 'Do you know?' or 'Did you know?' box
+        if re.search(r"\b(Do you know|Did you know|Fascinating Fact|Note for the teacher)\b", line_s, re.I):
+            return True, "did_you_know_box"
+
+        # Math expression, equation lines, or digits-only/units
+        if re.match(r"^[\d\s\.\,\+\-\*\/\=\(\)\%\:\;\—\–\±\<\>\≤\≥\×\÷\^\_\{\}\[\]\|\~]+$", line_s):
+            return True, "digits_or_operators_only"
+        if re.match(r"^\d+(\.\d+)?\s*(g|kg|mol|m|cm|mm|L|mL|M|ns|pm|s|K|°C|\+|-|×|/|=)\b", line_s):
+            return True, "math_or_measurement_line"
+        if re.match(r"^(\d+\.?\d*|\w)\s*=\s*", line_s) or "× 10" in line_s or "+ (" in line_s:
+            return True, "math_equation_line"
+        if re.match(r"^(\d+\.?\d*)\s+(has|have|times|mol|molar)\b", line_s):
+            return True, "math_statement_line"
+
+        return False, None
+
+    def parse_numbered_heading(self, line: str) -> Optional[Tuple[str, str, str]]:
+        """
+        Matches strictly formatted numbered section headings:
+        e.g. '1.1 Title', '1.1.1 Title', '1.1.1.1 Title'.
+        Rejects decimal numbers, math expressions, trailing periods, and exercise questions.
+        """
+        if self.end_of_chapter_reached:
+            return None
+
+        line_s = line.strip()
+        m = re.match(r"^(\d{1,2}(?:\.\d{1,2}){1,3})\.?\s+([A-Za-z\u0900-\u097F\u0C00-\u0C7F].+)$", line_s)
+        if not m:
+            return None
+
+        num = m.group(1)
+        title = m.group(2).strip()
+
+        # Reject 0.x section numbers (chapters are 1+)
+        if num.startswith("0."):
+            return None
+
+        # Extract heading phrase if followed by multiple spaces or run-in sentence
+        if "  " in title:
+            first_chunk = title.split("  ")[0].strip()
+            if len(first_chunk.split()) <= 10 and not first_chunk.endswith((".", "?", ":")):
+                title = first_chunk
+
+        # Reject if title ends with punctuation or is a sentence/question
+        if title.endswith((".", "?", ":", ";")) or len(title.split()) > 15:
+            return None
+
+        first_word = title.split()[0].lower()
+        if first_word in [
+            "g", "kg", "mol", "m", "cm", "mm", "l", "ml", "ns", "pm", "s", "k", "°c",
+            "has", "have", "in", "times", "is", "was", "are", "were",
+            "calculate", "determine", "find", "show", "prove", "what", "how", "why", "which",
+            "where", "when", "match", "express", "round", "convert", "if", "pressure", "use",
+            "chlorine", "calcium", "dinitrogen"
+        ]:
+            return None
+
+        dots = num.count(".")
+        if dots == 1:
+            level = "topic"
+            try:
+                parts = tuple(int(x) for x in num.split("."))
+                # Allow minor backward step within 2 (handles 2-column layout reading order like 1.8 & 1.9)
+                if self.last_topic_tuple is not None and (self.last_topic_tuple[1] - parts[1]) > 2:
+                    return None  # Large backward jump (exercise question numbers)
+                self.last_topic_tuple = max(self.last_topic_tuple, parts) if self.last_topic_tuple else parts
+            except (ValueError, IndexError):
+                pass
+        elif dots == 2:
+            level = "subtopic"
+        else:
+            level = "subheading"
+        return level, num, title
+
+    def detect_run_in_bold(self, line_text: str, spans: List[Dict[str, Any]]) -> Optional[str]:
+        """
+        Detects run-in bold headings where the first span is bold followed by body text:
+        e.g. 'Intersection of sets. The intersection of...' -> returns 'Intersection of sets'
+        Suppresses dialogue speakers (e.g. 'Nitin: ...') and inline bold vocabulary in running sentences (e.g. 'bottom of my jar.').
+        """
+        if not spans or len(spans) < 2:
+            return None
+
+        line_s = line_text.strip()
+
+        # (a) Suppress dialogue speaker labels like "Nitin: What is this?"
+        if re.match(r"^[A-Z][a-zA-Z\s]{0,20}\s*:\s*", line_s):
+            return None
+
+        sp0 = spans[0]
+        t0 = sp0.get("text", "").strip()
+        is_bold0 = bool(sp0.get("flags", 0) & 2 or "bold" in sp0.get("font", "").lower())
+
+        if not is_bold0:
+            return None
+
+        # Check subsequent spans are non-bold body text
+        sp_rest = spans[1:]
+        non_bold_count = sum(1 for s in sp_rest if not (s.get("flags", 0) & 2 or "bold" in s.get("font", "").lower()))
+        if non_bold_count < 1:
+            return None
+
+        # (b) Suppress inline bold vocabulary words inside running sentences:
+        # A true run-in heading is set apart from the body text by punctuation (period, colon, or em-dash).
+        # Sentences like "bottom of my jar." or "near the board and under the table." have NO heading punctuation
+        # after the bold word and continue running grammatically.
+        has_heading_punct = bool(re.search(r"[\.:–—]$", t0))
+        rest_text = "".join(s.get("text", "") for s in sp_rest).strip()
+        starts_with_delimiter = bool(re.match(r"^[\.:–—]", rest_text))
+
+        if not (has_heading_punct or starts_with_delimiter):
+            return None
+
+        clean_t0 = t0.rstrip(".:-–— ").strip()
+
+        # Subheadings must start with a capital letter or non-ASCII script
+        if not clean_t0:
+            return None
+        if clean_t0[0].isascii() and not clean_t0[0].isupper():
+            return None
+
+        # Length check: between 3 chars and 8 words
+        if len(clean_t0) < 3 or len(clean_t0.split()) > 8:
+            return None
+
+        # Reject figures, tables, notes, captions
+        if re.match(r"^(Fig|Figure|Table|Note|Reprint|Exercise|\d+)\b", clean_t0, re.I):
+            return None
+
+        # If line ends with a question mark or dialogue quote, it's not a heading
+        if line_s.endswith(("?", '"', '”', '’')):
+            return None
+
+        return clean_t0
+
+
+    def classify_line_style(self, line_text: str, spans: List[Dict[str, Any]]) -> Optional[str]:
+        """Classify line as H1, H2, H3, or bold-body based on style profile."""
+        if not spans:
+            return None
+        avg_size = sum(s.get("size", 10.0) for s in spans) / len(spans)
+        has_bold = any(s.get("bold", False) for s in spans)
+
+        h1_min = self.ranks.get("H1", {}).get("min_size", 14.0)
+        h2_min = self.ranks.get("H2", {}).get("min_size", 12.0)
+        h3_min = self.ranks.get("H3", {}).get("min_size", 11.0)
+
+        if avg_size >= h1_min and (has_bold or avg_size >= h1_min + 1.5):
+            return "H1"
+        elif avg_size >= h2_min and (has_bold or avg_size >= h2_min + 1.0):
+            return "H2"
+        elif avg_size >= h3_min and (has_bold or avg_size > self.body_size + 0.5):
+            return "H3"
+        elif has_bold and avg_size >= self.body_size - 0.5:
+            return "bold-body"
+        return None
+
+    def extract_nodes_from_lines(
+        self,
+        page_no: int,
+        lines_with_spans: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """
+        Extracts candidate headings (numbered, unnumbered, activity, run-in bold)
+        from lines with their spans and vertical geometry.
+        """
+        candidates = []
+        prev_y1 = None
+
+        for idx, line_info in enumerate(lines_with_spans):
+            line = line_info.get("text", "").strip()
+            spans = line_info.get("spans", [])
+            bbox = line_info.get("bbox", [0, 0, 0, 0])
+            y0 = bbox[1] if bbox else 0.0
+
+            if len(line) < 3 or len(line) > 160:
+                prev_y1 = bbox[3] if bbox else prev_y1
+                continue
+
+            is_noise, annot = self.is_noise_or_annotation(line)
+            if is_noise:
+                prev_y1 = bbox[3] if bbox else prev_y1
+                continue
+
+            spacing_above = round(y0 - prev_y1, 2) if prev_y1 is not None and y0 >= prev_y1 else 0.0
+            prev_y1 = bbox[3] if bbox else prev_y1
+
+            # Check for exercise/summary section boundaries (end of chapter)
+            clean_lower = line.strip().lower()
+            if clean_lower in ["summary", "exercises", "exercises.", "सारांश", "అభ్యాసం"]:
+                self.end_of_chapter_reached = True
+                if self.end_matter_page is None or page_no < self.end_matter_page:
+                    self.end_matter_page = page_no
+
+            # 1. Activity detection (Example, Exercise, Theorem, Activity)
+            is_act, act_kind, act_num, act_title, act_preview = self.is_activity_heading(line)
+            if is_act:
+                # Chapter-level exercise without section number (e.g. "EXERCISES") marks end of chapter
+                if act_kind == "exercise" and (not act_num or "." not in str(act_num)):
+                    self.end_of_chapter_reached = True
+                    if self.end_matter_page is None or page_no < self.end_matter_page:
+                        self.end_matter_page = page_no
+                first_span = spans[0] if spans else {}
+                candidates.append({
+                    "level": "activity",
+                    "kind": act_kind,
+                    "official_number": act_num,
+                    "official_title": act_title,
+                    "preview": act_preview,
+                    "normalized_title": re.sub(r"\s+", " ", act_title).strip(),
+                    "page": page_no,
+                    "evidence": line[:80],
+                    "confidence": 0.95,
+                    "detection_method": "lexicon",
+                    "rule_id": f"rule_activity_{act_kind}",
+                    "font_size": first_span.get("size"),
+                    "bold": bool(first_span.get("flags", 0) & 2 or "bold" in first_span.get("font", "").lower()),
+                })
+                continue
+
+            # 2. Numbered heading detection (1.1, 1.1.1, 1.1.1.1)
+            num_match = self.parse_numbered_heading(line)
+            if num_match:
+                level, num, title = num_match
+                first_span = spans[0] if spans else {}
+                candidates.append({
+                    "level": level,
+                    "official_number": num,
+                    "official_title": title,
+                    "normalized_title": re.sub(r"\s+", " ", title).strip(),
+                    "page": page_no,
+                    "evidence": line,
+                    "confidence": 0.98,
+                    "detection_method": "numbered",
+                    "rule_id": "rule_numbered_heading",
+                    "font_size": first_span.get("size"),
+                    "bold": bool(first_span.get("flags", 0) & 2 or "bold" in first_span.get("font", "").lower()),
+                })
+                continue
+
+            # 3. Run-in bold heading detection (e.g. "Intersection of sets. The ...")
+            run_in_title = self.detect_run_in_bold(line, spans)
+            if run_in_title and len(run_in_title.split()) <= 8:
+                first_span = spans[0] if spans else {}
+                candidates.append({
+                    "level": "subheading",
+                    "official_number": None,
+                    "official_title": run_in_title,
+                    "normalized_title": re.sub(r"\s+", " ", run_in_title).strip(),
+                    "page": page_no,
+                    "evidence": line[:60],
+                    "confidence": 0.85,
+                    "detection_method": "run_in",
+                    "rule_id": "rule_run_in_bold",
+                    "font_size": first_span.get("size"),
+                    "bold": True,
+                })
+                continue
+
+            # 4. Unnumbered standalone heading detection by style rank strictly above body
+            # Must be standalone (<= 12 words, no terminal period, style rank H1, H2, or H3)
+            words = line.split()
+            if len(words) <= 12 and not line.endswith((".", "?", "!", ":", ";", ",", '"', "”")):
+                if re.match(r"^[A-Z][a-zA-Z\s]{0,20}\s*:", line):
+                    continue
+                style_rank = self.classify_line_style(line, spans)
+
+                if style_rank in ["H1", "H2", "H3"]:
+                    lvl = "topic" if style_rank == "H1" else ("subtopic" if style_rank == "H2" else "subheading")
+                    first_span = spans[0] if spans else {}
+                    candidates.append({
+                        "level": lvl,
+                        "official_number": None,
+                        "official_title": line,
+                        "normalized_title": re.sub(r"\s+", " ", line).strip(),
+                        "page": page_no,
+                        "evidence": line,
+                        "confidence": 0.82,
+                        "detection_method": "style",
+                        "rule_id": f"rule_style_{style_rank.lower()}",
+                        "font_size": first_span.get("size"),
+                        "bold": any(bool(s.get("flags", 0) & 2 or "bold" in s.get("font", "").lower()) for s in spans),
+                    })
+
+        return candidates

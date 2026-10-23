@@ -94,5 +94,16 @@ test-results/
 scratch/
 data/
 textbooks/
+
+# ---------------------------------------------------------------------------
+# Textbooks — large PDFs, never committed
+# ---------------------------------------------------------------------------
 EduSim_API/textbooks/
 EduSim_API/data/
+
+# ---------------------------------------------------------------------------
+# Curriculum pipeline — all generated output (inventory, extracted_text,
+# curriculum JSON, reports).  The pipeline source code IS committed;
+# only the generated artefacts are excluded.
+# ---------------------------------------------------------------------------
+EduSim_API/curriculum_pipeline/output/

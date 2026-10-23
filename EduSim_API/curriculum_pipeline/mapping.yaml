@@ -1,0 +1,332 @@
+ncert:
+  pattern: '^([a-l])([ehu])([a-z]{2})(\d)(\d{2})\.+pdf$'
+  classes:
+    a: 1
+    b: 2
+    c: 3
+    d: 4
+    e: 5
+    f: 6
+    g: 7
+    h: 8
+    i: 9
+    j: 10
+    k: 11
+    l: 12
+  languages:
+    e: en
+    h: hi
+    u: ur
+  subjects:
+    ac:
+      subject: accountancy
+      title: Accountancy
+    at:
+      subject: hindi
+      title: Aroh / Antra (Hindi)
+    be:
+      subject: economics
+      title: Business Economics
+    bo:
+      subject: biology
+      title: Biology
+    bs:
+      subject: business-studies
+      title: Business Studies
+    bt:
+      subject: biotechnology
+      title: Biotechnology
+    ch:
+      subject: chemistry
+      title: Chemistry
+    cs:
+      subject: computer-science
+      title: Computer Science
+    cu:
+      subject: science
+      title: Curiosity (Science)
+    ec:
+      subject: economics
+      title: Economics
+    ee:
+      subject: evs
+      title: Environmental Studies
+    es:
+      subject: social-science
+      title: Exploring Society / Social Science
+    ev:
+      subject: evs
+      title: Environmental Studies
+    ga:
+      subject: hindi
+      title: Gadhya Khand (Hindi)
+    go:
+      subject: geography
+      title: Geography
+    gp:
+      subject: mathematics
+      title: Ganita Prakash (Mathematics)
+    gy:
+      subject: geography
+      title: Geography
+    he:
+      subject: home-science
+      title: Human Ecology and Family Sciences
+    hs:
+      subject: history
+      title: History
+    jm:
+      subject: mathematics
+      title: Joyful Mathematics
+    kl:
+      subject: english
+      title: Kaleidoscope (English)
+    ks:
+      subject: hindi
+      title: Kshitij (Hindi)
+    mh:
+      subject: mathematics
+      title: Mathematics
+    ml:
+      subject: hindi
+      title: Malhar (Hindi)
+    mm:
+      subject: mathematics
+      title: Mathematics
+    mr:
+      subject: english
+      title: Mridang / Marigold (English)
+    ph:
+      subject: physics
+      title: Physics
+    pr:
+      subject: english
+      title: Poorvi (English)
+    ps:
+      subject: political-science
+      title: Political Science
+    py:
+      subject: psychology
+      title: Psychology
+    sa:
+      subject: sanskrit
+      title: Sanskrit
+    sc:
+      subject: science
+      title: Science
+    sr:
+      subject: hindi
+      title: Sarangi (Hindi)
+    ss:
+      subject: social-science
+      title: Social Science
+    st:
+      subject: social-science
+      title: Social Science (Understanding)
+    sy:
+      subject: sociology
+      title: Sociology
+    ve:
+      subject: vocational
+      title: Vocational / Life Skills
+    we:
+      subject: english
+      title: Words and Expressions (English)
+    ww:
+      subject: english
+      title: Woven Words (English)
+
+ssc:
+  books:
+    "1st class English 2025-26.pdf":
+      class: 1
+      subject: english
+      medium: en
+      title: "1st Class English"
+    "2nd Class English 2025-26.pdf":
+      class: 2
+      subject: english
+      medium: en
+      title: "2nd Class English"
+    "3rd Class English 2025-26.pdf":
+      class: 3
+      subject: english
+      medium: en
+      title: "3rd Class English"
+    "4 EVS EM PDF  2025-26.pdf":
+      class: 4
+      subject: evs
+      medium: en
+      title: "Class 4 Environmental Studies (Our Environment)"
+    "4th Class Engish Textbook_2025-26.pdf":
+      class: 4
+      subject: english
+      medium: en
+      title: "4th Class English Textbook"
+    "4th Tel FL 2025-26.pdf":
+      class: 4
+      subject: telugu
+      medium: te
+      title: "4th Class Telugu First Language"
+    "5 Maths EM Final 08.11.24.pdf":
+      class: 5
+      subject: mathematics
+      medium: en
+      title: "5th Class Mathematics"
+    "5em.pdf":
+      class: 5
+      subject: evs
+      medium: en
+      title: "Class 5 Environmental Studies (We - Our Environment)"
+    "6th Social EM 2025-26_Errata_FINAL.pdf":
+      class: 6
+      subject: social-science
+      medium: en
+      title: "6th Class Social Studies (Errata)"
+      flagged: true
+      flag_reason: "Errata file"
+    "7 English Reader F 08.11.24.pdf":
+      class: 7
+      subject: english
+      medium: en
+      title: "7th Class English Reader"
+    "7 Maths EM 2025-26 Final 08.11.24.pdf":
+      class: 7
+      subject: mathematics
+      medium: en
+      title: "7th Class Mathematics"
+    "7th Science EM PDF 2025-26.pdf":
+      class: 7
+      subject: science
+      medium: en
+      title: "7th Class General Science"
+    "7th Social EM 2025-26_Errata_FINAL.pdf":
+      class: 7
+      subject: social-science
+      medium: en
+      title: "7th Class Social Studies (Errata)"
+      flagged: true
+      flag_reason: "Errata file"
+    "8 English F 08.11.24.pdf":
+      class: 8
+      subject: english
+      medium: en
+      title: "8th Class English"
+    "8 Maths EM 2025-26 Final 08.11.24.pdf":
+      class: 8
+      subject: mathematics
+      medium: en
+      title: "8th Class Mathematics"
+    "8th Social EM 2025-26_Errata_FINAL.pdf":
+      class: 8
+      subject: social-science
+      medium: en
+      title: "8th Class Social Studies (Errata)"
+      flagged: true
+      flag_reason: "Errata file"
+    "9 English 2025-26__08.11.24.pdf":
+      class: 9
+      subject: english
+      medium: en
+      title: "9th Class English"
+    "9 Maths EM 2025-26 Final 08.11.24.pdf":
+      class: 9
+      subject: mathematics
+      medium: en
+      title: "9th Class Mathematics"
+    "9 Social Studies EM 2025-26_Errata_FINAL.pdf":
+      class: 9
+      subject: social-science
+      medium: en
+      title: "9th Class Social Studies (Errata)"
+      flagged: true
+      flag_reason: "Errata file"
+    "English - Class - X - Total Book - 08.11.2024.pdf":
+      class: 10
+      subject: english
+      medium: en
+      title: "10th Class English (Total Book)"
+    "English - Class V - Total Book - 08.11.2024 FINAL.pdf":
+      class: 5
+      subject: english
+      medium: en
+      title: "5th Class English (Total Book)"
+    "English - Class VI - Total Book - 08.11.2024.pdf":
+      class: 6
+      subject: english
+      medium: en
+      title: "6th Class English (Total Book)"
+      flagged: true
+      flag_reason: "Corrupted or 0-byte file"
+    "I FL Hindi 2025-26.pdf":
+      class: 1
+      subject: hindi
+      medium: hi
+      title: "Class 1 Hindi First Language"
+    "II FL Hindi 2025-26.pdf":
+      class: 2
+      subject: hindi
+      medium: hi
+      title: "Class 2 Hindi First Language"
+    "III FL Hindi -2025-26.pdf":
+      class: 3
+      subject: hindi
+      medium: hi
+      title: "Class 3 Hindi First Language"
+    "IV Maths EM 2025-26 (03-11-2024).pdf":
+      class: 4
+      subject: mathematics
+      medium: en
+      title: "4th Class Mathematics"
+    "IX Biology EM 2025-26.pdf":
+      class: 9
+      subject: biology
+      medium: en
+      title: "9th Class Biological Science"
+    "IX Physics EM 2025-26.pdf":
+      class: 9
+      subject: physical-science
+      medium: en
+      title: "9th Class Physical Science"
+    "VI General Science EM 2025-26.pdf":
+      class: 6
+      subject: science
+      medium: en
+      title: "6th Class General Science"
+    "VI Maths EM Final 2025-26 (02-11-2024).pdf":
+      class: 6
+      subject: mathematics
+      medium: en
+      title: "6th Class Mathematics"
+    "VIII Biology EM 2025-26.pdf":
+      class: 8
+      subject: biology
+      medium: en
+      title: "8th Class Biological Science"
+    "VIII Physics EM 2025-26.pdf":
+      class: 8
+      subject: physical-science
+      medium: en
+      title: "8th Class Physical Science"
+    "X Biology EM 2025-26.pdf":
+      class: 10
+      subject: biology
+      medium: en
+      title: "10th Class Biological Science"
+    "X Mathematics EM  2025-26 (02-11-2024).pdf":
+      class: 10
+      subject: mathematics
+      medium: en
+      title: "10th Class Mathematics"
+    "X Physics EM 2025-26.pdf":
+      class: 10
+      subject: physical-science
+      medium: en
+      title: "10th Class Physical Science"
+    "X SOCIAL EM 2025-26_Errata_FINAL.pdf":
+      class: 10
+      subject: social-science
+      medium: en
+      title: "10th Class Social Studies (Errata)"
+      flagged: true
+      flag_reason: "Errata file"

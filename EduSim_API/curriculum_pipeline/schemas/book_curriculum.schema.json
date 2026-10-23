@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EduSimCurriculumBook",
+  "type": "object",
+  "required": [
+    "book_code",
+    "board",
+    "class",
+    "subject",
+    "medium",
+    "book_title",
+    "source_sha256",
+    "chapters",
+    "coverage_proof"
+  ],
+  "properties": {
+    "book_code": { "type": "string" },
+    "board": { "type": "string" },
+    "class": { "type": "integer" },
+    "subject": { "type": "string" },
+    "medium": { "type": "string" },
+    "book_title": { "type": "string" },
+    "adapter": { "type": "string" },
+    "source_sha256": { "type": "string" },
+    "chapters": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/chapterNode" }
+    },
+    "coverage_proof": { "$ref": "#/$defs/coverageProof" }
+  },
+  "$defs": {
+    "chapterNode": {
+      "type": "object",
+      "required": [
+        "id",
+        "level",
+        "official_title",
+        "normalized_title",
+        "page_start",
+        "page_end",
+        "nodes"
+      ],
+      "properties": {
+        "id": { "type": "string" },
+        "parent_id": { "type": ["string", "null"] },
+        "level": { "type": "string", "enum": ["chapter"] },
+        "wrapper": { "type": ["string", "null"] },
+        "official_number": { "type": ["string", "null"] },
+        "official_title": { "type": "string" },
+        "normalized_title": { "type": "string" },
+        "page_start": { "type": "integer" },
+        "page_end": { "type": "integer" },
+        "extraction_type": { "type": "string" },
+        "evidence": { "type": "string" },
+        "confidence": { "type": "number" },
+        "rule_id": { "type": "string" },
+        "structure_unresolved": { "type": "boolean" },
+        "annotations": { "type": "array", "items": { "type": "string" } },
+        "nodes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/curriculumNode" }
+        }
+      }
+    },
+    "curriculumNode": {
+      "type": "object",
+      "required": [
+        "id",
+        "parent_id",
+        "level",
+        "official_title",
+        "normalized_title",
+        "page_start",
+        "page_end",
+        "extraction_type",
+        "confidence",
+        "rule_id"
+      ],
+      "properties": {
+        "id": { "type": "string" },
+        "parent_id": { "type": "string" },
+        "level": {
+          "type": "string",
+          "enum": ["topic", "subtopic", "activity", "subheading"]
+        },
+        "official_number": { "type": ["string", "null"] },
+        "official_title": { "type": "string" },
+        "normalized_title": { "type": "string" },
+        "page_start": { "type": "integer" },
+        "page_end": { "type": "integer" },
+        "extraction_type": { "type": "string" },
+        "evidence": { "type": "string" },
+        "confidence": { "type": "number" },
+        "rule_id": { "type": "string" },
+        "annotations": { "type": "array", "items": { "type": "string" } },
+        "nodes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/curriculumNode" }
+        }
+      }
+    },
+    "coverageProof": {
+      "type": "object",
+      "required": [
+        "pages_total",
+        "pages_with_text",
+        "pages_assigned_to_a_node",
+        "pages_unassigned",
+        "chapters_found",
+        "chapters_expected",
+        "status"
+      ],
+      "properties": {
+        "pages_total": { "type": "integer" },
+        "pages_with_text": { "type": "integer" },
+        "pages_assigned_to_a_node": { "type": "integer" },
+        "pages_unassigned": { "type": "integer" },
+        "chapters_found": { "type": "integer" },
+        "chapters_expected": { "type": "integer" },
+        "headings_per_chapter": { "type": "object" },
+        "unassigned_ranges": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": { "type": "integer" }
+          }
+        },
+        "status": {
+          "type": "string",
+          "enum": ["passed", "needs_review", "failed", "not_processed"]
+        },
+        "status_reasons": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}
