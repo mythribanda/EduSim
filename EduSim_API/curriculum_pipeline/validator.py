@@ -320,6 +320,31 @@ class CurriculumValidator:
                 )
             )
 
+        # WARNING: Numbered subtopic X.Y.Z whose parent topic is not X.Y
+        if parent is not None and level == "subtopic":
+            c_num = node.get("official_number")
+            if c_num and isinstance(c_num, str):
+                parts = c_num.split(".")
+                if len(parts) >= 3 and parts[0].isdigit() and parts[1].isdigit():
+                    expected_topic_num = f"{parts[0]}.{parts[1]}"
+                    p_num = str(parent.get("official_number") or "").strip()
+                    if p_num and p_num != expected_topic_num:
+                        self.issues.append(
+                            ValidationIssue(
+                                severity="WARNING",
+                                rule_id="subtopic_parent_number_mismatch",
+                                message=(
+                                    f"Numbered subtopic '{title}' ({c_num}) has parent topic "
+                                    f"'{parent.get('official_title')}' ({p_num}), expected '{expected_topic_num}'"
+                                ),
+                                node_id=node_id,
+                                node_title=title,
+                                level=level,
+                                page=page_start,
+                                file=source_file,
+                            )
+                        )
+
         # WARNING: OCR needed pages present
         if ocr_needed:
             self.issues.append(
@@ -344,6 +369,7 @@ class CurriculumValidator:
         seen_subtopic_titles: Dict[str, str] = {}
         prev_sibling_start: Optional[int] = None
         prev_sibling_title: Optional[str] = None
+        prev_num_by_level: Dict[str, Tuple[Tuple[int, ...], str, str]] = {}
 
         for child in children:
             # Validate individual node properties & parent-child nesting
@@ -354,6 +380,7 @@ class CurriculumValidator:
             c_id = child.get("id")
             c_source = child.get("source_file", file_ctx)
             c_start = child.get("page_start")
+            c_num = child.get("official_number")
             norm_tit = re.sub(r"\s+", " ", c_title).lower()
 
             # Rule 5: Sibling page order (ERROR)
@@ -380,6 +407,36 @@ class CurriculumValidator:
             if isinstance(c_start, int):
                 prev_sibling_start = c_start
                 prev_sibling_title = c_title
+
+        # WARNING: Sibling order by number (evaluated per level)
+            num_tuple = None
+            if c_num and isinstance(c_num, str):
+                try:
+                    num_tuple = tuple(int(p) for p in re.findall(r"\d+", c_num))
+                except Exception:
+                    num_tuple = None
+
+            if num_tuple and c_level in prev_num_by_level:
+                prev_tuple, prev_str, prev_title = prev_num_by_level[c_level]
+                if len(num_tuple) == len(prev_tuple) and num_tuple < prev_tuple:
+                    self.issues.append(
+                        ValidationIssue(
+                            severity="WARNING",
+                            rule_id="sibling_order_by_number",
+                            message=(
+                                f"Numbered sibling '{c_title}' ({c_num}) appears out of numeric order "
+                                f"after '{prev_title}' ({prev_str}) at level '{c_level}'"
+                            ),
+                            node_id=c_id,
+                            node_title=c_title,
+                            level=c_level,
+                            page=c_start,
+                            file=c_source,
+                        )
+                    )
+
+            if num_tuple:
+                prev_num_by_level[c_level] = (num_tuple, c_num, c_title)
 
             # Rule 6: Duplicate sibling titles at Topic and Subtopic levels only (ERROR)
             # At Activity and Subheading levels, duplicate titles are NOT errors.

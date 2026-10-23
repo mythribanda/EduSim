@@ -268,12 +268,13 @@ class CurriculumExtractorEngine:
                 norm_c = re.sub(r"[^\w]", "", c_title).lower()
                 c_page = c.get("page", 0)
 
-                # Filter out title block fragments on chapter's first page
+                # Filter out title block fragments on chapter's first page (only if unnumbered)
                 if c_page == ch_start:
-                    if norm_c and (norm_c in norm_ch_title or norm_ch_title in norm_c):
-                        continue
-                    if norm_wrapper and (norm_c in norm_wrapper or norm_wrapper in norm_c):
-                        continue
+                    if not c.get("official_number"):
+                        if norm_c and (norm_c in norm_ch_title or norm_ch_title in norm_c):
+                            continue
+                        if norm_wrapper and (norm_c in norm_wrapper or norm_wrapper in norm_c):
+                            continue
                     if re.match(r"^chapter\s*(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|\d+)\b", c_title.strip(), re.I):
                         continue
 
@@ -307,6 +308,7 @@ class CurriculumExtractorEngine:
                 review_queue=review_queue,
                 file_id=fn,
                 end_matter_page=adapter.end_matter_page,
+                end_matter_label=getattr(adapter, "end_matter_label", None),
             )
 
 
@@ -496,6 +498,7 @@ class CurriculumExtractorEngine:
                 review_queue=review_queue,
                 file_id=fn,
                 end_matter_page=adapter.end_matter_page,
+                end_matter_label=getattr(adapter, "end_matter_label", None),
             )
 
             chapters.append(ch_node)

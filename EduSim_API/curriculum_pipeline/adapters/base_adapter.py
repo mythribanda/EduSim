@@ -8,6 +8,7 @@ Chapter -> Topic -> Subtopic -> Activity -> Subheading.
 from __future__ import annotations
 
 import re
+from collections import Counter
 import yaml
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -28,11 +29,13 @@ class BaseSubjectAdapter:
         self.activity_keywords = self._load_activity_keywords()
         self.end_of_chapter_reached = False
         self.end_matter_page = None
+        self.end_matter_label = None
         self.last_topic_tuple = None
 
     def reset_chapter_state(self):
         self.end_of_chapter_reached = False
         self.end_matter_page = None
+        self.end_matter_label = None
         self.last_topic_tuple = None
 
     def _load_activity_keywords(self) -> List[str]:
@@ -52,20 +55,31 @@ class BaseSubjectAdapter:
         """
         Checks if line is an activity heading.
         Returns (is_activity, kind, official_number, title, preview).
-        Title is strictly label + number only (e.g. 'Definition 1', 'Example 2', 'EXERCISE 2.1').
-        Body text goes in preview (max 80 chars).
+        Separates official_number from title (e.g. number='1.1', title='Activity 1.1').
+        Rejects lowercase or caption words (e.g. 'observe', 'example', 'source').
         """
         line_clean = line.strip()
+        if not line_clean or line_clean[0].islower():
+            return False, None, None, None, None
 
-        # 1. Example (strictly require a digit for numbered examples e.g. Example 1, Example 2.1)
+        # 1. Example
         m_ex = re.match(r"^(Example|उदाहरण|ఉదాహరణ|مثال)\s*([0-9]+(?:\.[0-9]+)*[a-zA-Z]?)\b(?:\s*[:\.\-–—]\s*|\s*)(.*)$", line_clean, re.I)
         if m_ex:
             lbl = m_ex.group(1).capitalize()
             num = m_ex.group(2)
             rest = m_ex.group(3).strip()
-            title = f"{lbl} {num}" if num else lbl
-            preview = rest[:80] if rest else None
-            return True, "example", num, title, preview
+            if num:
+                title = f"{lbl} {num}"
+                preview = rest[:80] if rest else None
+                return True, "example", num, title, preview
+            elif rest and (":" in line_clean or len(rest.split()) <= 10):
+                # Unnumbered illustrative example with subtitle e.g. "Example: What happens..."
+                title = f"{lbl}: {rest[:80]}".strip()
+                return True, "example", None, title, rest[:80]
+            elif ":" in line_clean:
+                title = lbl
+                return True, "example", None, title, rest[:80] if rest else None
+            return False, None, None, None, None
 
         # 2. Exercise
         m_exercise = re.match(r"^(Exercise|Miscellaneous\s+Exercise|अभ्यास|అభ్యాసం|مشق)\s*([0-9\.]+)?\b(?:\s*[:\.\-–—]\s*|\s*)(.*)$", line_clean, re.I)
@@ -100,14 +114,22 @@ class BaseSubjectAdapter:
         # 5. Configurable keywords
         for kw in self.activity_keywords:
             if re.match(rf"^\s*{re.escape(kw)}\b", line_clean, re.I):
-                if len(line_clean.split()) > 12 and line_clean.endswith("."):
-                    continue
-                m_act = re.match(rf"^\s*({re.escape(kw)})\s*([0-9\.]+)?\b(?:\s*[:\.\-–—]\s*|\s*)(.*)$", line_clean, re.I)
+                m_act = re.match(rf"^\s*({re.escape(kw)})(?:\s+([0-9]+(?:\.[0-9]+)*[a-zA-Z]?))?(?:\s*[:\.\-–—]\s*|\s*)(.*)$", line_clean, re.I)
                 if m_act:
                     lbl = m_act.group(1).strip()
                     num = m_act.group(2)
                     rest = m_act.group(3).strip()
-                    title = f"{lbl} {num}" if num else lbl
+                    # Reject lowercase/caption words or lone generic words without numbers or colons
+                    if lbl.lower() in ["observe", "source", "discuss", "explore", "example"] and not num and ":" not in line_clean:
+                        continue
+                    if len(line_clean.split()) > 12 and line_clean.endswith("."):
+                        continue
+                    if num:
+                        title = f"{lbl} {num}"
+                    elif rest and ":" in line_clean:
+                        title = f"{lbl}: {rest[:80]}".strip()
+                    else:
+                        title = lbl
                     preview = rest[:80] if rest else None
                     return True, "activity", num, title, preview
 
@@ -205,7 +227,7 @@ class BaseSubjectAdapter:
         first_word = title.split()[0].lower()
         if first_word in [
             "g", "kg", "mol", "m", "cm", "mm", "l", "ml", "ns", "pm", "s", "k", "°c",
-            "has", "have", "in", "times", "is", "was", "are", "were",
+            "has", "in", "times", "is", "was", "are", "were",
             "calculate", "determine", "find", "show", "prove",
             "match", "express", "round", "convert", "if", "pressure", "use",
             "chlorine", "calcium", "dinitrogen"
@@ -298,9 +320,18 @@ class BaseSubjectAdapter:
         avg_size = sum(s.get("size", 10.0) for s in spans) / len(spans)
         has_bold = any(s.get("bold", False) for s in spans)
 
-        h1_min = self.ranks.get("H1", {}).get("min_size", 14.0)
-        h2_min = self.ranks.get("H2", {}).get("min_size", 12.0)
-        h3_min = self.ranks.get("H3", {}).get("min_size", 11.0)
+        # Determine heading size thresholds from profile ranks or relative to body_size
+        h1_min = self.ranks.get("H1", {}).get("min_size") or (self.body_size + 6.0)
+        h2_min = self.ranks.get("H2", {}).get("min_size") or (self.body_size + 3.0)
+        h3_min = self.ranks.get("H3", {}).get("min_size") or (self.body_size + 1.0)
+
+        # In books where covers or banners skew H1/H2 ranks above body_size * 2.2:
+        if h1_min > self.body_size * 2.2 and h1_min > 24.0:
+            h1_min = max(self.body_size + 6.0, 22.0)
+        if h2_min > self.body_size * 2.0 and h2_min > 20.0:
+            h2_min = max(self.body_size + 3.0, 18.0)
+        if h3_min > self.body_size * 1.8 and h3_min > 16.0:
+            h3_min = max(self.body_size + 1.0, 14.0)
 
         if avg_size >= h1_min and (has_bold or avg_size >= h1_min + 1.5):
             return "H1"
@@ -311,6 +342,76 @@ class BaseSubjectAdapter:
         elif has_bold and avg_size >= self.body_size - 0.5:
             return "bold-body"
         return None
+
+    def _sort_lines_reading_order(self, lines_with_spans: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Sort lines in human reading order.
+        Handles both single-column and multi-column (2-column) page layouts,
+        ensuring left-column flows completely before right-column, while
+        preserving top/bottom full-width section bands.
+        """
+        valid_lines = [l for l in lines_with_spans if l.get("bbox") and len(l.get("text", "").strip()) >= 3]
+        if not valid_lines:
+            return lines_with_spans
+
+        min_x0 = min(l["bbox"][0] for l in valid_lines)
+        max_x1 = max(l["bbox"][2] for l in valid_lines)
+        page_w = max_x1 - min_x0
+        mid_x = min_x0 + page_w / 2.0
+
+        left_lines = [l for l in valid_lines if l["bbox"][2] <= mid_x + 30 and l["bbox"][0] < mid_x - 30]
+        right_lines = [l for l in valid_lines if l["bbox"][0] >= mid_x - 30 and l["bbox"][2] > mid_x + 30]
+
+        if len(left_lines) < 3 or len(right_lines) < 3:
+            # Single-column page: sort purely top-to-bottom, left-to-right
+            return sorted(
+                lines_with_spans,
+                key=lambda l: (
+                    round(l.get("bbox", [0, 0, 0, 0])[1] if l.get("bbox") else 0.0, 1),
+                    round(l.get("bbox", [0, 0, 0, 0])[0] if l.get("bbox") else 0.0, 1),
+                ),
+            )
+
+        # 2-column page: detect full-width elements that cut horizontally across the page
+        full_width_y_cuts = []
+        for l in valid_lines:
+            b = l["bbox"]
+            if b[0] < mid_x - 50 and b[2] > mid_x + 50 and (b[2] - b[0]) > 0.55 * page_w:
+                full_width_y_cuts.append((b[1], b[3]))
+
+        full_width_y_cuts.sort(key=lambda x: x[0])
+        merged_cuts = []
+        for cut in full_width_y_cuts:
+            if not merged_cuts:
+                merged_cuts.append(cut)
+            else:
+                prev = merged_cuts[-1]
+                if cut[0] <= prev[1] + 10.0:
+                    merged_cuts[-1] = (prev[0], max(prev[1], cut[1]))
+                else:
+                    merged_cuts.append(cut)
+
+        def line_sort_key(l):
+            b = l.get("bbox", [0, 0, 0, 0]) if l.get("bbox") else [0, 0, 0, 0]
+            y0, y1, x0, x1 = b[1], b[3], b[0], b[2]
+
+            band_idx = 0
+            is_cut = False
+            for i, (cut_top, cut_bot) in enumerate(merged_cuts):
+                if y1 <= cut_top:
+                    band_idx = 2 * i
+                    break
+                elif y0 <= cut_bot:
+                    band_idx = 2 * i + 1
+                    is_cut = True
+                    break
+            else:
+                band_idx = 2 * len(merged_cuts)
+
+            col = 0 if is_cut else (1 if x0 >= mid_x - 15 else 0)
+            return (band_idx, col, round(y0, 1), round(x0, 1))
+
+        return sorted(lines_with_spans, key=line_sort_key)
 
     def extract_nodes_from_lines(
         self,
@@ -324,6 +425,10 @@ class BaseSubjectAdapter:
         candidates = []
         prev_y1 = None
         consumed_indices = set()
+
+        # Sort lines strictly in reading order (single-column or 2-column aware)
+        lines_with_spans = self._sort_lines_reading_order(lines_with_spans)
+        page_line_counts = Counter(l.get("text", "").strip() for l in lines_with_spans if l.get("text"))
 
         for idx, line_info in enumerate(lines_with_spans):
             if idx in consumed_indices:
@@ -356,6 +461,7 @@ class BaseSubjectAdapter:
             clean_lower = re.sub(r"\s+", "", line.strip().lower())
             if clean_lower in ["summary", "exercises", "exercises.", "सारांश", "అభ్యాసం"]:
                 self.end_of_chapter_reached = True
+                self.end_matter_label = line.strip().upper()
                 if self.end_matter_page is None or page_no < self.end_matter_page:
                     self.end_matter_page = page_no
                 continue
@@ -364,12 +470,20 @@ class BaseSubjectAdapter:
             # 1. Activity detection (Example, Exercise, Theorem, Activity)
             is_act, act_kind, act_num, act_title, act_preview = self.is_activity_heading(line)
             if is_act:
+                first_span = spans[0] if spans else {}
+                span_size = first_span.get("size", 10.0)
+                span_font = first_span.get("font", "").lower()
+                span_bold = bool(first_span.get("flags", 0) & 2 or "bold" in span_font or "demi" in span_font or "heavy" in span_font or "black" in span_font)
+                # Reject caption or small font words (must be >= body size or bold)
+                if span_size < self.body_size - 0.5 and not span_bold:
+                    continue
+
                 # Chapter-level exercise without section number (e.g. "EXERCISES") marks end of chapter
                 if act_kind == "exercise" and (not act_num or "." not in str(act_num)):
                     self.end_of_chapter_reached = True
+                    self.end_matter_label = line.strip().upper()
                     if self.end_matter_page is None or page_no < self.end_matter_page:
                         self.end_matter_page = page_no
-                first_span = spans[0] if spans else {}
                 candidates.append({
                     "level": "activity",
                     "kind": act_kind,
@@ -382,14 +496,15 @@ class BaseSubjectAdapter:
                     "confidence": 0.95,
                     "detection_method": "lexicon",
                     "rule_id": f"rule_activity_{act_kind}",
-                    "font_size": first_span.get("size"),
-                    "bold": bool(first_span.get("flags", 0) & 2 or "bold" in first_span.get("font", "").lower()),
+                    "font_size": span_size,
+                    "bold": span_bold,
                 })
                 continue
 
             # 2. Numbered heading detection (1.1, 1.1.1, 1.1.1.1)
             # Reconstruct full line if adjacent fragments share the exact baseline (NCERT drop shadow / kerning splits)
             full_line_text = line
+            last_x1 = bbox[2] if bbox else 0.0
             k = idx + 1
             while k < len(lines_with_spans):
                 next_l = lines_with_spans[k]
@@ -403,10 +518,25 @@ class BaseSubjectAdapter:
                             if s1[-m_len:] == s2[:m_len]:
                                 merged = s1 + s2[m_len:]
                                 break
-                        full_line_text = merged if merged else (s1 + " " + s2)
-                    k += 1
+                        if merged:
+                            full_line_text = merged
+                            last_x1 = max(last_x1, next_bbox[2])
+                            k += 1
+                        elif 0 <= next_bbox[0] - last_x1 <= 20.0:
+                            if next_bbox[0] - last_x1 <= 2.5:
+                                full_line_text = s1 + s2
+                            else:
+                                full_line_text = s1 + " " + s2
+                            last_x1 = max(last_x1, next_bbox[2])
+                            k += 1
+                        else:
+                            break
                 else:
                     break
+
+            # Clean duplicate section numbers produced by vector drop-shadow layers e.g. "1.3 1.3" -> "1.3"
+            while re.search(r"^(\d{1,2}(?:\.\d{1,2}){1,3})\s+\1\b", full_line_text):
+                full_line_text = re.sub(r"^(\d{1,2}(?:\.\d{1,2}){1,3})\s+\1\b", r"\1", full_line_text)
 
             num_match = self.parse_numbered_heading(full_line_text)
             if num_match:
@@ -490,7 +620,12 @@ class BaseSubjectAdapter:
             # Must be standalone (<= 12 words, no terminal period, style rank H1, H2, or H3)
             words = line.split()
             if len(words) <= 12 and not line.endswith((".", "?", "!", ":", ";", ",", '"', "”")):
+                if page_line_counts.get(line, 1) > 1:
+                    continue
                 if re.match(r"^[A-Z][a-zA-Z\s]{0,20}\s*:", line):
+                    continue
+                # Skip lone alphabet tracing/phonics pairs e.g. "E e", "A a", "B b"
+                if re.match(r"^[A-Z]\s+[a-z]$", line.strip()):
                     continue
                 style_rank = self.classify_line_style(line, spans)
 

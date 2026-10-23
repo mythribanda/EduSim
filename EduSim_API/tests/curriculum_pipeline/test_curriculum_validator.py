@@ -425,3 +425,59 @@ def test_warning_ocr_needed_present(validator):
     warnings = [i for i in issues if i.rule_id == "ocr_needed_present"]
     assert len(warnings) == 1
     assert warnings[0].severity == "WARNING"
+
+
+def test_warning_sibling_order_by_number(validator):
+    # Pass case: 1.1 then 1.2
+    data_pass = create_base_chapter(
+        nodes=[
+            {"id": "act_1", "level": "activity", "official_number": "1.1", "official_title": "Activity 1.1", "page_start": 2, "page_end": 2, "source_file": "t.pdf", "nodes": []},
+            {"id": "act_2", "level": "activity", "official_number": "1.2", "official_title": "Activity 1.2", "page_start": 3, "page_end": 3, "source_file": "t.pdf", "nodes": []},
+        ]
+    )
+    issues_pass = validator.validate_data(data_pass)
+    assert len([i for i in issues_pass if i.rule_id == "sibling_order_by_number"]) == 0
+
+    # Warn case: 1.6 then 1.5
+    data_warn = create_base_chapter(
+        nodes=[
+            {"id": "act_6", "level": "activity", "official_number": "1.6", "official_title": "Activity 1.6", "page_start": 2, "page_end": 2, "source_file": "t.pdf", "nodes": []},
+            {"id": "act_5", "level": "activity", "official_number": "1.5", "official_title": "Activity 1.5", "page_start": 3, "page_end": 3, "source_file": "t.pdf", "nodes": []},
+        ]
+    )
+    issues_warn = validator.validate_data(data_warn)
+    warns = [i for i in issues_warn if i.rule_id == "sibling_order_by_number"]
+    assert len(warns) == 1
+    assert warns[0].severity == "WARNING"
+
+
+def test_warning_subtopic_parent_number_mismatch(validator):
+    # Pass case: Topic 1.3 with Subtopic 1.3.1
+    data_pass = create_base_chapter(
+        nodes=[
+            {
+                "id": "top_3", "level": "topic", "official_number": "1.3", "official_title": "Effects", "page_start": 2, "page_end": 10, "source_file": "t.pdf",
+                "nodes": [
+                    {"id": "sub_1", "level": "subtopic", "official_number": "1.3.1", "official_title": "Corrosion", "page_start": 3, "page_end": 4, "source_file": "t.pdf", "nodes": []}
+                ]
+            }
+        ]
+    )
+    issues_pass = validator.validate_data(data_pass)
+    assert len([i for i in issues_pass if i.rule_id == "subtopic_parent_number_mismatch"]) == 0
+
+    # Warn case: Topic 1.2 with Subtopic 1.3.1
+    data_warn = create_base_chapter(
+        nodes=[
+            {
+                "id": "top_2", "level": "topic", "official_number": "1.2", "official_title": "Types", "page_start": 2, "page_end": 10, "source_file": "t.pdf",
+                "nodes": [
+                    {"id": "sub_1", "level": "subtopic", "official_number": "1.3.1", "official_title": "Corrosion", "page_start": 3, "page_end": 4, "source_file": "t.pdf", "nodes": []}
+                ]
+            }
+        ]
+    )
+    issues_warn = validator.validate_data(data_warn)
+    warns = [i for i in issues_warn if i.rule_id == "subtopic_parent_number_mismatch"]
+    assert len(warns) == 1
+    assert warns[0].severity == "WARNING"

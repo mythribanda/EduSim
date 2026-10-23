@@ -38,6 +38,7 @@ class CurriculumTreeBuilder:
         review_queue: Optional[List[Dict[str, Any]]] = None,
         file_id: str = "",
         end_matter_page: Optional[int] = None,
+        end_matter_label: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Builds the Chapter node and nests Topic -> Subtopic -> Activity -> Subheading.
@@ -118,6 +119,18 @@ class CurriculumTreeBuilder:
 
 
             if level == "topic":
+                # Check if this topic already exists under this chapter (multi-page continuation or repeated banner)
+                existing_topic = next(
+                    (n for n in chapter_node["nodes"] if n.get("level") == "topic" and n.get("normalized_title") == norm_t),
+                    None
+                )
+                if existing_topic:
+                    existing_topic["page_end"] = max(existing_topic["page_end"], page)
+                    current_topic = existing_topic
+                    current_subtopic = None
+                    current_activity = None
+                    continue
+
                 node_id = self._next_id("top")
                 node = {
                     "id": node_id,
@@ -150,6 +163,17 @@ class CurriculumTreeBuilder:
                 if not target_parent:
                     target_parent = chapter_node
                     level_skipped = True
+
+                # Check if this subtopic already exists under target_parent
+                existing_subtopic = next(
+                    (n for n in target_parent["nodes"] if n.get("level") == "subtopic" and n.get("normalized_title") == norm_t),
+                    None
+                )
+                if existing_subtopic:
+                    existing_subtopic["page_end"] = max(existing_subtopic["page_end"], page)
+                    current_subtopic = existing_subtopic
+                    current_activity = None
+                    continue
 
                 node_id = self._next_id("subtop")
                 node = {
@@ -262,8 +286,15 @@ class CurriculumTreeBuilder:
         self._adjust_page_ends(chapter_node, chapter_page_end)
 
         # Handle Summary/Exercises boundary (cap node page ends, do not fabricate nodes)
+        chapter_node["unstructured_ranges"] = []
         if end_matter_page is not None and chapter_page_start <= end_matter_page <= chapter_page_end:
             self._cap_node_page_ends(chapter_node, end_matter_page)
+            label = end_matter_label or "SUMMARY"
+            chapter_node["unstructured_ranges"].append({
+                "page_start": end_matter_page,
+                "page_end": chapter_page_end,
+                "reason": label,
+            })
 
         # Assign stable occurrence ordinals and identity keys to all sibling nodes
         self._assign_ordinals_and_identity(chapter_node)
@@ -330,21 +361,39 @@ class CurriculumTreeBuilder:
     def _adjust_page_ends(self, parent_node: Dict[str, Any], chapter_max_page: int):
         """Recursively update page_end of children to span until next sibling or parent end."""
         children = parent_node.get("nodes", [])
+        if not children:
+            return
+
+        # 1. Recurse down so child subtrees are adjusted first
+        for child in children:
+            self._adjust_page_ends(child, chapter_max_page)
+            # Child must encompass all of its own sub-nodes
+            sub_nodes = child.get("nodes", [])
+            if sub_nodes:
+                child["page_end"] = max(child["page_end"], max(sn["page_end"] for sn in sub_nodes))
+                child["page_start"] = min(child["page_start"], min(sn["page_start"] for sn in sub_nodes))
+
+        # 2. Sequential sibling adjustment
         for i, child in enumerate(children):
             if i + 1 < len(children):
                 next_start = children[i + 1]["page_start"]
-                if next_start > child["page_start"]:
-                    child["page_end"] = max(child["page_start"], next_start - 1)
+                if next_start > child["page_end"]:
+                    child["page_end"] = max(child["page_end"], next_start - 1)
+                elif next_start == child["page_end"]:
+                    child["page_end"] = next_start
                 else:
-                    child["page_end"] = max(child["page_start"], next_start)
+                    child["page_end"] = max(child["page_end"], next_start)
             else:
-                child["page_end"] = max(child["page_start"], parent_node.get("page_end", chapter_max_page))
+                child["page_end"] = max(child["page_end"], parent_node.get("page_end", chapter_max_page))
 
-            # Ensure child page range remains strictly inside parent page range
+        # 3. Parent must encompass all its children
+        if children:
+            parent_node["page_end"] = max(parent_node.get("page_end", chapter_max_page), max(c["page_end"] for c in children))
+            parent_node["page_start"] = min(parent_node.get("page_start", 1), min(c["page_start"] for c in children))
+
+        # 4. Final clamp to guarantee child is strictly within parent
+        for child in children:
             if "page_end" in parent_node:
                 child["page_end"] = min(child["page_end"], parent_node["page_end"])
             if "page_start" in parent_node:
                 child["page_start"] = max(child["page_start"], parent_node["page_start"])
-
-            # Recurse
-            self._adjust_page_ends(child, chapter_max_page)
