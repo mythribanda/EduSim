@@ -350,3 +350,31 @@ class PageExtractor:
             "missing_ocr_languages": list(missing_ocr_languages),
             "sha256": file_sha256,
         }
+
+    def extract_batch_parallel(
+        self,
+        tasks: List[Tuple[Path, str]],
+        workers: int = 4,
+        force: bool = False,
+    ) -> List[Dict[str, Any]]:
+        """Extracts a batch of PDF files in parallel using ProcessPoolExecutor."""
+        from concurrent.futures import ProcessPoolExecutor
+
+        if workers <= 1:
+            return [self.extract_file(p, fid, force=force) for p, fid in tasks]
+
+        args_list = [
+            (str(p), fid, force, str(self.pages_dir))
+            for p, fid in tasks
+        ]
+        with ProcessPoolExecutor(max_workers=workers) as executor:
+            results = list(executor.map(_extract_file_worker, args_list))
+        return results
+
+
+def _extract_file_worker(args: Tuple[str, str, bool, str]) -> Dict[str, Any]:
+    """Top-level picklable worker for parallel PDF extraction across processes."""
+    pdf_path_str, file_id, force, output_dir_str = args
+    out_dir = Path(output_dir_str) if output_dir_str else None
+    extractor = PageExtractor(pages_output_dir=out_dir)
+    return extractor.extract_file(Path(pdf_path_str), file_id=file_id, force=force)

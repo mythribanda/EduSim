@@ -84,7 +84,7 @@ def cmd_extract(args: argparse.Namespace):
             bcode = f"ssc_{clean_code}"
         files_by_book.setdefault(bcode, []).append(r)
 
-    engine = CurriculumExtractorEngine(textbooks_dir=tb_dir, resume=args.resume)
+    engine = CurriculumExtractorEngine(textbooks_dir=tb_dir, resume=args.resume, workers=getattr(args, "workers", 1))
     review_queue: List[Dict[str, Any]] = []
     extraction_reports: List[Dict[str, Any]] = []
     all_books_curriculum: List[Dict[str, Any]] = []
@@ -477,6 +477,44 @@ def cmd_report(args: argparse.Namespace):
         print("Coverage summary not found. Run extract first.")
 
 
+def cmd_qa(args: argparse.Namespace):
+    """Runs QA report generator over extracted books and prints summary."""
+    from curriculum_pipeline.qa_reporter import generate_qa_report
+    tb_books = Path(args.input).resolve() if getattr(args, "input", None) else None
+    summary = generate_qa_report(books_dir=tb_books)
+    print("\n" + "=" * 70)
+    print("  Curriculum Pipeline — QA Report Summary")
+    print("=" * 70)
+    print(f"  Books scanned        : {summary['total_books_audited']}")
+    print(f"  Zero-chapter books   : {len(summary['zero_chapter_books'])}")
+    print(f"  Total nodes extracted: {sum(summary['total_nodes_by_level'].values())}")
+    for lvl, count in summary['total_nodes_by_level'].items():
+        print(f"    - {lvl:<12}: {count}")
+    print(f"  Total OCR-needed pgs : {summary['total_ocr_needed_pages']}")
+    print(f"  Validation errors    : {summary['total_validator_errors']}")
+    print(f"  Validation warnings  : {summary['total_validator_warnings']}")
+    print(f"  Low-density chapters : {summary['low_density_chapters_count']}")
+    print(f"  Unmapped PDF files   : {summary['unmapped_files_count']}")
+    print(f"  Markdown report      : {REPORTS_DIR / 'qa_report.md'}")
+    print(f"  JSON report          : {REPORTS_DIR / 'qa_report.json'}")
+    print("=" * 70)
+
+
+def cmd_preflight(args: argparse.Namespace):
+    """Runs text quality preflight classification over textbook PDFs."""
+    from curriculum_pipeline.preflight import run_preflight
+    tb_dir = Path(args.input).resolve() if getattr(args, "input", None) else None
+    res = run_preflight(textbooks_dir=tb_dir)
+    print("\n" + "=" * 70)
+    print("  Text Quality Preflight Summary")
+    print("=" * 70)
+    print(f"  Total PDFs scanned   : {res.get('total_scanned', 0)}")
+    for k, v in res.get("classification_counts", {}).items():
+        print(f"    - {k:<20}: {v}")
+    print(f"  Output CSV           : {REPORTS_DIR / 'preflight.csv'}")
+    print("=" * 70)
+
+
 def cmd_load(args: argparse.Namespace):
     from curriculum_pipeline.loader import run_load_pipeline
     tb_books = Path(args.input).resolve() if getattr(args, "input", None) else None
@@ -528,6 +566,16 @@ def main():
     # report command
     p_report = subparsers.add_parser("report", help="Print extraction and coverage report.")
     p_report.set_defaults(func=cmd_report)
+
+    # qa command
+    p_qa = subparsers.add_parser("qa", help="Generate quality assurance report (node counts, OCR, warnings, density).")
+    p_qa.add_argument("--input", type=str, help="Override books directory.")
+    p_qa.set_defaults(func=cmd_qa)
+
+    # preflight command
+    p_preflight = subparsers.add_parser("preflight", help="Run text quality preflight classification over textbook PDFs.")
+    p_preflight.add_argument("--input", type=str, help="Override textbooks directory.")
+    p_preflight.set_defaults(func=cmd_preflight)
 
     # doctor command
     p_doctor = subparsers.add_parser("doctor", help="Check Tesseract and language packs installation.")

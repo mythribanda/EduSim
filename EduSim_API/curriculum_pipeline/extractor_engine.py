@@ -39,9 +39,10 @@ REPORTS_OUT_DIR = PIPELINE_OUTPUT_ROOT / "reports"
 
 
 class CurriculumExtractorEngine:
-    def __init__(self, textbooks_dir: Optional[Path] = None, resume: bool = True):
+    def __init__(self, textbooks_dir: Optional[Path] = None, resume: bool = True, workers: int = 1):
         self.textbooks_dir = textbooks_dir or TEXTBOOKS_DIR
         self.resume = resume
+        self.workers = max(1, workers)
         self.page_extractor = PageExtractor()
         self.style_profiler = StyleProfiler()
         self.coverage_prover = CoverageProver()
@@ -165,12 +166,20 @@ class CurriculumExtractorEngine:
 
         file_entries_sorted = sorted(file_entries, key=get_ch_num)
 
+        tasks = []
         for entry in file_entries_sorted:
             fn = entry["file"]
             pdf_path = self.textbooks_dir / "ncert books" / fn
-            extract_res = self.page_extractor.extract_file(pdf_path, file_id=fn, force=not self.resume)
+            tasks.append((pdf_path, fn))
             out_jsonl = self.page_extractor.get_output_path(fn)
             jsonl_files.append(out_jsonl)
+
+        if self.workers > 1:
+            batch_results = self.page_extractor.extract_batch_parallel(tasks, workers=self.workers, force=not self.resume)
+        else:
+            batch_results = [self.page_extractor.extract_file(p, fid, force=not self.resume) for p, fid in tasks]
+
+        for extract_res in batch_results:
             if extract_res.get("sha256"):
                 source_shas.append(extract_res["sha256"])
             for ml in extract_res.get("missing_ocr_languages", []):
