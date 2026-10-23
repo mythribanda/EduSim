@@ -401,29 +401,61 @@ def cmd_doctor(args: argparse.Namespace):
     print("=" * 70 + "\n")
 
 
+from curriculum_pipeline.validator import run_validation
+
+
 def cmd_validate(args: argparse.Namespace):
-    """Validates book JSON files against schema."""
-    schema_path = API_ROOT / "curriculum_pipeline" / "schemas" / "book_curriculum.schema.json"
-    if not schema_path.exists():
-        print(f"[ERROR] Schema file not found: {schema_path}")
-        return
+    """Validates book JSON files against structural hierarchy rules."""
+    books_dir = Path(args.input).resolve() if getattr(args, "input", None) else BOOKS_DIR
+    if not books_dir.exists():
+        print(f"[ERROR] Books directory not found: {books_dir}")
+        sys.exit(1)
 
-    with open(schema_path, "r", encoding="utf-8") as sf:
-        schema = json.load(sf)
+    report_path = REPORTS_DIR / "validation_errors.json"
+    only_file = getattr(args, "only", None)
 
-    books = list(BOOKS_DIR.glob("*.json"))
-    print(f"Validating {len(books)} book curriculum JSON files...")
-    valid_count = 0
-    for bp in books:
-        with open(bp, "r", encoding="utf-8") as bf:
-            bdata = json.load(bf)
-        req_fields = schema.get("required", [])
-        missing = [f for f in req_fields if f not in bdata]
-        if missing:
-            print(f"  FAIL: {bp.name} missing fields: {missing}")
-        else:
-            valid_count += 1
-    print(f"Validation complete: {valid_count}/{len(books)} books valid.")
+    print(f"{'='*70}")
+    print("  EduSim Curriculum Hierarchy Validator")
+    print(f"{'='*70}")
+    print(f"  Target directory: {books_dir}")
+    if only_file:
+        print(f"  Filtering only  : {only_file}")
+    print(f"  Report output   : {report_path}")
+    print("-" * 70)
+
+    total_errors, total_warnings, report = run_validation(
+        books_dir=books_dir,
+        only_file=only_file,
+        output_report_path=report_path,
+    )
+
+    checked = report.get("total_files_checked", 0)
+    files_err = report.get("files_with_errors", 0)
+    files_warn = report.get("files_with_warnings", 0)
+
+    for fname, issues in report.get("issues_by_file", {}).items():
+        errs = [i for i in issues if i["severity"] == "ERROR"]
+        warns = [i for i in issues if i["severity"] == "WARNING"]
+        print(f"\n[{fname}] - {len(errs)} error(s), {len(warns)} warning(s)")
+        for err in errs:
+            print(f"  ❌ [ERROR] {err['rule_id']}: {err['message']}")
+        for warn in warns:
+            print(f"  ⚠️  [WARNING] {warn['rule_id']}: {warn['message']}")
+
+    print("\n" + "=" * 70)
+    print(f"Validation Summary:")
+    print(f"  Files checked   : {checked}")
+    print(f"  Files with ERR  : {files_err} (total errors: {total_errors})")
+    print(f"  Files with WARN : {files_warn} (total warnings: {total_warnings})")
+    print(f"  Report written  : {report_path}")
+    print("=" * 70)
+
+    if total_errors > 0:
+        print(f"\n[FAIL] Validation failed with {total_errors} error(s).")
+        sys.exit(1)
+    else:
+        print("\n[SUCCESS] All checked curriculum files passed validation!")
+        sys.exit(0)
 
 
 def cmd_report(args: argparse.Namespace):
@@ -458,6 +490,8 @@ def main():
 
     # validate command
     p_validate = subparsers.add_parser("validate", help="Validate output JSON files against schemas.")
+    p_validate.add_argument("--only", type=str, help="Validate only a specific file (e.g. aejm1.json or aejm101.pdf).")
+    p_validate.add_argument("--input", type=str, help="Override books directory.")
     p_validate.set_defaults(func=cmd_validate)
 
     # report command

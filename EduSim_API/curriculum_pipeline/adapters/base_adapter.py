@@ -143,8 +143,12 @@ class BaseSubjectAdapter:
         # Figure / Table caption or table cells
         if re.match(r"^(Fig\.|Figure|Table|Box|Chart|Graph)\s*\d+(\.\d+)?", line_s, re.I):
             return True, "figure_or_table_caption"
+        # Question or answer labels in exercises
+        if re.match(r"^(Ans\.|Ans\b|Answer\b|Q\.\d+|Question\s*\d+)", line_s, re.I):
+            return True, "exercise_question_or_answer"
         if " | " in line_s or line_s.startswith("|") or "\t\t" in line:
             return True, "table_cell"
+
         if "\t" in line:
             if not re.match(r"^(\d{1,2}(?:\.\d{1,2}){1,3})\.?\s*", line_s):
                 parts = [p.strip() for p in line.split("\t") if p.strip()]
@@ -194,16 +198,16 @@ class BaseSubjectAdapter:
             if len(first_chunk.split()) <= 10 and not first_chunk.endswith((".", "?", ":")):
                 title = first_chunk
 
-        # Reject if title ends with punctuation or is a sentence/question
-        if title.endswith((".", "?", ":", ";")) or len(title.split()) > 15:
+        # Reject if title ends with punctuation (allow ? for inquiry questions <= 10 words)
+        if title.endswith((".", ":", ";")) or (title.endswith("?") and len(title.split()) > 10) or len(title.split()) > 15:
             return None
 
         first_word = title.split()[0].lower()
         if first_word in [
             "g", "kg", "mol", "m", "cm", "mm", "l", "ml", "ns", "pm", "s", "k", "°c",
             "has", "have", "in", "times", "is", "was", "are", "were",
-            "calculate", "determine", "find", "show", "prove", "what", "how", "why", "which",
-            "where", "when", "match", "express", "round", "convert", "if", "pressure", "use",
+            "calculate", "determine", "find", "show", "prove",
+            "match", "express", "round", "convert", "if", "pressure", "use",
             "chlorine", "calcium", "dinitrogen"
         ]:
             return None
@@ -319,12 +323,22 @@ class BaseSubjectAdapter:
         """
         candidates = []
         prev_y1 = None
+        consumed_indices = set()
 
         for idx, line_info in enumerate(lines_with_spans):
+            if idx in consumed_indices:
+                continue
+
             line = line_info.get("text", "").strip()
             spans = line_info.get("spans", [])
             bbox = line_info.get("bbox", [0, 0, 0, 0])
             y0 = bbox[1] if bbox else 0.0
+
+            w = (bbox[2] - bbox[0]) if bbox else 0.0
+            h = (bbox[3] - bbox[1]) if bbox else 0.0
+            if len(line) > 2 and h > 1.3 * w:
+                prev_y1 = bbox[3] if bbox else prev_y1
+                continue
 
             if len(line) < 3 or len(line) > 160:
                 prev_y1 = bbox[3] if bbox else prev_y1
@@ -339,11 +353,13 @@ class BaseSubjectAdapter:
             prev_y1 = bbox[3] if bbox else prev_y1
 
             # Check for exercise/summary section boundaries (end of chapter)
-            clean_lower = line.strip().lower()
+            clean_lower = re.sub(r"\s+", "", line.strip().lower())
             if clean_lower in ["summary", "exercises", "exercises.", "सारांश", "అభ్యాసం"]:
                 self.end_of_chapter_reached = True
                 if self.end_matter_page is None or page_no < self.end_matter_page:
                     self.end_matter_page = page_no
+                continue
+
 
             # 1. Activity detection (Example, Exercise, Theorem, Activity)
             is_act, act_kind, act_num, act_title, act_preview = self.is_activity_heading(line)
@@ -372,17 +388,76 @@ class BaseSubjectAdapter:
                 continue
 
             # 2. Numbered heading detection (1.1, 1.1.1, 1.1.1.1)
-            num_match = self.parse_numbered_heading(line)
+            # Reconstruct full line if adjacent fragments share the exact baseline (NCERT drop shadow / kerning splits)
+            full_line_text = line
+            k = idx + 1
+            while k < len(lines_with_spans):
+                next_l = lines_with_spans[k]
+                next_bbox = next_l.get("bbox", [0, 0, 0, 0])
+                if abs(next_bbox[1] - bbox[1]) <= 2.0:
+                    next_txt = next_l.get("text", "").strip()
+                    if next_txt:
+                        s1, s2 = full_line_text.strip(), next_txt.strip()
+                        merged = None
+                        for m_len in range(min(len(s1), len(s2)), 0, -1):
+                            if s1[-m_len:] == s2[:m_len]:
+                                merged = s1 + s2[m_len:]
+                                break
+                        full_line_text = merged if merged else (s1 + " " + s2)
+                    k += 1
+                else:
+                    break
+
+            num_match = self.parse_numbered_heading(full_line_text)
             if num_match:
+                for c_idx in range(idx + 1, k):
+                    consumed_indices.add(c_idx)
                 level, num, title = num_match
                 first_span = spans[0] if spans else {}
+                h_size = first_span.get("size", 10.0)
+                h_font = first_span.get("font", "").lower()
+                h_bold = bool(first_span.get("flags", 0) & 2 or "bold" in h_font or "demi" in h_font)
+
+                # Check for vertically adjacent continuation lines of the heading
+                sub_k = k
+                last_y1 = bbox[3] if bbox else 0.0
+                while sub_k < len(lines_with_spans):
+                    nxt = lines_with_spans[sub_k]
+                    nxt_txt = nxt.get("text", "").strip()
+                    nxt_spans = nxt.get("spans", [])
+                    nxt_bbox = nxt.get("bbox", [0, 0, 0, 0])
+                    if not nxt_txt or not nxt_spans:
+                        break
+                    if nxt_bbox[1] < last_y1 or (nxt_bbox[1] - last_y1) > 22.0:
+                        break
+                    nxt_s0 = nxt_spans[0]
+                    nxt_size = nxt_s0.get("size", 10.0)
+                    nxt_font = nxt_s0.get("font", "").lower()
+                    nxt_bold = bool(nxt_s0.get("flags", 0) & 2 or "bold" in nxt_font or "demi" in nxt_font)
+                    if abs(nxt_size - h_size) <= 0.6 and nxt_bold == h_bold and nxt_size > (self.body_size + 0.5):
+                        if self.parse_numbered_heading(nxt_txt) or self.is_activity_heading(nxt_txt)[0]:
+                            break
+                        if nxt_txt.endswith((".", ":", ";")):
+                            title = f"{title} {nxt_txt.rstrip('.:;')}".strip()
+                            full_line_text = f"{full_line_text} {nxt_txt}"
+                            consumed_indices.add(sub_k)
+                            last_y1 = nxt_bbox[3]
+                            break
+                        title = f"{title} {nxt_txt}".strip()
+                        full_line_text = f"{full_line_text} {nxt_txt}"
+                        consumed_indices.add(sub_k)
+                        last_y1 = nxt_bbox[3]
+                        sub_k += 1
+                    else:
+                        break
+
                 candidates.append({
                     "level": level,
                     "official_number": num,
                     "official_title": title,
                     "normalized_title": re.sub(r"\s+", " ", title).strip(),
                     "page": page_no,
-                    "evidence": line,
+                    "evidence": full_line_text,
                     "confidence": 0.98,
                     "detection_method": "numbered",
                     "rule_id": "rule_numbered_heading",
@@ -390,6 +465,7 @@ class BaseSubjectAdapter:
                     "bold": bool(first_span.get("flags", 0) & 2 or "bold" in first_span.get("font", "").lower()),
                 })
                 continue
+
 
             # 3. Run-in bold heading detection (e.g. "Intersection of sets. The ...")
             run_in_title = self.detect_run_in_bold(line, spans)
@@ -435,4 +511,27 @@ class BaseSubjectAdapter:
                         "bold": any(bool(s.get("flags", 0) & 2 or "bold" in s.get("font", "").lower()) for s in spans),
                     })
 
-        return candidates
+        # Deduplicate consecutive/subpixel candidates (drop shadows / faux-bold / stroke outlines)
+        deduped = []
+        for c in candidates:
+            if not deduped:
+                deduped.append(c)
+                continue
+            prev = deduped[-1]
+            same_page = c.get("page") == prev.get("page")
+            same_num = c.get("official_number") and c.get("official_number") == prev.get("official_number")
+            same_title = c.get("normalized_title") == prev.get("normalized_title")
+            num_match = same_num and (
+                c.get("official_title", "") in prev.get("official_title", "")
+                or prev.get("official_title", "") in c.get("official_title", "")
+            )
+
+            if same_page and (same_title or same_num or num_match):
+                # Keep the candidate with longer/more complete title
+                if len(c.get("official_title", "")) > len(prev.get("official_title", "")):
+                    deduped[-1] = c
+            else:
+                deduped.append(c)
+
+        return deduped
+

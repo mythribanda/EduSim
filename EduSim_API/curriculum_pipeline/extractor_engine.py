@@ -266,14 +266,26 @@ class CurriculumExtractorEngine:
             for c in raw_candidates:
                 c_title = c.get("official_title", "")
                 norm_c = re.sub(r"[^\w]", "", c_title).lower()
+                c_page = c.get("page", 0)
+
+                # Filter out title block fragments on chapter's first page
+                if c_page == ch_start:
+                    if norm_c and (norm_c in norm_ch_title or norm_ch_title in norm_c):
+                        continue
+                    if norm_wrapper and (norm_c in norm_wrapper or norm_wrapper in norm_c):
+                        continue
+                    if re.match(r"^chapter\s*(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|\d+)\b", c_title.strip(), re.I):
+                        continue
+
                 if norm_c == norm_ch_title or (norm_wrapper and norm_c == norm_wrapper):
                     continue
                 if re.match(r"^chapter\s*\d+$", c_title.strip(), re.I):
                     continue
-                c_page_local = c.get("page", 0) - ch_start + 1
+                c_page_local = c_page - ch_start + 1
                 c["ocr_needed"] = c_page_local in ocr_pages_set
                 c["source_file"] = fn
                 filtered_candidates.append(c)
+
 
             ch_info = {
                 "id": f"{book_code}_ch_{ch_no}",

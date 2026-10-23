@@ -106,6 +106,17 @@ class CurriculumTreeBuilder:
                 # Never fabricate/duplicate the chapter title as a topic or subtopic!
                 continue
 
+            # On chapter start page, suppress candidates that are fragments of chapter title or wrapper or chapter labels
+            if page == chapter_page_start:
+                if not num:
+                    if cand_norm and (cand_norm in norm_ch_title or norm_ch_title in cand_norm):
+                        continue
+                    if norm_wrapper and (cand_norm in norm_wrapper or norm_wrapper in cand_norm):
+                        continue
+                if re.match(r"^chapter\s*(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|\d+)\b", title.strip(), re.I):
+                    continue
+
+
             if level == "topic":
                 node_id = self._next_id("top")
                 node = {
@@ -254,6 +265,9 @@ class CurriculumTreeBuilder:
         if end_matter_page is not None and chapter_page_start <= end_matter_page <= chapter_page_end:
             self._cap_node_page_ends(chapter_node, end_matter_page)
 
+        # Assign stable occurrence ordinals and identity keys to all sibling nodes
+        self._assign_ordinals_and_identity(chapter_node)
+
 
         # Flag any topic spanning > 8 pages with 0 children, or topic with > 40 subheadings
         def _count_subheadings(n: Dict[str, Any]) -> int:
@@ -291,6 +305,21 @@ class CurriculumTreeBuilder:
 
         return chapter_node
 
+    def _assign_ordinals_and_identity(self, parent_node: Dict[str, Any]):
+        """Assigns stable occurrence_index among same-titled siblings and stable identity_key."""
+        children = parent_node.get("nodes", [])
+        counts: Dict[Tuple[str, str], int] = {}
+        for child in children:
+            lvl = child.get("level", "")
+            tit = child.get("official_title", "").strip().lower()
+            key = (lvl, tit)
+            idx = counts.get(key, 0)
+            child["occurrence_index"] = idx
+            counts[key] = idx + 1
+            num_part = f"{child.get('official_number')}:" if child.get("official_number") else ""
+            child["identity_key"] = f"{lvl}:{num_part}{tit}:{idx}"
+            self._assign_ordinals_and_identity(child)
+
     def _cap_node_page_ends(self, parent_node: Dict[str, Any], end_page: int):
         """Caps page_end of children so none extend past end_page."""
         for child in parent_node.get("nodes", []):
@@ -304,8 +333,18 @@ class CurriculumTreeBuilder:
         for i, child in enumerate(children):
             if i + 1 < len(children):
                 next_start = children[i + 1]["page_start"]
-                child["page_end"] = max(child["page_start"], next_start - 1)
+                if next_start > child["page_start"]:
+                    child["page_end"] = max(child["page_start"], next_start - 1)
+                else:
+                    child["page_end"] = max(child["page_start"], next_start)
             else:
-                child["page_end"] = max(child["page_start"], parent_node["page_end"])
+                child["page_end"] = max(child["page_start"], parent_node.get("page_end", chapter_max_page))
+
+            # Ensure child page range remains strictly inside parent page range
+            if "page_end" in parent_node:
+                child["page_end"] = min(child["page_end"], parent_node["page_end"])
+            if "page_start" in parent_node:
+                child["page_start"] = max(child["page_start"], parent_node["page_start"])
+
             # Recurse
             self._adjust_page_ends(child, chapter_max_page)

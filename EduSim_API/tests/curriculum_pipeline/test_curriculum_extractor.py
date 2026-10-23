@@ -489,21 +489,54 @@ def test_no_duplicate_topic_synthesized_and_activities_attach_to_chapter():
 
 
 def test_fixtures_aejm101_and_aemr101_output_trees():
-    """Regression test against generated JSON fixtures for aejm101 and aemr101."""
+    """Extracts aejm101 and aemr101 PDFs in test and validates the extracted hierarchy."""
     import json
-    aejm1_path = Path("curriculum_pipeline/output/curriculum/books/aejm1.json")
-    aemr1_path = Path("curriculum_pipeline/output/curriculum/books/aemr1.json")
+    from curriculum_pipeline.extractor_engine import CurriculumExtractorEngine
+    from curriculum_pipeline.pipeline_config import TEXTBOOKS_DIR
+    from curriculum_pipeline.adapters.specialized_adapters import get_adapter_for_subject
+    from curriculum_pipeline.tree_builder import CurriculumTreeBuilder
 
-    assert aejm1_path.exists(), "aejm1.json must exist"
-    assert aemr1_path.exists(), "aemr1.json must exist"
+    pdf_jm = TEXTBOOKS_DIR / "ncert books" / "aejm101.pdf"
+    pdf_mr = TEXTBOOKS_DIR / "ncert books" / "aemr101.pdf"
 
-    with open(aejm1_path, "r", encoding="utf-8") as f:
-        aejm1 = json.load(f)
-    ch1_jm = aejm1["chapters"][0]
+    if not pdf_jm.exists() or not pdf_mr.exists():
+        pytest.skip(f"Test PDFs not found in {TEXTBOOKS_DIR / 'ncert books'}")
+
+    engine = CurriculumExtractorEngine()
+
+    def _extract_ch(pdf_path, subject, bcode):
+        res = engine.page_extractor.extract_file(pdf_path, file_id=pdf_path.name)
+        j_path = engine.page_extractor.get_output_path(pdf_path.name)
+        pages = []
+        with open(j_path, "r", encoding="utf-8") as f:
+            for line in f:
+                rec = json.loads(line)
+                if rec.get("type") != "metadata":
+                    pages.append(rec)
+        style_prof = engine.style_profiler.profile_book(bcode, [j_path])
+        adapter = get_adapter_for_subject(subject, style_prof, "en")
+        adapter.reset_chapter_state()
+        title, wrapper, _ = engine.extract_ncert_chapter_title_from_p1(pages, 1)
+
+        raw = []
+        for p in pages:
+            raw.extend(adapter.extract_nodes_from_lines(p["page_no"], p.get("lines", [])))
+
+        tb = CurriculumTreeBuilder(bcode)
+        ch_info = {
+            "id": f"{bcode}_ch_1",
+            "official_number": "1",
+            "official_title": title,
+            "wrapper": wrapper,
+            "source_file": pdf_path.name,
+            "ocr_needed": False,
+        }
+        return tb.build_chapter_tree(ch_info, raw, 1, len(pages), file_id=pdf_path.name, end_matter_page=adapter.end_matter_page)
+
+    ch1_jm = _extract_ch(pdf_jm, "mathematics", "aejm1")
     assert ch1_jm["official_title"] == "Finding the Furry Cat!"
     assert ch1_jm["source_file"] == "aejm101.pdf"
 
-    # Verify no "bottom" or "near" subheadings
     def _get_all_subheadings(node):
         res = []
         if node.get("level") == "subheading":
@@ -516,20 +549,38 @@ def test_fixtures_aejm101_and_aemr101_output_trees():
     assert "bottom" not in subheadings_jm
     assert "near" not in subheadings_jm
 
-    with open(aemr1_path, "r", encoding="utf-8") as f:
-        aemr1 = json.load(f)
-    ch1_mr = aemr1["chapters"][0]
+    ch1_mr = _extract_ch(pdf_mr, "english", "aemr1")
     assert ch1_mr["official_title"] == "My Family and Me"
     assert ch1_mr["wrapper"] == "Unit 1"
     assert ch1_mr["source_file"] == "aemr101.pdf"
 
-    # Verify no topic named "My Family and Me"
     topics_mr = [n for n in ch1_mr.get("nodes", []) if n.get("level") == "topic"]
     assert len(topics_mr) == 0
 
-    # Verify no subheading "Nitin"
     subheadings_mr = _get_all_subheadings(ch1_mr)
     assert "nitin" not in subheadings_mr
+
+
+def test_probe_systematic_fixes():
+    """Verifies faux-bold deduplication, horizontal fragment stitching, and summary boundary."""
+    from curriculum_pipeline.adapters.base_adapter import BaseSubjectAdapter
+
+    adapter = BaseSubjectAdapter(style_profile={"ranks": {}, "body_size": 10.0})
+
+    # 1. Exercise Q&A noise is ignored
+    assert adapter.is_noise_or_annotation("Ans. Refer Table 2, page 4, and draw.")[0] is True
+    assert adapter.is_noise_or_annotation("Q.4. What would you call")[0] is True
+
+    # 2. Horizontal overlapping segments stitched properly
+    lines_data = [
+        {"text": "1.1 CHEMICAL EQUA", "bbox": [162.96, 447.27, 302.14, 461.48], "spans": [{"text": "1.1 CHEMICAL EQUA", "size": 14.0, "flags": 2}]},
+        {"text": "AL EQUATIONS", "bbox": [241.44, 447.27, 342.45, 461.48], "spans": [{"text": "AL EQUATIONS", "size": 14.0, "flags": 2}]},
+    ]
+    nodes = adapter.extract_nodes_from_lines(page_no=2, lines_with_spans=lines_data)
+    assert len(nodes) == 1
+    assert nodes[0]["official_title"] == "CHEMICAL EQUATIONS"
+    assert nodes[0]["official_number"] == "1.1"
+
 
 
 def test_unmapped_file_detection_and_failure(tmp_path):
