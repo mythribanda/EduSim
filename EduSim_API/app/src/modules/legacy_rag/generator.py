@@ -1,6 +1,7 @@
 import logging
 logger = logging.getLogger("EduSim.modules.legacy_rag.generator")
 
+import os
 import json
 import re
 from typing import Any, Dict, Optional
@@ -1356,18 +1357,62 @@ Do NOT output headers like '### ❖ LIVE EXPLANATION' or other simulation event 
 """
 
 
-def generate_response(
+RAG_SYSTEM_PROMPT = (
+    "You are an educational assistant for EduSim.\n\n"
+    "CRITICAL CONSTRAINTS:\n"
+    "1. Answer the question using ONLY the provided Textbook Context.\n"
+    "2. Do NOT use outside knowledge, extrapolate, or invent details not directly stated in the context.\n"
+    "3. If the provided context is insufficient or does not contain the answer, state clearly: "
+    "'The provided textbook context does not contain enough information to answer this question.'\n"
+    "4. Present explanations clearly and student-friendly, formatting formulas with LaTeX ($...$ or $$...$$)."
+)
+
+
+async def generate_response(
     context: str,
     question: str,
     user_preference: str = "student_friendly",
     fallback_mode: bool = False,
-):
+    model: str = "gemma3:4b",
+) -> str:
     """
-    Generates premium textbook-style educational responses.
+    Generates educational response grounded in textbook context using local Ollama (gemma3:4b).
+    OpenRouter is only used if opt-in env var RAG_ENABLE_OPENROUTER_FALLBACK=true is set.
     """
-    final_prompt = get_tutor_prompt(context, question, fallback_mode)
-    return generate_llm_text(
-        final_prompt,
-        temperature=0.3,
-        max_output_tokens=1800,
+    from app.src.services.ai_router import call_ai
+
+    allow_cloud_fallback = os.getenv("RAG_ENABLE_OPENROUTER_FALLBACK", "false").lower() in ("true", "1", "yes")
+
+    rag_user_prompt = f"""=========================================================
+TEXTBOOK CONTEXT
+=========================================================
+
+{context}
+
+=========================================================
+STUDENT QUESTION / TOPIC
+=========================================================
+
+{question}
+
+Please answer the student's question using ONLY the textbook context above. If the context does not contain enough information to answer, state that clearly."""
+
+    result = await call_ai(
+        prompt=rag_user_prompt,
+        system_prompt=RAG_SYSTEM_PROMPT,
+        model=model,
+        temperature=0.2,
+        allow_fallback=allow_cloud_fallback,
     )
+    return result.get("text", "")
+
+
+def generate_response_sync(
+    context: str,
+    question: str,
+    user_preference: str = "student_friendly",
+    fallback_mode: bool = False,
+    model: str = "gemma3:4b",
+) -> str:
+    import asyncio
+    return asyncio.run(generate_response(context, question, user_preference, fallback_mode, model))

@@ -38,6 +38,7 @@ from app.src.modules.sandbox.controller import sandbox_router
 from app.src.api.scene_router import scene_router
 from app.src.api.auth import auth_router
 from app.src.api.curriculum_router import router as curriculum_router
+from app.src.api.curriculum_v2_router import router as curriculum_v2_router
 from app.src.api.students_router import router as students_router
 
 from app.src.api.formula import router as generic_formula_router
@@ -72,18 +73,7 @@ async def lifespan(app: FastAPI):
     vector_store.load_all()
     
     # Database schema is managed via Alembic migrations (alembic upgrade head)
-    try:
-        # Populate curriculum database from curriculum.json if empty
-        from app.src.config.database import SessionLocal
-        from app.src.utils.curriculum_loader import populate_curriculum
-        db = SessionLocal()
-        try:
-            populate_curriculum(db)
-        finally:
-            db.close()
-    except Exception as e:
-        logger.error(f"Failed to initialize database: {e}", exc_info=True)
-        raise
+    # Note: Curriculum data is managed via books/curriculum_nodes (V2 curriculum pipeline)
         
     yield
 
@@ -145,6 +135,7 @@ app.include_router(generic_formula_router, prefix="/api/formula")
 app.include_router(generic_questions_router, prefix="/api/questions")
 app.include_router(persistence_router, prefix="/api/persistence")
 app.include_router(curriculum_router, prefix="/api")
+app.include_router(curriculum_v2_router, prefix="/api")
 app.include_router(students_router, prefix="/api")
 
 

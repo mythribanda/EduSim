@@ -96,36 +96,69 @@ def cmd_extract(args: argparse.Namespace):
         else:
             print(f"[ERROR] Book code '{args.book}' not found in catalog.")
             sys.exit(1)
+    elif getattr(args, "books", None):
+        raw_codes = [c.strip() for c in args.books.split(",") if c.strip()]
+        for c in raw_codes:
+            if c in catalog_by_code:
+                books_to_process.append(c)
+            else:
+                print(f"[WARNING] Book code '{c}' not found in catalog, skipping.")
+        if not books_to_process:
+            print("[ERROR] No valid book codes found in --books.")
+            sys.exit(1)
     elif args.pilot is not None:
-        # Pilot selection
-        # 10 diverse files per Step I:
-        # 1. aejm101 (aejm1)
-        # 2. aemr101 (aemr1)
-        # 3. khat101 (khat1 - Hindi NCERT)
-        # 4. kech101 (kech1 - Science/Chemistry NCERT)
-        # 5. kemh101 (kemh1 - Maths NCERT)
-        # 6. gees201 (gees2 - Social Science NCERT)
-        # 7. VI Maths EM Final 2025-26 (02-11-2024).pdf (Smaller SSC book)
-        # 8. 4th Tel FL 2025-26.pdf (Telugu book)
-        # 9. 6th Social EM 2025-26_Errata_FINAL.pdf (Errata/odd file)
-        # 10. English - Class VI - Total Book - 08.11.2024.pdf (0-byte/failed file)
+        # Pilot selection (Step 5 Pilot: ~25 NCERT books across classes 1-12 + 2 SSC books)
         target_codes = [
-            "aejm1",
-            "aemr1",
-            "khat1",
-            "kech1",
-            "kemh1",
-            "gees2",
-            "ssc_vi_maths_em_final_2025_26_02_11_2024_",
-            "ssc_4th_tel_fl_2025_26",
-            "ssc_6th_social_em_2025_26_errata_final",
-            "ssc_english_class_vi_total_book_08_11_2024",
+            # Class 1
+            "aejm1",  # Maths
+            "aemr1",  # English
+            # Class 2
+            "bejm1",  # Maths
+            "bemr1",  # English
+            # Class 3
+            "cemm1",  # Maths
+            "ceev1",  # EVS
+            # Class 4
+            "demm1",  # Maths
+            "deev1",  # EVS
+            # Class 5
+            "eemm1",  # Maths
+            "eeev1",  # EVS
+            # Class 6
+            "fegp1",  # Maths
+            "fecu1",  # Science
+            # Class 7
+            "gees1",  # Social Science (Complete 12-chapter book assembled)
+            "gees2",  # Social Science Part 2
+            # Class 8
+            "hecu1",  # Science
+            "hepr1",  # English
+            # Class 9
+            "iemh1",  # Maths
+            "iesc1",  # Science
+            # Class 10
+            "jemh1",  # Maths
+            "jesc1",  # Science
+            "jewe2",  # English
+            # Class 11
+            "kech1",  # Chemistry
+            "kebo1",  # Biology
+            "kemh1",  # Maths
+            # Class 12
+            "leph1",  # Physics
+            "lebo1",  # Biology
+            # 2 SSC books for TOC-only extraction (needs_review)
+            "ssc_x_mathematics_em_2025_26_02_11_2024_",
+            "ssc_x_biology_em_2025_26",
         ]
         # Filter available target codes
         books_to_process = [c for c in target_codes if c in catalog_by_code]
         if args.pilot > 0 and len(books_to_process) > args.pilot:
             books_to_process = books_to_process[:args.pilot]
-        print(f"  Pilot mode selected {len(books_to_process)} target books.")
+        print(f"  Pilot mode selected {len(books_to_process)} target books:")
+        for idx, bcode in enumerate(books_to_process, 1):
+            info = catalog_by_code[bcode]
+            print(f"    {idx:2d}. [{info['board'].upper()}] Class {info['class']} {info['subject']}: {bcode} - {info['book_title'][:50]}")
     elif args.all:
         print("[WARNING] Running full extraction for all books.")
         books_to_process = list(catalog_by_code.keys())
@@ -171,9 +204,25 @@ def cmd_extract(args: argparse.Namespace):
     # Step G: Write combined outputs
     print("\n[3/5] Writing combined curriculum and reports...")
     CURRICULUM_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Load existing books from BOOKS_DIR to maintain complete catalog
+    existing_books = {}
+    if BOOKS_DIR.exists():
+        for bpath in BOOKS_DIR.glob("*.json"):
+            try:
+                with open(bpath, "r", encoding="utf-8") as bf:
+                    bdata = json.load(bf)
+                    if "book_code" in bdata:
+                        existing_books[bdata["book_code"]] = bdata
+            except Exception:
+                pass
+    for b in all_books_curriculum:
+        existing_books[b["book_code"]] = b
+
+    combined_list = list(existing_books.values())
     with open(COMBINED_CURRICULUM_JSON, "w", encoding="utf-8") as f:
-        json.dump({"books": all_books_curriculum}, f, indent=2, ensure_ascii=False)
-    print(f"  [OK] Combined curriculum written -> {COMBINED_CURRICULUM_JSON}")
+        json.dump({"books": combined_list}, f, indent=2, ensure_ascii=False)
+    print(f"  [OK] Combined curriculum written -> {COMBINED_CURRICULUM_JSON} ({len(combined_list)} books)")
 
     # Write extraction report CSV
     report_cols = [
@@ -181,28 +230,52 @@ def cmd_extract(args: argparse.Namespace):
         "chapters_found", "pages_total", "pages_with_text", "pages_unassigned",
         "status", "status_reasons"
     ]
+    existing_reports_map = {}
+    if EXTRACTION_REPORT_CSV.exists():
+        try:
+            with open(EXTRACTION_REPORT_CSV, "r", encoding="utf-8-sig") as rf:
+                for row in csv.DictReader(rf):
+                    existing_reports_map[(row.get("book_code"), row.get("file"))] = row
+        except Exception:
+            pass
+    for r in extraction_reports:
+        existing_reports_map[(r.get("book_code"), r.get("file"))] = r
+
+    merged_reports = list(existing_reports_map.values())
     with open(EXTRACTION_REPORT_CSV, "w", encoding="utf-8-sig", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=report_cols)
         writer.writeheader()
-        for r in extraction_reports:
+        for r in merged_reports:
             writer.writerow(r)
-    print(f"  [OK] Extraction report CSV written -> {EXTRACTION_REPORT_CSV}")
+    print(f"  [OK] Extraction report CSV written -> {EXTRACTION_REPORT_CSV} ({len(merged_reports)} entries)")
 
     # Write review queue CSV
     rq_cols = ["file", "page", "problem", "found_text", "suggested_action"]
+    existing_rq_map = {}
+    if REVIEW_QUEUE_CSV.exists():
+        try:
+            with open(REVIEW_QUEUE_CSV, "r", encoding="utf-8-sig") as rf:
+                for row in csv.DictReader(rf):
+                    existing_rq_map[(row.get("file"), row.get("page"))] = row
+        except Exception:
+            pass
+    for r in review_queue:
+        existing_rq_map[(r.get("file"), r.get("page"))] = r
+
+    merged_rq = list(existing_rq_map.values())
     with open(REVIEW_QUEUE_CSV, "w", encoding="utf-8-sig", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=rq_cols)
         writer.writeheader()
-        for r in review_queue:
+        for r in merged_rq:
             writer.writerow(r)
-    print(f"  [OK] Review queue CSV written -> {REVIEW_QUEUE_CSV} ({len(review_queue)} issues flagged)")
+    print(f"  [OK] Review queue CSV written -> {REVIEW_QUEUE_CSV} ({len(merged_rq)} issues flagged)")
 
     # Write coverage summary JSON
     cov_summary = {
-        "total_books_processed": len(books_to_process),
-        "status_counts": dict(__import__("collections").Counter(r["status"] for r in extraction_reports)),
-        "class_breakdown": dict(__import__("collections").Counter(r["class"] for r in extraction_reports)),
-        "subject_breakdown": dict(__import__("collections").Counter(r["subject"] for r in extraction_reports)),
+        "total_books_processed": len(existing_books),
+        "status_counts": dict(__import__("collections").Counter(r.get("status") for r in merged_reports)),
+        "class_breakdown": dict(__import__("collections").Counter(r.get("class") for r in merged_reports)),
+        "subject_breakdown": dict(__import__("collections").Counter(r.get("subject") for r in merged_reports)),
     }
     with open(COVERAGE_SUMMARY_JSON, "w", encoding="utf-8") as f:
         json.dump(cov_summary, f, indent=2)
@@ -539,6 +612,7 @@ def main():
     p_extract = subparsers.add_parser("extract", help="Extract curriculum hierarchy from textbooks.")
     p_extract.add_argument("--pilot", type=int, nargs="?", const=10, default=None, help="Run pilot on N books (default 10).")
     p_extract.add_argument("--book", type=str, help="Run on a specific book code (e.g. aejm1).")
+    p_extract.add_argument("--books", type=str, help="Run on comma-separated book codes (e.g. b1,b2,b3).")
     p_extract.add_argument("--all", action="store_true", help="Run on all books in catalog.")
     p_extract.add_argument("--input", type=str, help="Override textbooks directory.")
     p_extract.add_argument("--resume", action="store_true", default=True, help="Resume previously extracted files.")

@@ -1,3 +1,16 @@
+/**
+ * ============================================================================
+ * OFFLINE FALLBACK DATA ONLY
+ * ============================================================================
+ * NOTICE: The primary source of truth for all curriculum data is the backend
+ * API (/api/curriculum/v2/*).
+ *
+ * This file is maintained STRICTLY as an offline fallback when backend API
+ * services are unavailable, controlled by the `ENABLE_OFFLINE_FALLBACK` flag
+ * in src/services/curriculumService.ts.
+ * ============================================================================
+ */
+
 export type Topic = {
   name: string;
   hasSimulation?: boolean;

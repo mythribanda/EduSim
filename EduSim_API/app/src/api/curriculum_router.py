@@ -8,6 +8,9 @@ from app.src.models.persistence import CurriculumClass, Subject, Chapter, Topic
 from app.src.models.user import User
 from app.src.middleware.rbac import require_admin
 
+# TODO: [Curriculum V2 Migration] Legacy curriculum router (/api/curriculum/*).
+# Frontend routes now query /api/curriculum/v2/*. Retained for backward compatibility
+# and RBAC tests (e.g. POST /api/curriculum/seed in test_auth_roles.py).
 router = APIRouter(prefix="/curriculum", tags=["Curriculum"])
 
 @router.get("/classes")

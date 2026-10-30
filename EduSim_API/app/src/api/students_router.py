@@ -65,6 +65,7 @@ TOPIC_PROGRESSIONS: Dict[str, str] = {
 }
 
 
+# TODO: [Curriculum V2 Migration] Migrate topic resolution & progression from legacy Topic/CurriculumClass to CurriculumNode/Book
 def resolve_topic_name(topic_id: str, db: Session) -> str:
     """
     Resolve a topic identifier (UUID, slug, or raw string) into a clean, human-readable name.

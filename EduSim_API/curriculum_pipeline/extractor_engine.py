@@ -297,6 +297,21 @@ class CurriculumExtractorEngine:
                 })
 
             # Extract raw node candidates from chapter pages
+            # Check if chapter's first page has a Mini-TOC / Chapter Outline box:
+            # (3 or more distinct numbered section topics on p.get("page_no") == 1,
+            # or 2 or more distinct section topics where at least one is repeated on page 1)
+            toc_sec_list = []
+            for p in pages:
+                if p.get("page_no", 1) == 1:
+                    for l in p.get("lines", []):
+                        m = re.match(r"^(\d+\.\d+)\s+", l.get("text", "").strip())
+                        if m:
+                            toc_sec_list.append(m.group(1))
+                    break
+
+            toc_sec_nums = set(toc_sec_list)
+            has_mini_toc = (len(toc_sec_nums) >= 3) or (len(toc_sec_nums) >= 2 and len(toc_sec_list) > len(toc_sec_nums))
+
             adapter.reset_chapter_state(chapter_number=ch_no)
             raw_candidates = []
             for p in pages:
@@ -311,6 +326,19 @@ class CurriculumExtractorEngine:
                     continue
 
                 lines_data = p.get("lines", [])
+                if has_mini_toc and p.get("page_no", 1) == 1 and lines_data:
+                    # Filter out mini-TOC box lines on page 1 (first occurrence of each section number in the box)
+                    seen_sec_nums = set()
+                    filtered_lines = []
+                    for l in lines_data:
+                        m = re.match(r"^(\d+\.\d+)\s+", l.get("text", "").strip())
+                        if m and m.group(1) in toc_sec_nums:
+                            if m.group(1) not in seen_sec_nums:
+                                seen_sec_nums.add(m.group(1))
+                                continue
+                        filtered_lines.append(l)
+                    lines_data = filtered_lines
+
                 if lines_data:
                     nodes = adapter.extract_nodes_from_lines(page_actual, lines_data)
                 else:

@@ -737,6 +737,7 @@ def get_profile_stats(
     if profile_obj and profile_obj.mastered_topics:
         mastered_count = len(profile_obj.mastered_topics)
     
+    # TODO: [Curriculum V2 Migration] Migrate total topics count from legacy Topic to CurriculumNode(level='topic', is_active=True)
     total_topics_count = db.query(Topic).count()
 
     return {

@@ -568,3 +568,145 @@ def test_suspicion_score_threshold(validator):
     assert clean_score == 0.0
     assert clean_status == "ok"
 
+
+# ── Hardened Validation: Schema & Duplicate ID Tests ─────────
+
+
+def test_schema_validation_failure_invalid_page_start(validator):
+    """A node failing NodeSchema validation (e.g. page_start as 'abc') produces a schema_validation_error."""
+    data = create_base_chapter(
+        nodes=[
+            {
+                "id": "act_bad_schema",
+                "level": "activity",
+                "official_title": "Invalid Page Activity",
+                "page_start": "abc",  # Invalid type: str instead of int
+                "page_end": 5,
+                "source_file": "test.pdf",
+                "nodes": [],
+            }
+        ]
+    )
+    issues = validator.validate_data(data)
+    schema_errors = [i for i in issues if i.rule_id == "schema_validation_error"]
+    assert len(schema_errors) >= 1
+    err = schema_errors[0]
+    assert err.severity == "ERROR"
+    assert "page_start" in err.message
+    assert err.node_id == "act_bad_schema"
+
+
+def test_duplicate_node_id_fail(validator):
+    """Duplicate non-null node id in the same book tree produces duplicate_node_id ERROR."""
+    data = create_base_chapter(
+        nodes=[
+            {
+                "id": "duplicate_node_1",
+                "level": "activity",
+                "official_title": "First Activity",
+                "page_start": 2,
+                "page_end": 3,
+                "source_file": "test.pdf",
+                "nodes": [],
+            },
+            {
+                "id": "duplicate_node_1",  # Repeated ID
+                "level": "activity",
+                "official_title": "Second Activity",
+                "page_start": 4,
+                "page_end": 5,
+                "source_file": "test.pdf",
+                "nodes": [],
+            },
+        ]
+    )
+    issues = validator.validate_data(data)
+    dup_errors = [i for i in issues if i.rule_id == "duplicate_node_id"]
+    assert len(dup_errors) == 1
+    assert dup_errors[0].severity == "ERROR"
+    assert "duplicate_node_1" in dup_errors[0].message
+
+
+def test_duplicate_identity_key_fail(validator):
+    """Duplicate non-null identity_key in the same book tree produces duplicate_node_id ERROR."""
+    data = create_base_chapter(
+        nodes=[
+            {
+                "id": "act_unique_1",
+                "identity_key": "dup_ident_key_123",
+                "level": "activity",
+                "official_title": "Activity 1",
+                "page_start": 2,
+                "page_end": 3,
+                "source_file": "test.pdf",
+                "nodes": [],
+            },
+            {
+                "id": "act_unique_2",
+                "identity_key": "dup_ident_key_123",  # Repeated identity_key
+                "level": "activity",
+                "official_title": "Activity 2",
+                "page_start": 4,
+                "page_end": 5,
+                "source_file": "test.pdf",
+                "nodes": [],
+            },
+        ]
+    )
+    issues = validator.validate_data(data)
+    dup_errors = [i for i in issues if i.rule_id == "duplicate_node_id"]
+    assert len(dup_errors) == 1
+    assert dup_errors[0].severity == "ERROR"
+    assert "dup_ident_key_123" in dup_errors[0].message
+
+
+def test_clean_tree_with_unique_ids_passes(validator):
+    """A clean book tree with valid schema, unique ids, and unique identity keys passes without errors."""
+    data = {
+        "book_code": "clean_book",
+        "chapters": [
+            {
+                "id": "ch_clean_1",
+                "identity_key": "ch_key_1",
+                "level": "chapter",
+                "official_number": "1",
+                "official_title": "Clean Chapter",
+                "page_start": 1,
+                "page_end": 10,
+                "source_file": "clean.pdf",
+                "ocr_needed": False,
+                "nodes": [
+                    {
+                        "id": "top_clean_1",
+                        "identity_key": "top_key_1",
+                        "level": "topic",
+                        "official_number": "1.1",
+                        "official_title": "Clean Topic",
+                        "page_start": 2,
+                        "page_end": 5,
+                        "source_file": "clean.pdf",
+                        "ocr_needed": False,
+                        "nodes": [
+                            {
+                                "id": "act_clean_1",
+                                "identity_key": "act_key_1",
+                                "level": "activity",
+                                "official_number": "1.1.1",
+                                "official_title": "Clean Activity",
+                                "page_start": 3,
+                                "page_end": 4,
+                                "source_file": "clean.pdf",
+                                "ocr_needed": False,
+                                "nodes": [],
+                            }
+                        ],
+                    }
+                ],
+            }
+        ],
+    }
+    issues = validator.validate_data(data)
+    errors = [i for i in issues if i.severity == "ERROR"]
+    assert len(errors) == 0
+
+

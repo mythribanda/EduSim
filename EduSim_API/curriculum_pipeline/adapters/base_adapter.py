@@ -515,11 +515,13 @@ class BaseSubjectAdapter:
                 clean_lower in [
                     "summary", "exercises", "exercises.", "whatyouhavelearnt",
                     "whatyouhavelearned", "pointstoponder", "आपनेक्यासीखा",
-                    "सारांश", "అభ్యాసం", "మనంఏంచర్చించాం", "solutions", "answers"
+                    "सारांश", "అభ్యాసం", "మనంఏంచర్చించాం", "questionsandactivities",
+                    "questionsandexercises", "solutions", "answers"
                 ]
                 or clean_lower.startswith("whatyouhavelearnt")
                 or clean_lower.startswith("whatyouhavelearned")
                 or clean_lower.startswith("pointstoponder")
+                or clean_lower.startswith("questionsandactivities")
                 or re.search(r"^(chapter\s*\d+\s*[-–—]?\s*)?(solutions|answers)$", line.strip(), re.I)
                 or (("solutions" in clean_lower or "answers" in clean_lower) and "chapter" in clean_lower and not re.search(r"\d+\.\d+", line))
             )

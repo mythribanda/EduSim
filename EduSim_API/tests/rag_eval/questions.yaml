@@ -1,0 +1,272 @@
+# Ground truth evaluation questions derived directly from EduSim curriculum JSONs.
+# 30 questions across NCERT and SSC boards, Classes 1-12, and multiple subjects.
+
+- id: q01
+  question: "How do we find positions like inside, outside, above and below in mathematics?"
+  expected_board: NCERT
+  expected_class: 1
+  expected_subject: mathematics
+  expected_book_code: aejm1
+  expected_chapter_number: "1"
+  chapter_title: "Finding the Furry Cat!"
+
+- id: q02
+  question: "What number pairs and combinations add up to make 10?"
+  expected_board: NCERT
+  expected_class: 1
+  expected_subject: mathematics
+  expected_book_code: aejm1
+  expected_chapter_number: "4"
+  chapter_title: "Making 10"
+
+- id: q03
+  question: "What poem teaches children about two little hands and parts of the body?"
+  expected_board: NCERT
+  expected_class: 1
+  expected_subject: english
+  expected_book_code: aemr1
+  expected_chapter_number: "1"
+  chapter_title: "My Family and Me"
+
+- id: q04
+  question: "Why is water considered a precious natural gift and how should we conserve it?"
+  expected_board: NCERT
+  expected_class: 3
+  expected_subject: evs
+  expected_book_code: ceev1
+  expected_chapter_number: "7"
+  chapter_title: "Gifts of Nature"
+
+- id: q05
+  question: "How do we identify basic two-dimensional and three-dimensional shapes around us?"
+  expected_board: NCERT
+  expected_class: 3
+  expected_subject: mathematics
+  expected_book_code: cemm1
+  expected_chapter_number: "5"
+  chapter_title: "Fun with Shapes Fun with Shapes"
+
+- id: q06
+  question: "What are magnetic and non-magnetic materials and how do magnet poles interact?"
+  expected_board: NCERT
+  expected_class: 6
+  expected_subject: science
+  expected_book_code: fecu1
+  expected_chapter_number: "4"
+  chapter_title: "Exploring Magnets"
+
+- id: q07
+  question: "How is a clinical thermometer used to measure body temperature accurately?"
+  expected_board: NCERT
+  expected_class: 6
+  expected_subject: science
+  expected_book_code: fecu1
+  expected_chapter_number: "7"
+  chapter_title: "Temperature and its Measurement"
+
+- id: q08
+  question: "What are number sequences and patterns in mathematics?"
+  expected_board: NCERT
+  expected_class: 6
+  expected_subject: mathematics
+  expected_book_code: fegp1
+  expected_chapter_number: "1"
+  chapter_title: "PATTERNS IN MATHEMATICS"
+
+- id: q09
+  question: "What are the common microorganisms in the invisible living world beyond our naked eyes?"
+  expected_board: NCERT
+  expected_class: 8
+  expected_subject: science
+  expected_book_code: hecu1
+  expected_chapter_number: "2"
+  chapter_title: "The Invisible Living World: Beyond Our"
+
+- id: q10
+  question: "How is a linear growth represented with a straight line graph and slope?"
+  expected_board: NCERT
+  expected_class: 9
+  expected_subject: mathematics
+  expected_book_code: iemh1
+  expected_chapter_number: "2"
+  chapter_title: "Introduction to Linear Polynomials"
+
+- id: q11
+  question: "What are the basic structures and organelles inside a plant and animal cell?"
+  expected_board: NCERT
+  expected_class: 9
+  expected_subject: science
+  expected_book_code: iesc1
+  expected_chapter_number: "2"
+  chapter_title: "Cell: The Building Block of Life"
+
+- id: q12
+  question: "How do we solve quadratic equations by factorization and using the quadratic formula?"
+  expected_board: NCERT
+  expected_class: 10
+  expected_subject: mathematics
+  expected_book_code: jemh1
+  expected_chapter_number: "4"
+  chapter_title: "QUADRATIC EQUATIONS"
+
+- id: q13
+  question: "How do we balance a chemical equation using the hit and trial method?"
+  expected_board: NCERT
+  expected_class: 10
+  expected_subject: science
+  expected_book_code: jesc1
+  expected_chapter_number: "1"
+  chapter_title: "Chemical Reactions and Equations"
+
+- id: q14
+  question: "What happens when acids react with metals and metal carbonates?"
+  expected_board: NCERT
+  expected_class: 10
+  expected_subject: science
+  expected_book_code: jesc1
+  expected_chapter_number: "2"
+  chapter_title: "Acids, Bases and Salts"
+
+- id: q15
+  question: "What are the formed elements in human blood and how does the cardiac cycle work?"
+  expected_board: NCERT
+  expected_class: 11
+  expected_subject: biology
+  expected_book_code: kebo1
+  expected_chapter_number: "15"
+  chapter_title: "BODY FLUIDS AND CIRCULATION"
+
+- id: q16
+  question: "What is the mole concept, molar mass, and how do we calculate stoichiometry in chemistry?"
+  expected_board: NCERT
+  expected_class: 11
+  expected_subject: chemistry
+  expected_book_code: kech1
+  expected_chapter_number: "1"
+  chapter_title: "SOME BASIC CONCEPTS OF CHEMISTRY"
+
+- id: q17
+  question: "What are the primary organs of the male and female human reproductive systems?"
+  expected_board: NCERT
+  expected_class: 12
+  expected_subject: biology
+  expected_book_code: lebo1
+  expected_chapter_number: "2"
+  chapter_title: "HUMAN REPRODUCTION"
+
+- id: q18
+  question: "How is DNA structured as a double helix and how does replication happen?"
+  expected_board: NCERT
+  expected_class: 12
+  expected_subject: biology
+  expected_book_code: lebo1
+  expected_chapter_number: "5"
+  chapter_title: "MOLECULAR BASIS OF INHERITANCE"
+
+- id: q19
+  question: "What is Coulomb's law of electric force between two point charges?"
+  expected_board: NCERT
+  expected_class: 12
+  expected_subject: physics
+  expected_book_code: leph1
+  expected_chapter_number: "1"
+  chapter_title: "ELECTRIC CHARGES AND FIELDS"
+
+- id: q20
+  question: "What is Ohm's law and how does electrical resistance depend on resistivity and conductor length?"
+  expected_board: NCERT
+  expected_class: 12
+  expected_subject: physics
+  expected_book_code: leph1
+  expected_chapter_number: "3"
+  chapter_title: "CURRENT ELECTRICITY"
+
+- id: q21
+  question: "How do autotrophs make their own food through photosynthesis in chloroplasts?"
+  expected_board: SSC
+  expected_class: 10
+  expected_subject: biology
+  expected_book_code: ssc_x_biology_em_2025_26
+  expected_chapter_number: "1"
+  chapter_title: "Nutrition"
+
+- id: q22
+  question: "What is the difference between aerobic and anaerobic cellular respiration?"
+  expected_board: SSC
+  expected_class: 10
+  expected_subject: biology
+  expected_book_code: ssc_x_biology_em_2025_26
+  expected_chapter_number: "2"
+  chapter_title: "Respiration"
+
+- id: q23
+  question: "What is the function of bicuspid and tricuspid valves in the human heart?"
+  expected_board: SSC
+  expected_class: 10
+  expected_subject: biology
+  expected_book_code: ssc_x_biology_em_2025_26
+  expected_chapter_number: "3"
+  chapter_title: "Circulation"
+
+- id: q24
+  question: "What is the structure of a nephron and how do kidneys filter waste from blood?"
+  expected_board: SSC
+  expected_class: 10
+  expected_subject: biology
+  expected_book_code: ssc_x_biology_em_2025_26
+  expected_chapter_number: "4"
+  chapter_title: "Excretion"
+
+- id: q25
+  question: "How did Gregor Mendel discover the laws of inheritance through monohybrid pea plant experiments?"
+  expected_board: SSC
+  expected_class: 10
+  expected_subject: biology
+  expected_book_code: ssc_x_biology_em_2025_26
+  expected_chapter_number: "8"
+  chapter_title: "Heredity - Evolution"
+
+- id: q26
+  question: "What is the Fundamental Theorem of Arithmetic and Euclid's division algorithm?"
+  expected_board: SSC
+  expected_class: 10
+  expected_subject: mathematics
+  expected_book_code: ssc_x_mathematics_em_2025_26_02_11_2024_
+  expected_chapter_number: "1"
+  chapter_title: "Real Numbers"
+
+- id: q27
+  question: "How do we represent union and intersection of sets using Venn diagrams?"
+  expected_board: SSC
+  expected_class: 10
+  expected_subject: mathematics
+  expected_book_code: ssc_x_mathematics_em_2025_26_02_11_2024_
+  expected_chapter_number: "2"
+  chapter_title: "Sets"
+
+- id: q28
+  question: "What are the trigonometric ratios sine, cosine, and tangent in a right-angled triangle?"
+  expected_board: SSC
+  expected_class: 10
+  expected_subject: mathematics
+  expected_book_code: ssc_x_mathematics_em_2025_26_02_11_2024_
+  expected_chapter_number: "11"
+  chapter_title: "Trigonometry"
+
+- id: q29
+  question: "How do we compare large numbers using place value in the Indian and International systems?"
+  expected_board: SSC
+  expected_class: 6
+  expected_subject: mathematics
+  expected_book_code: ssc_vi_maths_em_final_2025_26_02_11_2024_
+  expected_chapter_number: "1"
+  chapter_title: "KNOWING OUR NUMBERS"
+
+- id: q30
+  question: "What difficulties did Nick Vujicic face in Attitude is Altitude and how did he overcome them?"
+  expected_board: SSC
+  expected_class: 10
+  expected_subject: english
+  expected_book_code: ssc_english_class_x_total_book_08_11_2024
+  expected_chapter_number: "1"
+  chapter_title: "Personality Development"

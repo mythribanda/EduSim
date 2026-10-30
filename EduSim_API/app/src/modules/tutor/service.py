@@ -1281,6 +1281,7 @@ def _format_class_name(value: Any) -> str:
     return f"Class {text}"
 
 
+# TODO: [Curriculum V2 Migration] Migrate tutor autocomplete and topic content from static curriculum.json to books and curriculum_nodes (V2)
 def _load_curriculum() -> Dict[str, Any]:
     """Load curriculum data from the generated JSON file."""
     global _curriculum_data

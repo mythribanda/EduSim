@@ -1,54 +1,14 @@
-import { createFileRoute, useNavigate, notFound } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 import { CurriculumService } from "@/services/curriculumService";
 import { PageWrapper } from "@/components/Card";
 import { Crumbs } from "@/components/Crumbs";
-import { Play, GraduationCap, Sparkles, BookOpen, ChevronRight, ClipboardList } from "lucide-react";
+import { Play, GraduationCap, Sparkles, BookOpen, ChevronRight, ClipboardList, AlertCircle, RefreshCw } from "lucide-react";
 import * as Icons from "lucide-react";
 
 export const Route = createFileRoute("/topics/$classId/$subject/$chapter")({
   component: TopicsPage,
-  loader: async ({ params }) => {
-    try {
-      const [classes, subjects] = await Promise.all([
-        CurriculumService.getClasses(),
-        CurriculumService.getSubjects(Number(params.classId)),
-      ]);
-      const c = classes.find((cls) => cls.id === Number(params.classId));
-      if (!c) throw notFound();
-
-      const s = subjects.find(
-        (sub) =>
-          (sub.code || "").toLowerCase() === (params.subject || "").toLowerCase() ||
-          (sub.id || "").toLowerCase() === (params.subject || "").toLowerCase()
-      );
-      if (!s) throw notFound();
-
-      const chapters = await CurriculumService.getChapters(s.id, Number(params.classId));
-      let decodedChapterParam = params.chapter;
-      try {
-        decodedChapterParam = decodeURIComponent(params.chapter);
-      } catch (e) {
-        // ignore
-      }
-      const chapter = chapters.find(
-        (ch) => (ch.name || "").toLowerCase() === decodedChapterParam.toLowerCase()
-      );
-      if (!chapter) throw notFound();
-
-      const topics = await CurriculumService.getTopics(chapter.id, Number(params.classId));
-
-      console.log("[DEBUG] selectedClass:", c);
-      console.log("[DEBUG] selectedSubject:", s);
-      console.log("[DEBUG] chapters loaded:", chapters);
-      console.log("[DEBUG] topics loaded:", topics);
-
-      return { c, s, chapter: { ...chapter, topics }, classId: params.classId, subjectId: params.subject };
-    } catch (e) {
-      console.error("[DEBUG] Error in topics loader:", e);
-      throw notFound();
-    }
-  },
 });
 
 const getSubjectTheme = (subName: string) => {
@@ -134,8 +94,127 @@ const getIndexColors = (i: number) => {
 };
 
 function TopicsPage() {
-  const { c, s, chapter, classId, subjectId } = Route.useLoaderData();
+  const { classId, subject: subjectParam, chapter: chapterParam } = Route.useParams();
+  const classIdNum = Number(classId);
   const navigate = useNavigate();
+
+  let decodedChapterParam = chapterParam || "";
+  try {
+    decodedChapterParam = decodeURIComponent(chapterParam || "");
+  } catch {
+    // ignore
+  }
+
+  const {
+    data: classes = [],
+    isLoading: loadingClasses,
+    isError: classesError,
+    error: classesErr,
+    refetch: refetchClasses,
+  } = useQuery({
+    queryKey: ["classes"],
+    queryFn: CurriculumService.getClasses,
+  });
+
+  const {
+    data: subjects = [],
+    isLoading: loadingSubjects,
+    isError: subjectsError,
+    error: subjectsErr,
+    refetch: refetchSubjects,
+  } = useQuery({
+    queryKey: ["subjects", classIdNum],
+    queryFn: () => CurriculumService.getSubjects(classIdNum),
+    enabled: !isNaN(classIdNum),
+  });
+
+  const c = classes.find((cls) => cls.id === classIdNum);
+  const s = subjects.find(
+    (sub) =>
+      (sub.code || "").toLowerCase() === (subjectParam || "").toLowerCase() ||
+      (sub.id || "").toLowerCase() === (subjectParam || "").toLowerCase()
+  );
+
+  const {
+    data: chapters = [],
+    isLoading: loadingChapters,
+    isError: chaptersError,
+    error: chaptersErr,
+    refetch: refetchChapters,
+  } = useQuery({
+    queryKey: ["chapters", classIdNum, s?.id || subjectParam],
+    queryFn: () => CurriculumService.getChapters(s?.id || subjectParam, classIdNum),
+    enabled: !isNaN(classIdNum) && Boolean(subjectParam),
+  });
+
+  const chapter = chapters.find(
+    (ch) => (ch.name || "").toLowerCase() === decodedChapterParam.toLowerCase()
+  );
+
+  const {
+    data: topics = [],
+    isLoading: loadingTopics,
+    isError: topicsError,
+    error: topicsErr,
+    refetch: refetchTopics,
+  } = useQuery({
+    queryKey: ["topics", chapter?.id || decodedChapterParam, classIdNum],
+    queryFn: () =>
+      CurriculumService.getTopics(
+        chapter?.id || decodedChapterParam,
+        classIdNum
+      ),
+    enabled: !isNaN(classIdNum) && Boolean(decodedChapterParam),
+  });
+
+  const isLoading = loadingClasses || loadingSubjects || loadingChapters || loadingTopics;
+  const isError = classesError || subjectsError || chaptersError || topicsError;
+  const error = classesErr || subjectsErr || chaptersErr || topicsErr;
+
+  if (isLoading) {
+    return (
+      <PageWrapper>
+        <div className="flex flex-col items-center justify-center py-24 text-muted-foreground gap-4">
+          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm font-medium">Loading topics for {decodedChapterParam}...</p>
+        </div>
+      </PageWrapper>
+    );
+  }
+
+  if (isError) {
+    return (
+      <PageWrapper>
+        <div className="glass rounded-3xl p-8 border border-destructive/20 bg-destructive/10 text-destructive flex flex-col items-center gap-4 text-center max-w-xl mx-auto my-12">
+          <AlertCircle className="w-10 h-10 text-destructive" />
+          <h3 className="text-xl font-bold">Failed to load topics</h3>
+          <p className="text-sm">{error instanceof Error ? error.message : "Unknown error"}</p>
+          <button
+            onClick={() => {
+              refetchClasses();
+              refetchSubjects();
+              refetchChapters();
+              refetchTopics();
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-bold shadow hover:brightness-110 active:scale-95 transition-all mt-2"
+          >
+            <RefreshCw className="w-4 h-4" /> Retry
+          </button>
+        </div>
+      </PageWrapper>
+    );
+  }
+
+  if (!c || !s || !chapter) {
+    return (
+      <PageWrapper>
+        <div className="glass rounded-3xl p-8 text-center text-muted-foreground my-12">
+          Chapter, Subject or Class not found.
+        </div>
+      </PageWrapper>
+    );
+  }
+
   const theme = getSubjectTheme(s.name);
   const SubjectIcon = (Icons as any)[s.icon] || Icons.BookOpen;
 
@@ -248,125 +327,23 @@ function TopicsPage() {
           />
 
           {/* Dotted connectors */}
-          <path d="M 450 40 Q 520 80 600 50 T 700 90" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1.2" strokeDasharray="4 4" />
-
-          {/* Pulsing Graph Nodes with Dual Radar Wave Rings */}
-          <circle cx="520" cy="180" r="5" className="fill-cyan-400 opacity-90" />
-          <motion.circle
-            cx="520"
-            cy="180"
-            r="5"
-            className="fill-none stroke-cyan-400 stroke-[1.5]"
-            animate={{ scale: [1, 3.5], opacity: [0.8, 0] }}
-            transition={{ duration: 2.5, repeat: Infinity, ease: "easeOut" }}
-          />
-          <motion.circle
-            cx="520"
-            cy="180"
-            r="5"
-            className="fill-none stroke-cyan-400 stroke-[1]"
-            animate={{ scale: [1, 2.2], opacity: [0.6, 0] }}
-            transition={{ duration: 2.5, repeat: Infinity, ease: "easeOut", delay: 1.25 }}
-          />
-
-          <circle cx="450" cy="225" r="4.5" className="fill-pink-400 opacity-90" />
-          <motion.circle
-            cx="450"
-            cy="225"
-            r="4"
-            className="fill-none stroke-pink-400 stroke-[1.5]"
-            animate={{ scale: [1, 3.2], opacity: [0.8, 0] }}
-            transition={{ duration: 3, repeat: Infinity, ease: "easeOut" }}
-          />
+          <line x1="160" y1="120" x2="260" y2="80" stroke="rgba(255,255,255,0.06)" strokeWidth="1" strokeDasharray="3 3" />
+          <line x1="620" y1="240" x2="720" y2="280" stroke="rgba(255,255,255,0.06)" strokeWidth="1" strokeDasharray="3 3" />
         </svg>
 
-        {/* Holographic 3D Blueprint Illustration */}
-        <div className="absolute right-[290px] top-1/2 -translate-y-1/2 w-64 h-64 pointer-events-none hidden lg:block z-0" style={{ perspective: "800px" }}>
-          {/* Glowing Platform Ring */}
-          <div className="absolute left-2 bottom-4 w-60 h-10 border border-cyan-400/30 rounded-full bg-cyan-500/5 shadow-[0_0_20px_rgba(34,211,238,0.2)]" style={{ transform: "rotateX(75deg)" }} />
-          <motion.div
-            className="absolute left-8 bottom-6 w-48 h-8 border border-dashed border-indigo-400/40 rounded-full"
-            style={{ transform: "rotateX(75deg)" }}
-            animate={{ rotate: 360 }}
-            transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-          />
-
-          {/* Central Holographic 3D Spinning Cube */}
-          <div className="absolute left-12 top-10 w-40 h-40 flex items-center justify-center">
-            <motion.div
-              className="w-28 h-28 relative"
-              style={{ transformStyle: "preserve-3d" }}
-              animate={{
-                rotateX: [0, 360],
-                rotateY: [0, 360],
-                rotateZ: [0, 360],
-              }}
-              transition={{
-                duration: 20,
-                repeat: Infinity,
-                ease: "linear",
-              }}
-            >
-              {/* Front Face */}
-              <div className="absolute inset-0 border border-cyan-400/50 bg-cyan-500/5 rounded shadow-[0_0_15px_rgba(34,211,238,0.1)]" style={{ transform: "translateZ(56px)" }}>
-                <div className="absolute top-0 left-0 w-2 h-2 bg-cyan-300 rounded-full" />
-                <div className="absolute top-0 right-0 w-2 h-2 bg-cyan-300 rounded-full" />
-                <div className="absolute bottom-0 left-0 w-2 h-2 bg-cyan-300 rounded-full" />
-                <div className="absolute bottom-0 right-0 w-2 h-2 bg-cyan-300 rounded-full" />
-              </div>
-              {/* Back Face */}
-              <div className="absolute inset-0 border border-cyan-400/50 bg-cyan-500/5 rounded shadow-[0_0_15px_rgba(34,211,238,0.1)]" style={{ transform: "rotateY(180deg) translateZ(56px)" }}>
-                <div className="absolute top-0 left-0 w-2 h-2 bg-cyan-300 rounded-full" />
-                <div className="absolute top-0 right-0 w-2 h-2 bg-cyan-300 rounded-full" />
-                <div className="absolute bottom-0 left-0 w-2 h-2 bg-cyan-300 rounded-full" />
-                <div className="absolute bottom-0 right-0 w-2 h-2 bg-cyan-300 rounded-full" />
-              </div>
-              {/* Left Face */}
-              <div className="absolute inset-0 border border-cyan-400/50 bg-cyan-500/5 rounded shadow-[0_0_15px_rgba(34,211,238,0.1)]" style={{ transform: "rotateY(-90deg) translateZ(56px)" }}>
-                <div className="absolute top-0 left-0 w-2 h-2 bg-cyan-300 rounded-full" />
-                <div className="absolute top-0 right-0 w-2 h-2 bg-cyan-300 rounded-full" />
-                <div className="absolute bottom-0 left-0 w-2 h-2 bg-cyan-300 rounded-full" />
-                <div className="absolute bottom-0 right-0 w-2 h-2 bg-cyan-300 rounded-full" />
-              </div>
-              {/* Right Face */}
-              <div className="absolute inset-0 border border-cyan-400/50 bg-cyan-500/5 rounded shadow-[0_0_15px_rgba(34,211,238,0.1)]" style={{ transform: "rotateY(90deg) translateZ(56px)" }}>
-                <div className="absolute top-0 left-0 w-2 h-2 bg-cyan-300 rounded-full" />
-                <div className="absolute top-0 right-0 w-2 h-2 bg-cyan-300 rounded-full" />
-                <div className="absolute bottom-0 left-0 w-2 h-2 bg-cyan-300 rounded-full" />
-                <div className="absolute bottom-0 right-0 w-2 h-2 bg-cyan-300 rounded-full" />
-              </div>
-              {/* Top Face */}
-              <div className="absolute inset-0 border border-cyan-400/50 bg-cyan-500/5 rounded shadow-[0_0_15px_rgba(34,211,238,0.1)]" style={{ transform: "rotateX(90deg) translateZ(56px)" }}>
-                <div className="absolute top-0 left-0 w-2 h-2 bg-cyan-300 rounded-full" />
-                <div className="absolute top-0 right-0 w-2 h-2 bg-cyan-300 rounded-full" />
-                <div className="absolute bottom-0 left-0 w-2 h-2 bg-cyan-300 rounded-full" />
-                <div className="absolute bottom-0 right-0 w-2 h-2 bg-cyan-300 rounded-full" />
-              </div>
-              {/* Bottom Face */}
-              <div className="absolute inset-0 border border-cyan-400/50 bg-cyan-500/5 rounded shadow-[0_0_15px_rgba(34,211,238,0.1)]" style={{ transform: "rotateX(-90deg) translateZ(56px)" }}>
-                <div className="absolute top-0 left-0 w-2 h-2 bg-cyan-300 rounded-full" />
-                <div className="absolute top-0 right-0 w-2 h-2 bg-cyan-300 rounded-full" />
-                <div className="absolute bottom-0 left-0 w-2 h-2 bg-cyan-300 rounded-full" />
-                <div className="absolute bottom-0 right-0 w-2 h-2 bg-cyan-300 rounded-full" />
-              </div>
-            </motion.div>
-          </div>
-
-        </div>
-
-        {/* Floating animated background math/physics symbols (positioned to strictly prevent overlap) */}
+        {/* Floating Mathematical / Science Symbols */}
         {(() => {
-          const baseSymbols = getFloatingSymbols(s.name);
-          const renderedSymbols = [
-            baseSymbols[0] || "+",
-            baseSymbols[1] || "−",
-            "π ≈ 3.14159",
-            baseSymbols[2] || "×",
-            baseSymbols[3] || "÷",
-          ];
-          return renderedSymbols.map((sym, idx) => {
+          const symbols = getFloatingSymbols(s.name);
+          return symbols.map((sym, idx) => {
             const positions = [
-              { top: "12%", left: "6%", rotate: "12deg", scale: 1.0, opacity: 0.45, duration: 6, delay: 0 },
+              { top: "10%", left: "8%", rotate: "-12deg", scale: 1.1, opacity: 0.5, duration: 6, delay: 0 },
+              { top: "25%", left: "28%", rotate: "15deg", scale: 0.9, opacity: 0.45, duration: 8, delay: 1.5 },
+              { top: "68%", left: "14%", rotate: "8deg", scale: 1.2, opacity: 0.4, duration: 7, delay: 0.8 },
+              { top: "18%", right: "18%", rotate: "-20deg", scale: 1.15, opacity: 0.4, duration: 9, delay: 0.3 },
+              { top: "62%", right: "24%", rotate: "10deg", scale: 0.85, opacity: 0.5, duration: 6, delay: 2 },
+              { top: "35%", right: "8%", rotate: "-5deg", scale: 1.0, opacity: 0.35, duration: 8, delay: 1.2 },
+              { bottom: "15%", left: "42%", rotate: "18deg", scale: 0.95, opacity: 0.4, duration: 7, delay: 0.6 },
+              { top: "8%", left: "55%", rotate: "-10deg", scale: 1.05, opacity: 0.4, duration: 6.5, delay: 1.8 },
               { bottom: "12%", left: "6%", rotate: "-15deg", scale: 1.1, opacity: 0.35, duration: 8, delay: 1 },
               { top: "15%", left: "48%", rotate: "0deg", scale: 1.25, opacity: 0.55, duration: 7, delay: 0.5 },
               { top: "12%", right: "6%", rotate: "25deg", scale: 1.1, opacity: 0.4, duration: 5, delay: 1.2 },
@@ -440,14 +417,14 @@ function TopicsPage() {
             </div>
           </div>
 
-          {/* Chapter Mastery Card matching the design exactly */}
+          {/* Chapter Mastery Card */}
           <div className="flex flex-col bg-white/95 dark:bg-slate-900/95 border border-slate-200/50 dark:border-slate-800/80 rounded-[24px] px-8 py-6.5 shrink-0 shadow-xl min-w-[200px] relative z-10">
             <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-extrabold tracking-wider text-[10.5px] uppercase">
               <span>👑</span> CHAPTER MASTERY
             </div>
             <div className="flex items-baseline gap-2 mt-3">
               <span className="text-5xl font-black text-slate-800 dark:text-white font-mono leading-none">
-                {chapter.topics?.length || 0}
+                {topics.length}
               </span>
               <span className="text-[12px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
                 Quests
@@ -461,13 +438,13 @@ function TopicsPage() {
         </div>
       </div>
 
-      {!chapter || !Array.isArray(chapter.topics) || chapter.topics.length === 0 ? (
+      {topics.length === 0 ? (
         <div className="text-center py-12 text-slate-500 bg-card border border-dashed border-border rounded-[24px]">
           No topics available yet. Let's head back home!
         </div>
       ) : (
         <div className="space-y-4">
-          {chapter.topics.map((topic, i) => {
+          {topics.map((topic, i) => {
             const isPremium = topic.has_simulation && topic.simulation_route;
             const indexColors = getIndexColors(i);
             return (

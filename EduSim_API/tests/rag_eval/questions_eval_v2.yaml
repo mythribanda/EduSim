@@ -1,0 +1,782 @@
+- id: q01
+  question: How do we find positions like inside, outside, above and below in mathematics?
+  expected_board: NCERT
+  expected_class: 1
+  expected_subject: mathematics
+  expected_book_code: aejm1
+  expected_chapter_number: '1'
+  chapter_title: Finding the Furry Cat!
+  answer_keywords:
+  - inside
+  - outside
+  - above
+  - below
+  in_scope: true
+- id: q02
+  question: What number pairs and combinations add up to make 10?
+  expected_board: NCERT
+  expected_class: 1
+  expected_subject: mathematics
+  expected_book_code: aejm1
+  expected_chapter_number: '4'
+  chapter_title: Making 10
+  answer_keywords:
+  - make 10
+  - fingers
+  - add
+  in_scope: true
+- id: q03
+  question: What poem teaches children about two little hands and parts of the body?
+  expected_board: NCERT
+  expected_class: 1
+  expected_subject: english
+  expected_book_code: aemr1
+  expected_chapter_number: '1'
+  chapter_title: My Family and Me
+  answer_keywords:
+  - two little hands
+  - clap
+  - eyes
+  in_scope: true
+- id: q04
+  question: Why is water considered a precious natural gift and how should we conserve
+    it?
+  expected_board: NCERT
+  expected_class: 3
+  expected_subject: evs
+  expected_book_code: ceev1
+  expected_chapter_number: '7'
+  chapter_title: Gifts of Nature
+  answer_keywords:
+  - water
+  - natural
+  - save
+  - river
+  in_scope: true
+- id: q05
+  question: How do we identify basic two-dimensional and three-dimensional shapes
+    around us?
+  expected_board: NCERT
+  expected_class: 3
+  expected_subject: mathematics
+  expected_book_code: cemm1
+  expected_chapter_number: '5'
+  chapter_title: Fun with Shapes Fun with Shapes
+  answer_keywords:
+  - shapes
+  - edges
+  - corners
+  - triangle
+  in_scope: true
+- id: q06
+  question: What are magnetic and non-magnetic materials and how do magnet poles interact?
+  expected_board: NCERT
+  expected_class: 6
+  expected_subject: science
+  expected_book_code: fecu1
+  expected_chapter_number: '4'
+  chapter_title: Exploring Magnets
+  answer_keywords:
+  - magnet
+  - poles
+  - attract
+  - repel
+  in_scope: true
+- id: q07
+  question: How is a clinical thermometer used to measure body temperature accurately?
+  expected_board: NCERT
+  expected_class: 6
+  expected_subject: science
+  expected_book_code: fecu1
+  expected_chapter_number: '7'
+  chapter_title: Temperature and its Measurement
+  answer_keywords:
+  - clinical thermometer
+  - temperature
+  - mercury
+  - degrees
+  in_scope: true
+- id: q08
+  question: What are number sequences and patterns in mathematics?
+  expected_board: NCERT
+  expected_class: 6
+  expected_subject: mathematics
+  expected_book_code: fegp1
+  expected_chapter_number: '1'
+  chapter_title: PATTERNS IN MATHEMATICS
+  answer_keywords:
+  - pattern
+  - sequence
+  - numbers
+  in_scope: true
+- id: q09
+  question: What are the common microorganisms in the invisible living world beyond
+    our naked eyes?
+  expected_board: NCERT
+  expected_class: 8
+  expected_subject: science
+  expected_book_code: hecu1
+  expected_chapter_number: '2'
+  chapter_title: 'The Invisible Living World: Beyond Our'
+  answer_keywords:
+  - microorganisms
+  - bacteria
+  - fungi
+  - protozoa
+  in_scope: true
+- id: q10
+  question: How is a linear growth represented with a straight line graph and slope?
+  expected_board: NCERT
+  expected_class: 9
+  expected_subject: mathematics
+  expected_book_code: iemh1
+  expected_chapter_number: '2'
+  chapter_title: Introduction to Linear Polynomials
+  answer_keywords:
+  - linear
+  - graph
+  - polynomial
+  - slope
+  in_scope: true
+- id: q11
+  question: What are the basic structures and organelles inside a plant and animal
+    cell?
+  expected_board: NCERT
+  expected_class: 9
+  expected_subject: science
+  expected_book_code: iesc1
+  expected_chapter_number: '2'
+  chapter_title: 'Cell: The Building Block of Life'
+  answer_keywords:
+  - nucleus
+  - cytoplasm
+  - membrane
+  - cell wall
+  in_scope: true
+- id: q12
+  question: How do plants make their food through photosynthesis and chlorophyll?
+  expected_board: NCERT
+  expected_class: 7
+  expected_subject: science
+  expected_book_code: gees1
+  expected_chapter_number: '1'
+  chapter_title: Nutrition in Plants
+  answer_keywords:
+  - photosynthesis
+  - chlorophyll
+  - stomata
+  - carbon dioxide
+  in_scope: true
+- id: q13
+  question: What are the properties of acids, bases, and salts and how do indicators
+    work?
+  expected_board: NCERT
+  expected_class: 7
+  expected_subject: science
+  expected_book_code: gees1
+  expected_chapter_number: '5'
+  chapter_title: Acids, Bases and Salts
+  answer_keywords:
+  - acid
+  - base
+  - litmus
+  - neutralisation
+  in_scope: true
+- id: q14
+  question: What is reflection of light and how do spherical concave and convex mirrors
+    form images?
+  expected_board: NCERT
+  expected_class: 10
+  expected_subject: science
+  expected_book_code: jesc1
+  expected_chapter_number: '9'
+  chapter_title: Light – Reflection and Refraction
+  answer_keywords:
+  - reflection
+  - concave mirror
+  - convex
+  - focal length
+  in_scope: true
+- id: q15
+  question: What are Ohm's law, resistance, and electric current in an electrical
+    circuit?
+  expected_board: NCERT
+  expected_class: 10
+  expected_subject: science
+  expected_book_code: jesc1
+  expected_chapter_number: '11'
+  chapter_title: Electricity
+  answer_keywords:
+  - ohm's law
+  - resistance
+  - potential difference
+  - ampere
+  in_scope: true
+- id: q16
+  question: What is the mole concept, molar mass, and Avogadro constant in basic chemistry?
+  expected_board: NCERT
+  expected_class: 11
+  expected_subject: chemistry
+  expected_book_code: kech1
+  expected_chapter_number: '1'
+  chapter_title: SOME BASIC CONCEPTS OF CHEMISTRY
+  answer_keywords:
+  - mole
+  - avogadro
+  - molar mass
+  in_scope: true
+- id: q17
+  question: What are Bohr's model of the atom and quantum numbers describing electron
+    orbits?
+  expected_board: NCERT
+  expected_class: 11
+  expected_subject: chemistry
+  expected_book_code: kech1
+  expected_chapter_number: '2'
+  chapter_title: STRUCTURE OF ATOM
+  answer_keywords:
+  - bohr
+  - orbital
+  - quantum numbers
+  - energy levels
+  in_scope: true
+- id: q18
+  question: What are organelles like mitochondria, endoplasmic reticulum, and Golgi
+    apparatus in cell biology?
+  expected_board: NCERT
+  expected_class: 11
+  expected_subject: biology
+  expected_book_code: kebo1
+  expected_chapter_number: '8'
+  chapter_title: 'CELL: THE UNIT OF LIFE'
+  answer_keywords:
+  - mitochondria
+  - endoplasmic reticulum
+  - golgi
+  - ribosome
+  in_scope: true
+- id: q19
+  question: How are sets, subsets, and universal sets represented with Venn diagrams
+    in mathematics?
+  expected_board: NCERT
+  expected_class: 11
+  expected_subject: mathematics
+  expected_book_code: kemh1
+  expected_chapter_number: '1'
+  chapter_title: SETS
+  answer_keywords:
+  - venn diagram
+  - union
+  - intersection
+  - subset
+  in_scope: true
+- id: q20
+  question: What are electric field, Coulomb's law, and electric flux in electrostatics?
+  expected_board: NCERT
+  expected_class: 12
+  expected_subject: physics
+  expected_book_code: leph1
+  expected_chapter_number: '1'
+  chapter_title: ELECTRIC CHARGES AND FIELDS
+  answer_keywords:
+  - coulomb's law
+  - electric field
+  - flux
+  - charge
+  in_scope: true
+- id: q21
+  question: How do autotrophic organisms obtain energy through photosynthesis in life
+    processes?
+  expected_board: NCERT
+  expected_class: 10
+  expected_subject: science
+  expected_book_code: jesc1
+  expected_chapter_number: '5'
+  chapter_title: Life Processes
+  answer_keywords:
+  - autotrophic
+  - photosynthesis
+  - chlorophyll
+  - nutrition
+  in_scope: true
+- id: q22
+  question: What is the biochemical breakdown of glucose during aerobic and anaerobic
+    respiration?
+  expected_board: NCERT
+  expected_class: 10
+  expected_subject: science
+  expected_book_code: jesc1
+  expected_chapter_number: '5'
+  chapter_title: Life Processes
+  answer_keywords:
+  - respiration
+  - glucose
+  - pyruvate
+  - atp
+  in_scope: true
+- id: q23
+  question: What is the function of the human heart valves and ventricles in double
+    circulation?
+  expected_board: NCERT
+  expected_class: 10
+  expected_subject: science
+  expected_book_code: jesc1
+  expected_chapter_number: '5'
+  chapter_title: Life Processes
+  answer_keywords:
+  - heart
+  - valves
+  - ventricles
+  - circulation
+  in_scope: true
+- id: q24
+  question: What is the structure of a nephron and how do kidneys filter nitrogenous
+    waste from blood?
+  expected_board: NCERT
+  expected_class: 10
+  expected_subject: science
+  expected_book_code: jesc1
+  expected_chapter_number: '5'
+  chapter_title: Life Processes
+  answer_keywords:
+  - nephron
+  - kidney
+  - filtration
+  - urine
+  in_scope: true
+- id: q25
+  question: How did Gregor Mendel establish the principles of inheritance using tall
+    and short pea plants?
+  expected_board: NCERT
+  expected_class: 10
+  expected_subject: science
+  expected_book_code: jesc1
+  expected_chapter_number: '8'
+  chapter_title: Heredity
+  answer_keywords:
+  - mendel
+  - pea
+  - inheritance
+  - dominant
+  in_scope: true
+- id: q26
+  question: What is the Fundamental Theorem of Arithmetic and prime factorisation
+    of composite numbers?
+  expected_board: NCERT
+  expected_class: 10
+  expected_subject: mathematics
+  expected_book_code: jemh1
+  expected_chapter_number: '1'
+  chapter_title: REAL NUMBERS
+  answer_keywords:
+  - fundamental theorem of arithmetic
+  - prime factorisation
+  - composite
+  in_scope: true
+- id: q27
+  question: How do we calculate the roots of quadratic equations using factorisation
+    and formula?
+  expected_board: NCERT
+  expected_class: 10
+  expected_subject: mathematics
+  expected_book_code: jemh1
+  expected_chapter_number: '4'
+  chapter_title: Quadratic Equations
+  answer_keywords:
+  - quadratic
+  - roots
+  - factorisation
+  - discriminant
+  in_scope: true
+- id: q28
+  question: What are the trigonometric ratios sine, cosine, and tangent in a right-angled
+    triangle?
+  expected_board: NCERT
+  expected_class: 10
+  expected_subject: mathematics
+  expected_book_code: jemh1
+  expected_chapter_number: '8'
+  chapter_title: INTRODUCTION TO TRIGONOMETRY
+  answer_keywords:
+  - trigonometric ratios
+  - sin a
+  - cos a
+  - hypotenuse
+  in_scope: true
+- id: q29
+  question: How do we represent geometric reflections, line symmetry, and angles in
+    mathematics?
+  expected_board: NCERT
+  expected_class: 6
+  expected_subject: mathematics
+  expected_book_code: fegp1
+  expected_chapter_number: '7'
+  chapter_title: Symmetry and Geometry
+  answer_keywords:
+  - symmetry
+  - reflection
+  - line of symmetry
+  in_scope: true
+- id: q30
+  question: How does determination and courage help someone learn to fly in Two Stories
+    about Flying?
+  expected_board: NCERT
+  expected_class: 10
+  expected_subject: english
+  expected_book_code: jewe2
+  expected_chapter_number: '3'
+  chapter_title: Two Stories about Flying
+  answer_keywords:
+  - seagull
+  - flying
+  - wings
+  - flight
+  in_scope: true
+- id: q31
+  question: why do plant cells hav cell wall but animal cell dont?
+  expected_board: NCERT
+  expected_class: 9
+  expected_subject: science
+  expected_book_code: iesc1
+  expected_chapter_number: '2'
+  chapter_title: 'Cell: The Building Block of Life'
+  answer_keywords:
+  - cell wall
+  - plant cell
+  - membrane
+  in_scope: true
+- id: q32
+  question: ohm law formula V=IR explain pls
+  expected_board: NCERT
+  expected_class: 10
+  expected_subject: science
+  expected_book_code: jesc1
+  expected_chapter_number: '11'
+  chapter_title: Electricity
+  answer_keywords:
+  - ohm's law
+  - resistance
+  - potential difference
+  in_scope: true
+- id: q33
+  question: diff between convex mirror and concave mirror image formation
+  expected_board: NCERT
+  expected_class: 10
+  expected_subject: science
+  expected_book_code: jesc1
+  expected_chapter_number: '9'
+  chapter_title: Light – Reflection and Refraction
+  answer_keywords:
+  - concave
+  - convex
+  - mirror
+  - image
+  in_scope: true
+- id: q34
+  question: whats avagadro numbr and how calculate moles?
+  expected_board: NCERT
+  expected_class: 11
+  expected_subject: chemistry
+  expected_book_code: kech1
+  expected_chapter_number: '1'
+  chapter_title: SOME BASIC CONCEPTS OF CHEMISTRY
+  answer_keywords:
+  - avogadro
+  - mole
+  - particles
+  in_scope: true
+- id: q35
+  question: why is mitochondria called powerhouse of cell??
+  expected_board: NCERT
+  expected_class: 11
+  expected_subject: biology
+  expected_book_code: kebo1
+  expected_chapter_number: '8'
+  chapter_title: 'CELL: THE UNIT OF LIFE'
+  answer_keywords:
+  - mitochondria
+  - atp
+  - powerhouse
+  in_scope: true
+- id: q36
+  question: coulombs law in physics charges force r squared
+  expected_board: NCERT
+  expected_class: 12
+  expected_subject: physics
+  expected_book_code: leph1
+  expected_chapter_number: '1'
+  chapter_title: ELECTRIC CHARGES AND FIELDS
+  answer_keywords:
+  - coulomb
+  - force
+  - charge
+  - electrostatic
+  in_scope: true
+- id: q37
+  question: how nephron filters blood in kidney step by step
+  expected_board: NCERT
+  expected_class: 10
+  expected_subject: science
+  expected_book_code: jesc1
+  expected_chapter_number: '5'
+  chapter_title: Life Processes
+  answer_keywords:
+  - nephron
+  - bowman
+  - glomerulus
+  - filter
+  in_scope: true
+- id: q38
+  question: trignometry sin cos tan formula in triangle
+  expected_board: NCERT
+  expected_class: 10
+  expected_subject: mathematics
+  expected_book_code: jemh1
+  expected_chapter_number: '8'
+  chapter_title: INTRODUCTION TO TRIGONOMETRY
+  answer_keywords:
+  - sin a
+  - cos a
+  - hypotenuse
+  - opposite
+  in_scope: true
+- id: q39
+  question: explain fundamental therom of arithmatic prime factors
+  expected_board: NCERT
+  expected_class: 10
+  expected_subject: mathematics
+  expected_book_code: jemh1
+  expected_chapter_number: '1'
+  chapter_title: REAL NUMBERS
+  answer_keywords:
+  - fundamental theorem of arithmetic
+  - prime
+  - composite
+  in_scope: true
+- id: q40
+  question: what is acid base litmus test neutralization reaction
+  expected_board: NCERT
+  expected_class: 7
+  expected_subject: science
+  expected_book_code: gees1
+  expected_chapter_number: '5'
+  chapter_title: Acids, Bases and Salts
+  answer_keywords:
+  - acid
+  - base
+  - litmus
+  - salt
+  in_scope: true
+- id: q41
+  question: bohr atomic model energy levels and orbits
+  expected_board: NCERT
+  expected_class: 11
+  expected_subject: chemistry
+  expected_book_code: kech1
+  expected_chapter_number: '2'
+  chapter_title: STRUCTURE OF ATOM
+  answer_keywords:
+  - bohr
+  - orbit
+  - electron
+  - energy
+  in_scope: true
+- id: q42
+  question: how does young seagull make his first flight story
+  expected_board: NCERT
+  expected_class: 10
+  expected_subject: english
+  expected_book_code: jewe2
+  expected_chapter_number: '3'
+  chapter_title: Two Stories about Flying
+  answer_keywords:
+  - seagull
+  - flight
+  - wings
+  - ledge
+  in_scope: true
+- id: q43
+  question: how to draw venn diagram for sets union intersection
+  expected_board: NCERT
+  expected_class: 11
+  expected_subject: mathematics
+  expected_book_code: kemh1
+  expected_chapter_number: '1'
+  chapter_title: SETS
+  answer_keywords:
+  - venn diagram
+  - union
+  - intersection
+  in_scope: true
+- id: q44
+  question: why do magnets repel or atract each other poles
+  expected_board: NCERT
+  expected_class: 6
+  expected_subject: science
+  expected_book_code: fecu1
+  expected_chapter_number: '4'
+  chapter_title: Exploring Magnets
+  answer_keywords:
+  - poles
+  - magnet
+  - repel
+  - attract
+  in_scope: true
+- id: q45
+  question: how clinical thermomter works mercury scale
+  expected_board: NCERT
+  expected_class: 6
+  expected_subject: science
+  expected_book_code: fecu1
+  expected_chapter_number: '7'
+  chapter_title: Temperature and its Measurement
+  answer_keywords:
+  - clinical thermometer
+  - mercury
+  - temperature
+  in_scope: true
+- id: q46
+  question: what is atp produced in respiration glucose
+  expected_board: NCERT
+  expected_class: 10
+  expected_subject: science
+  expected_book_code: jesc1
+  expected_chapter_number: '5'
+  chapter_title: Life Processes
+  answer_keywords:
+  - atp
+  - respiration
+  - glucose
+  in_scope: true
+- id: q47
+  question: mendels pea plant experiment 3 to 1 ratio dominant trait
+  expected_board: NCERT
+  expected_class: 10
+  expected_subject: science
+  expected_book_code: jesc1
+  expected_chapter_number: '8'
+  chapter_title: Heredity
+  answer_keywords:
+  - mendel
+  - pea
+  - dominant
+  - trait
+  in_scope: true
+- id: q48
+  question: shapes in class 3 math edges faces vertices cylinder cone
+  expected_board: NCERT
+  expected_class: 3
+  expected_subject: mathematics
+  expected_book_code: cemm1
+  expected_chapter_number: '5'
+  chapter_title: Fun with Shapes Fun with Shapes
+  answer_keywords:
+  - shapes
+  - edges
+  - corners
+  in_scope: true
+- id: q49
+  question: linear equation graph straight line slope intercept
+  expected_board: NCERT
+  expected_class: 9
+  expected_subject: mathematics
+  expected_book_code: iemh1
+  expected_chapter_number: '2'
+  chapter_title: Introduction to Linear Polynomials
+  answer_keywords:
+  - linear
+  - graph
+  - line
+  in_scope: true
+- id: q50
+  question: why do we need to save water rainwater harvesting evs
+  expected_board: NCERT
+  expected_class: 3
+  expected_subject: evs
+  expected_book_code: ceev1
+  expected_chapter_number: '7'
+  chapter_title: Gifts of Nature
+  answer_keywords:
+  - water
+  - save
+  - nature
+  in_scope: true
+- id: q51
+  question: How do you prepare an authentic Italian Neapolitan pizza dough with double
+    zero flour?
+  in_scope: false
+  answer_keywords:
+  - pizza
+  - dough
+  - fermentation
+- id: q52
+  question: What is proof-of-work consensus algorithm in Bitcoin cryptocurrency mining?
+  in_scope: false
+  answer_keywords:
+  - bitcoin
+  - blockchain
+  - proof-of-work
+- id: q53
+  question: How to fine-tune a Llama 3 language model using LoRA and PyTorch PEFT
+    library?
+  in_scope: false
+  answer_keywords:
+  - lora
+  - llama
+  - pytorch
+- id: q54
+  question: What are the FIFA soccer rules regarding VAR review and intentional handball
+    in penalty area?
+  in_scope: false
+  answer_keywords:
+  - fifa
+  - penalty
+  - referee
+- id: q55
+  question: How do you change the automatic transmission fluid and filter on a Honda
+    Accord 2019?
+  in_scope: false
+  answer_keywords:
+  - transmission
+  - fluid
+  - honda
+- id: q56
+  question: Explain the rules for French conditional and subjunctive mood with irregular
+    verbs.
+  in_scope: false
+  answer_keywords:
+  - french
+  - subjunctive
+  - verbs
+- id: q57
+  question: How do algorithmic hedge funds use option straddles and implied volatility
+    skew for delta hedging?
+  in_scope: false
+  answer_keywords:
+  - hedge fund
+  - options
+  - volatility
+- id: q58
+  question: Who won the Grammy for Album of the Year in 2024 and what was in their
+    acceptance speech?
+  in_scope: false
+  answer_keywords:
+  - grammy
+  - album
+  - acceptance
+- id: q59
+  question: How to deploy a highly available multi-region Kubernetes cluster using
+    Terraform on AWS EKS?
+  in_scope: false
+  answer_keywords:
+  - kubernetes
+  - terraform
+  - eks
+- id: q60
+  question: What is the traditional Japanese tea ceremony recipe for preparing ceremonial
+    grade matcha?
+  in_scope: false
+  answer_keywords:
+  - matcha
+  - ceremony
+  - whisk

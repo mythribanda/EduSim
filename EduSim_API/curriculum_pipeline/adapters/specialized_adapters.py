@@ -90,12 +90,41 @@ class SocialScienceAdapter(BaseSubjectAdapter):
             return res
 
         line_clean = line.strip()
-        m_soc = re.match(r"^(Case\s+Study|Source|Let\'s\s+Recall|Let\'s\s+Explore|Map\s+Reading)\b(?:\s*[:\.\-–—]\s*|\s*)(.*)$", line_clean, re.I)
+        m_soc = re.match(
+            r"^(Case\s+Study|Source|The\s+Big\s+Questions?|Big\s+Questions?|Let[\'’`\s]?s\s+Recall|Let[\'’`\s]?s\s+Explore|Let[\'’`\s]?s\s+Remember|Don[\'’`\s]?t\s+Miss\s+Out|Map\s+Reading)\b(?:\s*[:\.\-–—]\s*|\s*)(.*)$",
+            line_clean,
+            re.I,
+        )
         if m_soc:
             lbl = m_soc.group(1).strip()
             rest = m_soc.group(2).strip()
             return True, "activity", None, lbl, rest[:80] if rest else None
         return False, None, None, None, None
+
+    def extract_nodes_from_lines(
+        self,
+        page_no: int,
+        lines_with_spans: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        # In Social Science textbooks, stitch decorative chapter-opener callouts: "The Big" + "Questions"
+        stitched_lines = []
+        i = 0
+        while i < len(lines_with_spans):
+            cur = lines_with_spans[i]
+            cur_txt = cur.get("text", "").strip()
+            if cur_txt.lower() == "the big" and i + 1 < len(lines_with_spans):
+                nxt = lines_with_spans[i + 1]
+                nxt_txt = nxt.get("text", "").strip()
+                if nxt_txt.lower() in ["questions", "question"]:
+                    merged_line = dict(cur)
+                    merged_line["text"] = f"{cur_txt} {nxt_txt}"
+                    merged_line["spans"] = list(cur.get("spans", [])) + list(nxt.get("spans", []))
+                    stitched_lines.append(merged_line)
+                    i += 2
+                    continue
+            stitched_lines.append(cur)
+            i += 1
+        return super().extract_nodes_from_lines(page_no, stitched_lines)
 
 
 def get_adapter_for_subject(
@@ -106,10 +135,10 @@ def get_adapter_for_subject(
     subj = (subject or "").lower()
     if "math" in subj:
         return MathsAdapter(style_profile, language=language)
+    elif any(k in subj for k in ["social", "history", "geography", "political", "civics", "economics", "evs"]):
+        return SocialScienceAdapter(style_profile, language=language)
     elif any(k in subj for k in ["science", "physics", "chemistry", "biology"]):
         return ScienceAdapter(style_profile, language=language)
     elif any(k in subj for k in ["english", "hindi", "telugu", "sanskrit", "urdu"]):
         return LanguageAdapter(style_profile, language=language)
-    elif any(k in subj for k in ["social", "history", "geography", "political", "civics", "economics", "evs"]):
-        return SocialScienceAdapter(style_profile, language=language)
     return BaseSubjectAdapter(style_profile, language=language)

@@ -36,6 +36,7 @@ class Book(Base):
     extraction_status = Column(String(50), nullable=False, default="ok")
     pipeline_version = Column(String(50), nullable=False, default="2.0.0")
     source_files = Column(JSON, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False, server_default="1")
 
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)

@@ -25,6 +25,7 @@ async def call_ai(
     response_format: dict | None = None,
     request_id: str | None = None,
     timeout: float | None = None,
+    allow_fallback: bool | None = None,
     **kwargs
 ) -> Dict[str, Any]:
     """
@@ -118,6 +119,17 @@ async def call_ai(
     # -------------------------------------------------------------
     # 2. Fallback Provider: OpenRouter
     # -------------------------------------------------------------
+    cloud_fallback_enabled = os.getenv("ENABLE_OPENROUTER_FALLBACK", "true").lower() in ("true", "1", "yes")
+    should_fallback = allow_fallback if allow_fallback is not None else cloud_fallback_enabled
+
+    if not should_fallback:
+        logger.warning(
+            f"[AI ROUTER] Ollama attempt failed (reason=\"{ollama_error_reason}\") and OpenRouter fallback is disabled."
+        )
+        raise RuntimeError(
+            f"Ollama generation failed ({ollama_error_reason}). OpenRouter fallback is disabled."
+        )
+
     logger.warning(
         f"[AI ROUTER] [FALLBACK TRIGGERED] request_id={req_id} "
         f"reason=\"{ollama_error_reason}\". Falling back to OpenRouter..."

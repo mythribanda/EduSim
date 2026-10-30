@@ -125,12 +125,32 @@ class CurriculumTreeBuilder:
 
 
             if level == "topic":
-                # Check if this topic already exists under this chapter (multi-page continuation or repeated banner)
+                # Check if this topic already exists under this chapter (multi-page continuation, repeated banner, or matching official_number)
+                norm_lower = norm_t.strip().lower()
                 existing_topic = next(
-                    (n for n in chapter_node["nodes"] if n.get("level") == "topic" and n.get("normalized_title") == norm_t),
+                    (
+                        n for n in chapter_node["nodes"]
+                        if n.get("level") == "topic"
+                        and (
+                            (num and n.get("official_number") and n.get("official_number") == num)
+                            or (not num and not n.get("official_number") and n.get("normalized_title", "").strip().lower() == norm_lower)
+                        )
+                    ),
                     None
                 )
                 if existing_topic:
+                    # If existing topic was a TOC-box entry on chapter start page and this is the full section heading on page > chapter_page_start:
+                    if (
+                        existing_topic.get("page_start") == chapter_page_start
+                        and page > chapter_page_start
+                        and existing_topic.get("normalized_title", "").strip().lower() == norm_t.strip().lower()
+                    ):
+                        existing_topic["page_start"] = page
+                        existing_topic["official_title"] = title
+                        existing_topic["normalized_title"] = norm_t
+                        existing_topic["evidence"] = evidence
+                        existing_topic["confidence"] = conf
+                        existing_topic["rule_id"] = rule
                     existing_topic["page_end"] = max(existing_topic["page_end"], page)
                     current_topic = existing_topic
                     current_subtopic = None
@@ -166,16 +186,44 @@ class CurriculumTreeBuilder:
             elif level == "subtopic":
                 target_parent = current_topic
                 level_skipped = False
+                # If candidate has official_number (e.g. "10.1.2"), verify if parent topic matches prefix (e.g. "10.1")
+                if num and "." in str(num):
+                    parent_num = str(num).rsplit(".", 1)[0]
+                    matching_top = next(
+                        (n for n in chapter_node["nodes"] if n.get("level") == "topic" and n.get("official_number") == parent_num),
+                        None
+                    )
+                    if matching_top:
+                        target_parent = matching_top
+                        current_topic = matching_top
+                        level_skipped = False
+
                 if not target_parent:
                     target_parent = chapter_node
                     level_skipped = True
 
                 # Check if this subtopic already exists under target_parent
+                norm_lower = norm_t.strip().lower()
                 existing_subtopic = next(
-                    (n for n in target_parent["nodes"] if n.get("level") == "subtopic" and n.get("normalized_title") == norm_t),
+                    (
+                        n for n in target_parent["nodes"]
+                        if n.get("level") == "subtopic"
+                        and (
+                            (num and n.get("official_number") and n.get("official_number") == num)
+                            or (not num and not n.get("official_number") and n.get("normalized_title", "").strip().lower() == norm_lower)
+                        )
+                    ),
                     None
                 )
                 if existing_subtopic:
+                    if (
+                        existing_subtopic.get("page_start") == chapter_page_start
+                        and page > chapter_page_start
+                        and existing_subtopic.get("normalized_title", "").strip().lower() == norm_t.strip().lower()
+                    ):
+                        existing_subtopic["page_start"] = page
+                        existing_subtopic["official_title"] = title
+                        existing_subtopic["normalized_title"] = norm_t
                     existing_subtopic["page_end"] = max(existing_subtopic["page_end"], page)
                     current_subtopic = existing_subtopic
                     current_activity = None

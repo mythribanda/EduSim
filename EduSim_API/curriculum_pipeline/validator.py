@@ -125,7 +125,7 @@ class NodeSchema(BaseModel):
     normalized_title: Optional[str] = None
     page_start: int
     page_end: int
-    source_file: str
+    source_file: Optional[str] = None
     ocr_needed: bool = False
     occurrence_index: Optional[int] = None
     identity_key: Optional[str] = None
@@ -139,6 +139,8 @@ class CurriculumValidator:
         self.issues: List[ValidationIssue] = []
         self.total_nodes_count: int = 0
         self.suspicious_node_ids: set = set()
+        self.seen_node_ids: Dict[str, str] = {}
+        self.seen_identity_keys: Dict[str, str] = {}
 
     def get_suspicion_metrics(self, is_ssc: bool = False) -> Tuple[float, str]:
         """Returns (suspicion_score, extraction_status)."""
@@ -181,10 +183,32 @@ class CurriculumValidator:
         self.issues = []
         self.total_nodes_count = 0
         self.suspicious_node_ids = set()
+        self.seen_node_ids = {}
+        self.seen_identity_keys = {}
 
         # If data is a book curriculum with chapters list
         if "chapters" in data and isinstance(data["chapters"], list):
+            seen_chapter_keys: Dict[str, str] = {}
             for ch in data["chapters"]:
+                ch_key = ch.get("identity_key")
+                if ch_key is not None:
+                    k_str = str(ch_key).strip()
+                    if k_str:
+                        if k_str in seen_chapter_keys:
+                            self.issues.append(
+                                ValidationIssue(
+                                    severity="ERROR",
+                                    rule_id="duplicate_node_id",
+                                    message=f"Duplicate identity_key '{k_str}' found in tree (already seen in '{seen_chapter_keys[k_str]}')",
+                                    node_id=str(ch.get("id")) if ch.get("id") is not None else None,
+                                    node_title=str(ch.get("official_title", "")).strip() or None,
+                                    level="chapter",
+                                    page=ch.get("page_start") if isinstance(ch.get("page_start"), int) else None,
+                                    file=ch.get("source_file", source_filename),
+                                )
+                            )
+                        else:
+                            seen_chapter_keys[k_str] = str(ch.get("official_title", "")).strip() or k_str
                 self._validate_chapter(ch, source_filename)
         elif data.get("level") == "chapter" or "nodes" in data:
             self._validate_chapter(data, source_filename)
@@ -287,6 +311,51 @@ class CurriculumValidator:
         page_start = node.get("page_start")
         page_end = node.get("page_end")
         ocr_needed = bool(node.get("ocr_needed", False))
+
+        # 0. Pydantic schema validation (ERROR)
+        node_to_validate = dict(node)
+        if not node_to_validate.get("source_file") and file_ctx:
+            node_to_validate["source_file"] = file_ctx
+
+        try:
+            NodeSchema.model_validate(node_to_validate)
+        except ValidationError as e:
+            for err in e.errors():
+                loc = err.get("loc", ())
+                field = str(loc[-1]) if loc else "node"
+                msg = err.get("msg", "Schema validation failed")
+                self.issues.append(
+                    ValidationIssue(
+                        severity="ERROR",
+                        rule_id="schema_validation_error",
+                        message=f"Node '{node_id}' failed schema validation on '{field}': {msg}",
+                        node_id=str(node_id) if node_id is not None else None,
+                        node_title=str(raw_title) if raw_title is not None else None,
+                        level=str(level) if level is not None else None,
+                        page=page_start if isinstance(page_start, int) else None,
+                        file=source_file,
+                    )
+                )
+
+        # Duplicate node id check within tree (ERROR)
+        if node_id is not None:
+            nid_str = str(node_id).strip()
+            if nid_str:
+                if nid_str in self.seen_node_ids:
+                    self.issues.append(
+                        ValidationIssue(
+                            severity="ERROR",
+                            rule_id="duplicate_node_id",
+                            message=f"Duplicate node id '{nid_str}' found in tree (already seen in '{self.seen_node_ids[nid_str]}')",
+                            node_id=nid_str,
+                            node_title=str(raw_title).strip() if raw_title else None,
+                            level=str(level) if level else None,
+                            page=page_start if isinstance(page_start, int) else None,
+                            file=source_file,
+                        )
+                    )
+                else:
+                    self.seen_node_ids[nid_str] = str(raw_title).strip() if raw_title else nid_str
 
         # Rule 1: Empty or whitespace title (ERROR)
         if raw_title is None or not str(raw_title).strip():
@@ -518,6 +587,7 @@ class CurriculumValidator:
 
         seen_topic_titles: Dict[str, str] = {}
         seen_subtopic_titles: Dict[str, str] = {}
+        seen_sibling_identity_keys: Dict[str, str] = {}
         prev_sibling_start: Optional[int] = None
         prev_sibling_title: Optional[str] = None
         prev_num_by_level: Dict[str, Tuple[Tuple[int, ...], str, str]] = {}
@@ -532,7 +602,28 @@ class CurriculumValidator:
             c_source = child.get("source_file", file_ctx)
             c_start = child.get("page_start")
             c_num = child.get("official_number")
+            c_key = child.get("identity_key")
             norm_tit = re.sub(r"\s+", " ", c_title).lower()
+
+            # Duplicate sibling identity_key check (ERROR)
+            if c_key is not None:
+                k_str = str(c_key).strip()
+                if k_str:
+                    if k_str in seen_sibling_identity_keys:
+                        self.issues.append(
+                            ValidationIssue(
+                                severity="ERROR",
+                                rule_id="duplicate_node_id",
+                                message=f"Duplicate identity_key '{k_str}' found in tree (already seen in '{seen_sibling_identity_keys[k_str]}')",
+                                node_id=str(c_id) if c_id is not None else None,
+                                node_title=c_title or None,
+                                level=c_level,
+                                page=c_start if isinstance(c_start, int) else None,
+                                file=c_source,
+                            )
+                        )
+                    else:
+                        seen_sibling_identity_keys[k_str] = c_title or k_str
 
             # Rule 5: Sibling page order (ERROR)
             # Sibling cannot start on an earlier page than previous sibling started.

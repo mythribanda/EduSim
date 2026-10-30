@@ -819,4 +819,45 @@ def test_validator_new_warnings():
     assert "chapter_missing_end_matter" in rule_ids
 
 
+def test_social_science_adapter_selection_and_callouts():
+    """Verify social-science selects SocialScienceAdapter and detects callout activities."""
+    from curriculum_pipeline.adapters.specialized_adapters import get_adapter_for_subject, SocialScienceAdapter
+    adapter = get_adapter_for_subject("social-science", {})
+    assert isinstance(adapter, SocialScienceAdapter)
+    
+    is_act, kind, num, title, _ = adapter.is_activity_heading("LET’S EXPLORE")
+    assert is_act is True
+    assert "EXPLORE" in title.upper()
+
+    is_act, kind, num, title, _ = adapter.is_activity_heading("The Big Questions")
+    assert is_act is True
+
+
+def test_tree_builder_case_insensitive_sibling_deduplication():
+    """Verify that case differences in sibling topic/subtopic titles merge rather than duplicating."""
+    from curriculum_pipeline.tree_builder import CurriculumTreeBuilder
+    tb = CurriculumTreeBuilder("test_book")
+    candidates = [
+        {"level": "topic", "official_number": "2.4", "official_title": "Kingdom Plantae", "normalized_title": "Kingdom Plantae", "page": 10},
+        {"level": "topic", "official_number": "2.4", "official_title": "KINGDOM PLANTAE", "normalized_title": "KINGDOM PLANTAE", "page": 19},
+        {"level": "subtopic", "official_number": None, "official_title": "Storing water", "normalized_title": "Storing water", "page": 20},
+        {"level": "subtopic", "official_number": None, "official_title": "Storing Water", "normalized_title": "Storing Water", "page": 20},
+    ]
+    tree = tb.build_chapter_tree(
+        chapter_info={"id": "ch_1", "official_title": "Chapter 1", "official_number": "1"},
+        raw_candidates=candidates,
+        chapter_page_start=10,
+        chapter_page_end=25,
+        file_id="test.pdf"
+    )
+    topics = [n for n in tree["nodes"] if n["level"] == "topic"]
+    assert len(topics) == 1
+    assert topics[0]["official_number"] == "2.4"
+    assert topics[0]["page_start"] == 19
+    subtopics = [n for n in topics[0]["nodes"] if n["level"] == "subtopic"]
+    assert len(subtopics) == 1
+    assert subtopics[0]["normalized_title"].lower() == "storing water"
+
+
+
 

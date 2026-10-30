@@ -53,7 +53,7 @@ function Dashboard() {
   const { user, token } = useAuthStore();
   const navigate = useNavigate();
 
-  const { data: classes = [], isLoading } = useQuery({
+  const { data: classes = [], isLoading, isError, error, refetch: refetchClasses } = useQuery({
     queryKey: ["classes"],
     queryFn: CurriculumService.getClasses,
   });
@@ -331,6 +331,11 @@ function Dashboard() {
         <h2 className="text-2xl font-bold mb-6 tracking-tight font-sans text-foreground">Explore Curriculum</h2>
         {isLoading ? (
           <div className="text-muted-foreground p-4">Loading curriculum...</div>
+        ) : isError ? (
+          <div className="text-destructive p-4 bg-destructive/10 border border-destructive/20 rounded-2xl flex flex-col items-start gap-2">
+            <div>Failed to load curriculum classes: {error instanceof Error ? error.message : "Unknown error"}</div>
+            <button onClick={() => refetchClasses()} className="text-xs font-bold underline hover:text-foreground">Try again</button>
+          </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             {classes.map((c, i) => (

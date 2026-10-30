@@ -26,6 +26,9 @@ class TimestampMixin:
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
 
+# TODO: [Curriculum V2 Migration] Legacy curriculum models (curriculum_classes, subjects, chapters, topics).
+# The source of truth has moved to `books` and `curriculum_nodes` in curriculum_pipeline_models.py.
+# Retained because students_router, tutor service, auth stats, and learning loop still reference them.
 class CurriculumClass(Base, TimestampMixin):
     __tablename__ = "curriculum_classes"
 

@@ -1,42 +1,107 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { CurriculumService } from "@/services/curriculumService";
 import { Card, PageWrapper } from "@/components/Card";
 import { Crumbs } from "@/components/Crumbs";
+import { AlertCircle, RefreshCw } from "lucide-react";
 
 export const Route = createFileRoute("/chapters/$classId/$subject")({
   component: ChaptersPage,
-  loader: async ({ params }) => {
-    try {
-      const [classes, subjects] = await Promise.all([
-        CurriculumService.getClasses(),
-        CurriculumService.getSubjects(Number(params.classId)),
-      ]);
-      const c = classes.find((cls) => cls.id === Number(params.classId));
-      if (!c) throw notFound();
-
-      const s = subjects.find(
-        (sub) =>
-          (sub.code || "").toLowerCase() === (params.subject || "").toLowerCase() ||
-          (sub.id || "").toLowerCase() === (params.subject || "").toLowerCase()
-      );
-      if (!s) throw notFound();
-
-      const chapters = await CurriculumService.getChapters(s.id, Number(params.classId));
-      
-      console.log("[DEBUG] selectedClass:", c);
-      console.log("[DEBUG] selectedSubject:", s);
-      console.log("[DEBUG] chapters loaded:", chapters);
-
-      return { c, s, chapters };
-    } catch (e) {
-      console.error("[DEBUG] Error in chapters loader:", e);
-      throw notFound();
-    }
-  },
 });
 
 function ChaptersPage() {
-  const { c, s, chapters } = Route.useLoaderData();
+  const { classId, subject: subjectParam } = Route.useParams();
+  const classIdNum = Number(classId);
+
+  const {
+    data: classes = [],
+    isLoading: loadingClasses,
+    isError: classesError,
+    error: classesErr,
+    refetch: refetchClasses,
+  } = useQuery({
+    queryKey: ["classes"],
+    queryFn: CurriculumService.getClasses,
+  });
+
+  const {
+    data: subjects = [],
+    isLoading: loadingSubjects,
+    isError: subjectsError,
+    error: subjectsErr,
+    refetch: refetchSubjects,
+  } = useQuery({
+    queryKey: ["subjects", classIdNum],
+    queryFn: () => CurriculumService.getSubjects(classIdNum),
+    enabled: !isNaN(classIdNum),
+  });
+
+  const c = classes.find((cls) => cls.id === classIdNum);
+  const s = subjects.find(
+    (sub) =>
+      (sub.code || "").toLowerCase() === (subjectParam || "").toLowerCase() ||
+      (sub.id || "").toLowerCase() === (subjectParam || "").toLowerCase()
+  );
+
+  const {
+    data: chapters = [],
+    isLoading: loadingChapters,
+    isError: chaptersError,
+    error: chaptersErr,
+    refetch: refetchChapters,
+  } = useQuery({
+    queryKey: ["chapters", classIdNum, s?.id || subjectParam],
+    queryFn: () => CurriculumService.getChapters(s?.id || subjectParam, classIdNum),
+    enabled: !isNaN(classIdNum) && Boolean(subjectParam),
+  });
+
+  const isLoading = loadingClasses || loadingSubjects || loadingChapters;
+  const isError = classesError || subjectsError || chaptersError;
+  const error = classesErr || subjectsErr || chaptersErr;
+
+  if (isLoading) {
+    return (
+      <PageWrapper>
+        <div className="flex flex-col items-center justify-center py-24 text-muted-foreground gap-4">
+          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm font-medium">Loading chapters...</p>
+        </div>
+      </PageWrapper>
+    );
+  }
+
+  if (isError) {
+    return (
+      <PageWrapper>
+        <div className="glass rounded-3xl p-8 border border-destructive/20 bg-destructive/10 text-destructive flex flex-col items-center gap-4 text-center max-w-xl mx-auto my-12">
+          <AlertCircle className="w-10 h-10 text-destructive" />
+          <h3 className="text-xl font-bold">Failed to load chapters</h3>
+          <p className="text-sm">{error instanceof Error ? error.message : "Unknown error"}</p>
+          <button
+            onClick={() => {
+              refetchClasses();
+              refetchSubjects();
+              refetchChapters();
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-bold shadow hover:brightness-110 active:scale-95 transition-all mt-2"
+          >
+            <RefreshCw className="w-4 h-4" /> Retry
+          </button>
+        </div>
+      </PageWrapper>
+    );
+  }
+
+  if (!c || !s) {
+    return (
+      <PageWrapper>
+        <div className="glass rounded-3xl p-8 text-center text-muted-foreground my-12">
+          Subject or Class not found.
+        </div>
+      </PageWrapper>
+    );
+  }
+
   const safeChapters = Array.isArray(chapters) ? chapters : [];
   const chapterCount = safeChapters.length;
 

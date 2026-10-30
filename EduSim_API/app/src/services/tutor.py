@@ -99,6 +99,7 @@ def identify_topic_from_text(
         close_db = True
 
     try:
+        # TODO: [Curriculum V2 Migration] Migrate topic identification from legacy Topic to CurriculumNode(level='topic')
         # 1. Check Topic table names in database
         try:
             db_topics = db.query(Topic.name).all()
