@@ -11,8 +11,10 @@ load_dotenv()
 _default_origins = [
     "http://localhost:8080",
     "http://localhost:5173",
+    "http://localhost:3000",
     "http://127.0.0.1:8080",
     "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000",
 ]
 _env_origins = os.getenv("ALLOWED_ORIGINS")
 ALLOWED_ORIGINS: list[str] = list(_default_origins)
@@ -89,6 +91,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

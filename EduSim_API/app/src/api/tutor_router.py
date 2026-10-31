@@ -285,14 +285,14 @@ async def analyze_query(
             from fastapi.responses import JSONResponse
             return JSONResponse(status_code=500, content={"success": False, "message": "Failed to save learning summary."})
     
-    logger.info("Tutor request:", request.query)
+    logger.info("Tutor request: %s", request.query)
     if explanation:
         try:
-            logger.info("LLM response:", explanation[:200])
+            logger.info("LLM response: %s", explanation[:200])
         except Exception:
             logger.info("LLM response contains non-ascii characters")
     try:
-        logger.info("Tutor API response success:", response.get("success") if isinstance(response, dict) else True)
+        logger.info("Tutor API response success: %s", response.get("success") if isinstance(response, dict) else True)
     except Exception:
         pass
     

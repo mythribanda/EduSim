@@ -72,11 +72,11 @@ alembic upgrade head
 
 Start the FastAPI application locally using Uvicorn:
 ```bash
-uvicorn main:app --reload --port 8000
+uvicorn main:app --reload --port 8001
 ```
 
-*   **API Documentation**: Visually inspect endpoints at `http://localhost:8000/docs` (Swagger UI) or `http://localhost:8000/redoc`.
-*   **Health Check**: Ping `http://localhost:8000/` or `http://localhost:8000/api/db/health` to verify database connectivity.
+*   **API Documentation**: Visually inspect endpoints at `http://localhost:8001/docs` (Swagger UI) or `http://localhost:8001/redoc`.
+*   **Health Check**: Ping `http://localhost:8001/` or `http://localhost:8001/api/db/health` to verify database connectivity.
 
 ---
 
