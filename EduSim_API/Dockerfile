@@ -8,7 +8,8 @@ FROM python:3.12-slim AS base
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     DEBIAN_FRONTEND=noninteractive \
-    PORT=8001
+    PORT=8001 \
+    HF_HOME=/app/.cache/huggingface
 
 WORKDIR /app
 

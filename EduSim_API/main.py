@@ -63,7 +63,7 @@ logger.info("RAG Ready")
 logger.info("Server Ready")
 
 from contextlib import asynccontextmanager
-from app.src.modules.legacy_rag import vector_store
+from app.src.modules.legacy_rag.vector_loader import vector_store
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

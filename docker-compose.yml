@@ -40,6 +40,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-edusim_secret_password}@postgres:5432/${POSTGRES_DB:-edusim}
       JWT_SECRET: ${JWT_SECRET:-edusim_super_secure_jwt_secret_key_at_least_32_chars_long}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-edusim_super_secure_jwt_secret_key_at_least_32_chars_long}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-1095504585852-r7ort3l6fmt852hi1paapo3k601d9f4o.apps.googleusercontent.com}
       ALLOWED_ORIGINS: http://localhost:8080,http://frontend:8080
       FRONTEND_URL: http://localhost:8080
       OLLAMA_BASE_URL: http://ollama:11434

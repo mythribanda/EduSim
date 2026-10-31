@@ -1,3 +1,4 @@
+
 import os
 import logging
 from pathlib import Path
@@ -11,53 +12,36 @@ load_dotenv(env_path)
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 
 
-def validate_supabase_url(url: str | None = None) -> str:
-    """
-    Validates the SUPABASE_URL configuration setting.
-    Throws a clear startup error if SUPABASE_URL is not set or still contains 'your-project'.
-    """
+def validate_supabase_url(url: str | None = None) -> str | None:
     target_url = url if url is not None else os.getenv("SUPABASE_URL")
     if not target_url:
-        raise RuntimeError(
-            "Startup error: SUPABASE_URL is not set. "
-            "Please configure a valid SUPABASE_URL in your environment."
-        )
+        return None
     if "your-project" in target_url:
-        raise RuntimeError(
-            f"Startup error: SUPABASE_URL is set to placeholder value '{target_url}'. "
-            "Please configure a valid Supabase project URL."
-        )
+        raise RuntimeError("Invalid SUPABASE_URL placeholder.")
     return target_url
 
 
 def validate_jwt_secret(secret: str | None = None) -> str:
-    """
-    Validates the JWT_SECRET (or JWT_SECRET_KEY) configuration setting.
-    Throws a clear startup error if missing or < 32 characters.
-    """
-    target_secret = secret if secret is not None else (os.getenv("JWT_SECRET") or os.getenv("JWT_SECRET_KEY"))
+    target_secret = secret if secret is not None else (
+        os.getenv("JWT_SECRET") or os.getenv("JWT_SECRET_KEY")
+    )
     if not target_secret:
-        raise RuntimeError(
-            "Startup error: JWT_SECRET environment variable is missing. "
-            "Please configure a valid JWT secret in your environment (minimum 32 characters)."
-        )
+        raise RuntimeError("JWT_SECRET environment variable is missing.")
     if len(target_secret.strip()) < 32:
-        raise RuntimeError(
-            f"Startup error: JWT_SECRET is too short ({len(target_secret.strip())} characters). "
-            "JWT_SECRET must be at least 32 characters long for cryptographic security."
-        )
+        raise RuntimeError("JWT_SECRET must be at least 32 characters long.")
     return target_secret.strip()
 
 
 def validate_config():
-    """Startup configuration validation."""
-    validate_supabase_url()
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        raise RuntimeError("DATABASE_URL environment variable is missing.")
     validate_jwt_secret()
 
 
 class Settings:
     @property
-    def SUPABASE_URL(self) -> str:
+    def SUPABASE_URL(self) -> str | None:
         return validate_supabase_url()
 
 
