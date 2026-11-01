@@ -20,8 +20,8 @@ from sqlalchemy.pool import StaticPool
 
 from app.src.config.database import Base
 from app.src.models.curriculum_pipeline_models import Book, CurriculumNode
-from curriculum_pipeline.loader import CurriculumDatabaseLoader, compute_node_identity_key
-from curriculum_pipeline.pipeline_config import PIPELINE_OUTPUT_ROOT, PIPELINE_VERSION
+from curriculum_pipeline.loader import CurriculumDatabaseLoader
+from curriculum_pipeline.pipeline_config import PIPELINE_OUTPUT_ROOT
 
 
 @pytest.fixture

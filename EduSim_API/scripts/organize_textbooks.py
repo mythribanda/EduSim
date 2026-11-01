@@ -783,9 +783,9 @@ def print_summary(
     ncert_groups = defaultdict(list)
     for r in rows:
         if r['board'] == 'ncert' and r['action'] == 'copy':
-            c_char = chr(ord('a') + int(r['class']) - 1)
+            chr(ord('a') + int(r['class']) - 1)
             # find original 2-letter code
-            sub = r['subject']
+            r['subject']
             # lookup reverse code or from filename
             fname = r['file']
             bcode = fname[:4]

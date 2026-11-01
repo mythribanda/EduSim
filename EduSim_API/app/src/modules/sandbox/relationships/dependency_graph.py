@@ -38,9 +38,8 @@ BEST PRACTICES
 
 
 from __future__ import annotations
-from typing import Dict, List, Set, Optional, Tuple
+from typing import Dict, List, Set, Optional
 from app.src.modules.sandbox.schemas.sandbox_schema import SandboxSchema
-from app.src.modules.sandbox.schemas.relationship_schema import EducationalRelationship
 
 
 class DependencyNode:
@@ -204,7 +203,6 @@ class ConceptualDependencyGraph:
             ))
 
             # Bind variables in the relationship to their targets
-            dependent_symbols = []
             independent_symbols = []
             
             # Map bindings to graph connections

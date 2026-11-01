@@ -25,7 +25,6 @@ from app.src.services.persistence_service import (
     record_activity,
     record_sandbox_event,
     resolve_user_from_authorization,
-    save_sandbox_state,
 )
 from app.src.modules.sandbox import service
 
@@ -118,7 +117,6 @@ async def generate_sandbox_simulation_deprecated(
     authorization: Optional[str] = Header(None),
     db: Session = Depends(get_db),
 ):
-    from app.src.modules.simulation_synthesis.service import generate_simulation_synthesis
     prompt = request.get("prompt", "")
     topic = request.get("topic")
     user = resolve_user_from_authorization(authorization, db)

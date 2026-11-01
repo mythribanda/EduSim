@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from typing import List, Dict, Any, Optional, Union
+from typing import Dict, Any, Optional, Union
 
 from app.src.api.auth import get_current_user
 from app.src.models.user import User

@@ -21,7 +21,7 @@ from pathlib import Path
 import pytest
 
 from curriculum_pipeline.check_consistency import run_consistency_check
-from curriculum_pipeline.pipeline_config import API_ROOT, PIPELINE_OUTPUT_ROOT
+from curriculum_pipeline.pipeline_config import PIPELINE_OUTPUT_ROOT
 
 CHUNKS_DIR = PIPELINE_OUTPUT_ROOT / "chunks"
 BOOKS_DIR = PIPELINE_OUTPUT_ROOT / "curriculum" / "books"
@@ -152,4 +152,4 @@ def test_book_title_and_subject_consistency():
                     )
                     break
 
-    assert len(mismatches) == 0, f"Metadata mismatches found:\n" + "\n".join(mismatches)
+    assert len(mismatches) == 0, "Metadata mismatches found:\n" + "\n".join(mismatches)

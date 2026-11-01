@@ -2,12 +2,8 @@
 import uuid
 from typing import Any, Optional
 from sqlalchemy.orm import Session
-from sqlalchemy import func, select
 
 from app.src.models.persistence import (
-    Subject,
-    Chapter,
-    Topic,
     ChatHistory,
     FormulaHistory,
     SimulationHistory,

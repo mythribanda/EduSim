@@ -12,8 +12,7 @@ Tests grounding, refusal behavior, and fallback hardening of the RAG pipeline:
 import os
 import sys
 import uuid
-from typing import Any, Dict
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 import httpx
 import pytest
 from fastapi.testclient import TestClient

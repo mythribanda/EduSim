@@ -417,7 +417,7 @@ class CurriculumDatabaseLoader:
 
         db_nodes = existing_book.nodes
         ex_by_key = {n.identity_key: n for n in db_nodes}
-        ex_ids = {n.id for n in db_nodes}
+        {n.id for n in db_nodes}
 
         matched_keys = set()
         matched_ids = set()

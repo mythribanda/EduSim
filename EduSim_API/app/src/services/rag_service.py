@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import List, Dict, Any, Optional, Union
+from typing import Optional, Union
 from app.src.modules.legacy_rag.vector_loader import vector_store
 from app.src.modules.legacy_rag.retriever import normalize_subject, parse_class_name
 

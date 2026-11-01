@@ -17,9 +17,8 @@ Filter Strategy:
 from __future__ import annotations
 
 import logging
-import os
 import re
-from typing import Any, Callable, Dict, List, Optional, Set, Union
+from typing import Any, Callable, Dict, List, Optional, Set
 
 import faiss
 import numpy as np

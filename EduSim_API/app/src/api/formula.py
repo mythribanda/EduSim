@@ -3,7 +3,7 @@ logger = logging.getLogger("EduSim.api.formula")
 
 from fastapi import APIRouter, Depends, Header
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import Optional
 from sqlalchemy.orm import Session
 
 from app.src.services.formula_service import FormulaService
@@ -42,7 +42,7 @@ async def get_formula_lab(
                 res.message = "Formula history saved successfully."
             elif isinstance(res, dict):
                 res["message"] = "Formula history saved successfully."
-        except Exception as e:
+        except Exception:
             db.rollback()
             from fastapi.responses import JSONResponse
             return JSONResponse(status_code=500, content={"success": False, "message": "Failed to save formula history."})

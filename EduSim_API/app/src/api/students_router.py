@@ -24,10 +24,9 @@ from __future__ import annotations
 import datetime
 import logging
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Path, status
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -41,7 +40,7 @@ from app.src.models.persistence import (
     UserSession,
 )
 from app.src.models.user import User
-from app.src.middleware.rbac import get_current_user, require_self_or_admin
+from app.src.middleware.rbac import require_self_or_admin
 from app.src.models.school import StudentTopicMastery
 
 logger = logging.getLogger("EduSim.api.students")

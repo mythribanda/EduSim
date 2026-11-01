@@ -19,8 +19,7 @@ It supports:
 
 
 import fnmatch
-from typing import Any, Dict, List, Callable, Optional, Set
-from pydantic import BaseModel, Field
+from typing import Dict, List, Callable, Optional
 
 from app.src.modules.sandbox.events.event_context import EventContext
 

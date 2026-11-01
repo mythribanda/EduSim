@@ -47,7 +47,7 @@ async def generate_synthesized_simulation(
             logger.info("[Database] Activity logs saved in the database: updated")
             if isinstance(response, dict):
                 response["message"] = "Simulation progress saved successfully."
-        except Exception as e:
+        except Exception:
             db.rollback()
             from fastapi.responses import JSONResponse
             return JSONResponse(status_code=500, content={"success": False, "message": "Failed to save simulation progress."})

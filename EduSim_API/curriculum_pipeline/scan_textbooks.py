@@ -226,7 +226,7 @@ def _parse_class_from_filename(filename: str) -> Optional[int]:
     """
     Try Roman numeral first, then ordinal, then plain digit.
     Handles filenames like 'VIII Biology EM 2025-26.pdf',
-    '9 Maths EM 2025-26.pdf', '1st class English.pdf'.
+    '9 Maths EM 2025-26.pd', '1st class English.pdf'.
     """
     base = Path(filename).stem
     # Roman
@@ -271,7 +271,7 @@ def _empty_row(file: Path, textbooks_root: Path) -> Dict[str, Any]:
         "pages": "",
         "size_bytes": file.stat().st_size if file.exists() else 0,
         "sha256": "",
-        "duplicate_of": "",
+        "duplicate_o": "",
         "extraction_ok": "",
         "chars_per_page": "",
         "needs_ocr": "",
@@ -433,7 +433,7 @@ def scan(
         pass  # expected — path is outside, we're good
 
     print(f"\n{'='*70}")
-    print(f"  EduSim Curriculum Pipeline — Textbook Scanner")
+    print("  EduSim Curriculum Pipeline — Textbook Scanner")
     print(f"{'='*70}")
     print(f"  Source (read-only): {textbooks_root}")
     print(f"  Inventory CSV     : {output_inventory}")

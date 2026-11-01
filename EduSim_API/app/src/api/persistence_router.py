@@ -16,7 +16,6 @@ from app.src.models.persistence import (
     FormulaHistory,
     SimulationHistory,
     ChatHistory,
-    UserSetting,
     SessionEvent,
 )
 from app.src.services.persistence_service import (
@@ -27,7 +26,6 @@ from app.src.services.persistence_service import (
     list_formula_history,
     list_sandbox_history,
     list_tutor_history,
-    record_app_state,
     record_activity,
     record_curriculum_visit,
     record_formula_calculation,
@@ -297,7 +295,7 @@ def delete_tutor_session_endpoint(
         db.commit()
         logger.info("[Database] Chat history saved in the database: updated")
         return {"success": True, "message": "History deleted successfully.", "deleted_count": deleted}
-    except Exception as e:
+    except Exception:
         db.rollback()
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=500, content={"success": False, "message": "Failed to delete history."})
@@ -360,7 +358,7 @@ def add_activity(
         db.commit()
         logger.info("[Database] Activity logs saved in the database: updated")
         return {"success": True, "message": "Settings saved successfully.", "event": event["id"]}
-    except Exception as e:
+    except Exception:
         db.rollback()
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=500, content={"success": False, "message": "Failed to save settings."})
@@ -387,7 +385,7 @@ def save_user_state_endpoint(
         db.commit()
         logger.info("[Database] User setting saved in the database: updated")
         return {"success": True, "message": "Settings saved successfully.", "state": record}
-    except Exception as e:
+    except Exception:
         db.rollback()
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=500, content={"success": False, "message": "Failed to save settings."})
@@ -412,7 +410,7 @@ def save_session_state(
         db.commit()
         logger.info("[Database] User setting saved in the database: updated")
         return {"success": True, "message": "Settings saved successfully.", "state": record["id"]}
-    except Exception as e:
+    except Exception:
         db.rollback()
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=500, content={"success": False, "message": "Failed to save settings."})
@@ -430,7 +428,7 @@ def save_profile(
         db.commit()
         logger.info("[Database] User setting saved in the database: updated")
         return {"success": True, "message": "Profile updated successfully.", "profile": record}
-    except Exception as e:
+    except Exception:
         db.rollback()
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=500, content={"success": False, "message": "Failed to update profile."})
@@ -449,7 +447,7 @@ def save_setting(
         logger.info("[Database] User setting saved in the database: updated")
         db.refresh(record)
         return {"success": True, "message": "Settings saved successfully.", "setting": record.id}
-    except Exception as e:
+    except Exception:
         db.rollback()
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=500, content={"success": False, "message": "Failed to save settings."})
@@ -467,7 +465,7 @@ def save_curriculum(
         db.commit()
         logger.info("[Database] User setting saved in the database: updated")
         return {"success": True, "message": "Settings saved successfully.", "progress": record["id"]}
-    except Exception as e:
+    except Exception:
         db.rollback()
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=500, content={"success": False, "message": "Failed to save settings."})
@@ -485,7 +483,7 @@ def save_curriculum_visit(
         db.commit()
         logger.info("[Database] User setting saved in the database: updated")
         return {"success": True, "message": "Settings saved successfully.", "visit": record["id"]}
-    except Exception as e:
+    except Exception:
         db.rollback()
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=500, content={"success": False, "message": "Failed to save settings."})
@@ -503,7 +501,7 @@ def save_tutor_session(
         db.commit()
         logger.info("[Database] Chat history saved in the database: updated")
         return {"success": True, "message": "Learning summary saved successfully.", "session": str(record.id)}
-    except Exception as e:
+    except Exception:
         db.rollback()
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=500, content={"success": False, "message": "Failed to save learning summary."})
@@ -531,7 +529,7 @@ def save_auth_session(
         logger.info("[Database] User session saved in the database: updated")
         db.refresh(record)
         return {"success": True, "message": "Settings saved successfully.", "session": record.id}
-    except Exception as e:
+    except Exception:
         db.rollback()
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=500, content={"success": False, "message": "Failed to save settings."})
@@ -559,7 +557,7 @@ def save_refresh_token(
         logger.info("[Database] User session saved in the database: updated")
         db.refresh(record)
         return {"success": True, "message": "Settings saved successfully.", "refresh_token": record.id}
-    except Exception as e:
+    except Exception:
         db.rollback()
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=500, content={"success": False, "message": "Failed to save settings."})
@@ -577,7 +575,7 @@ def save_formula_lab_session(
         db.commit()
         logger.info("[Database] User setting saved in the database: updated")
         return {"success": True, "message": "Formula history saved successfully.", "session": str(record.id)}
-    except Exception as e:
+    except Exception:
         db.rollback()
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=500, content={"success": False, "message": "Failed to save formula history."})
@@ -595,7 +593,7 @@ def save_formula_lab_action(
         db.commit()
         logger.info("[Database] User setting saved in the database: updated")
         return {"success": True, "message": "Formula history saved successfully.", "action": record["id"]}
-    except Exception as e:
+    except Exception:
         db.rollback()
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=500, content={"success": False, "message": "Failed to save formula history."})
@@ -613,7 +611,7 @@ def save_formula_lab_attempt(
         db.commit()
         logger.info("[Database] User setting saved in the database: updated")
         return {"success": True, "message": "Formula history saved successfully.", "attempt": record["id"]}
-    except Exception as e:
+    except Exception:
         db.rollback()
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=500, content={"success": False, "message": "Failed to save formula history."})
@@ -632,7 +630,7 @@ def save_formula_lab_calculation(
         logger.info("[Database] Formula history saved in the database: updated")
         db.refresh(record)
         return {"success": True, "message": "Formula history saved successfully.", "calculation": record.id}
-    except Exception as e:
+    except Exception:
         db.rollback()
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=500, content={"success": False, "message": "Failed to save formula history."})
@@ -668,7 +666,7 @@ def save_sandbox(
         logger.info("[Database] Simulation history saved in the database: updated")
         db.refresh(record)
         return {"success": True, "message": "Simulation progress saved successfully.", "simulation": record.id, "simulation_id": record.simulation_id}
-    except Exception as e:
+    except Exception:
         db.rollback()
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=500, content={"success": False, "message": "Failed to save simulation progress."})
@@ -699,7 +697,7 @@ def save_sandbox_event(
         db.commit()
         logger.info("[Database] User setting saved in the database: updated")
         return {"success": True, "message": "Simulation progress saved successfully.", "event": record["id"]}
-    except Exception as e:
+    except Exception:
         db.rollback()
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=500, content={"success": False, "message": "Failed to save simulation progress."})
@@ -740,7 +738,7 @@ def save_search_history(
         db.commit()
         logger.info("[Database] User setting saved in the database: updated")
         return {"success": True, "message": "Settings saved successfully.", "history": record["id"]}
-    except Exception as e:
+    except Exception:
         db.rollback()
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=500, content={"success": False, "message": "Failed to save settings."})
@@ -764,7 +762,7 @@ def save_search_result_selection(
         db.commit()
         logger.info("[Database] User setting saved in the database: updated")
         return {"success": True, "message": "Settings saved successfully.", "selection": record["id"]}
-    except Exception as e:
+    except Exception:
         db.rollback()
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=500, content={"success": False, "message": "Failed to save settings."})
@@ -782,7 +780,7 @@ def save_dashboard(
         db.commit()
         logger.info("[Database] User setting saved in the database: updated")
         return {"success": True, "message": "Settings saved successfully.", "dashboard": record}
-    except Exception as e:
+    except Exception:
         db.rollback()
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=500, content={"success": False, "message": "Failed to save settings."})
@@ -827,7 +825,7 @@ def delete_sandbox_state(
         db.commit()
         logger.info("[Database] Simulation history saved in the database: updated")
         return {"success": True, "message": "History deleted successfully."}
-    except Exception as e:
+    except Exception:
         db.rollback()
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=500, content={"success": False, "message": "Failed to delete history."})
@@ -899,7 +897,7 @@ def delete_chat_history(
         db.commit()
         logger.info("[Database] Chat history saved in the database: updated")
         return {"success": True, "message": "History deleted successfully.", "deleted_count": deleted}
-    except Exception as e:
+    except Exception:
         db.rollback()
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=500, content={"success": False, "message": "Failed to delete history."})
@@ -922,7 +920,7 @@ def delete_formula_calculation(
         db.commit()
         logger.info("[Database] Formula history saved in the database: updated")
         return {"success": True, "message": "History deleted successfully.", "deleted_count": deleted}
-    except Exception as e:
+    except Exception:
         db.rollback()
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=500, content={"success": False, "message": "Failed to delete history."})
@@ -943,7 +941,7 @@ def delete_simulation_history(
         db.commit()
         logger.info("[Database] Simulation history saved in the database: updated")
         return {"success": True, "message": "History deleted successfully."}
-    except Exception as e:
+    except Exception:
         db.rollback()
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=500, content={"success": False, "message": "Failed to delete history."})

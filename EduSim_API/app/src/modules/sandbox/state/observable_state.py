@@ -22,8 +22,8 @@ import re
 import math
 import ast
 import operator as op
-from typing import Any, Dict, List, Optional, Set
-from pydantic import BaseModel, Field
+from typing import Any, Dict, List
+from pydantic import BaseModel
 
 _SAFE_MATH_OPERATORS = {
     ast.Add: op.add,
@@ -66,7 +66,7 @@ def _eval_ast_node(node: ast.AST, safe_dict: Dict[str, Any]) -> float:
             fn = safe_dict[node.func.id]
             args = [_eval_ast_node(arg, safe_dict) for arg in node.args]
             return float(fn(*args))
-        raise ValueError(f"Unsupported function call in expression")
+        raise ValueError("Unsupported function call in expression")
     else:
         raise ValueError(f"Unsupported AST node: {type(node)}")
 

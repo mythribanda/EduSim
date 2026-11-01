@@ -12,12 +12,12 @@ These snapshots are completely serializable, enabling:
 
 
 from __future__ import annotations
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 from copy import deepcopy
 from pydantic import BaseModel, Field
 
 from app.src.modules.sandbox.state.runtime_store import RuntimeStore
-from app.src.modules.sandbox.state.object_state import ObjectRuntimeState, StateVector2D
+from app.src.modules.sandbox.state.object_state import StateVector2D
 
 
 class SimulationSnapshot(BaseModel):

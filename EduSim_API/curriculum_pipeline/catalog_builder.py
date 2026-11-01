@@ -17,7 +17,6 @@ import fitz
 import yaml
 
 from curriculum_pipeline.pipeline_config import (
-    API_ROOT,
     MAPPING_YAML_PATH,
     NCERT_CLASS_MAP,
     NCERT_LANG_MAP,

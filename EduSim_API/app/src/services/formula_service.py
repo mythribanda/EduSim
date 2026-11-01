@@ -2,11 +2,10 @@ import re
 import json
 import logging
 import sympy
-import string
 import difflib
 import os
 import hashlib
-from typing import List, Dict, Any
+from typing import Dict, Any
 from sympy.parsing.sympy_parser import parse_expr, standard_transformations, implicit_multiplication
 from app.src.modules.legacy_rag.generator import generate_llm_text_async
 from app.src.models.formula_models import FormulaLabResponse, FormulaVariable, FormulaControl, FormulaExample
@@ -306,11 +305,11 @@ class FormulaService:
         # Let's construct a prompt to LLM to extract or generate clean formulas
         prompt = "You are a scientific formula extractor.\n"
         if query:
-            prompt += f"Given the search topic and some retrieved textbook text chunks, extract or provide all unique, relevant standard scientific and mathematical formulas/equations.\n"
-            prompt += f"If the textbook text does not contain clean mathematical formulas for the topic, use your general knowledge to provide the standard, canonical formulas for the topic.\n\n"
+            prompt += "Given the search topic and some retrieved textbook text chunks, extract or provide all unique, relevant standard scientific and mathematical formulas/equations.\n"
+            prompt += "If the textbook text does not contain clean mathematical formulas for the topic, use your general knowledge to provide the standard, canonical formulas for the topic.\n\n"
             prompt += f"Topic: {query}\n\n"
         else:
-            prompt += f"Extract all unique scientific and mathematical formulas/equations from the following text.\n\n"
+            prompt += "Extract all unique scientific and mathematical formulas/equations from the following text.\n\n"
             
         prompt += f"Textbook text:\n{text}\n\n"
         prompt += """Return a JSON object containing a list of extracted formulas under the key "formulas".
@@ -417,11 +416,9 @@ Return raw JSON only, no markdown formatting."""
 
             # String similarity fallback grouping (if canon_sym failed)
             if not canon_sym:
-                found_similar = False
                 for existing_key in grouped.keys():
                     if difflib.SequenceMatcher(None, group_key, existing_key).ratio() > 0.8:
                         group_key = existing_key
-                        found_similar = True
                         break
                         
             if group_key not in grouped:
@@ -596,7 +593,7 @@ Return raw JSON only, no markdown formatting."""
                 return res_obj
                 
         # LLM Fallback for unknown formula
-        prompt = f'''Analyze this scientific or mathematical formula: {clean_formula}
+        prompt = '''Analyze this scientific or mathematical formula: {clean_formula}
 Return a JSON object with:
 - title: string (e.g. "Newton's Second Law")
 - description: string

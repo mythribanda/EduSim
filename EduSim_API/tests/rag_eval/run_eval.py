@@ -15,10 +15,9 @@ Computes:
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 import yaml
 
@@ -41,7 +40,6 @@ else:
     API_DIR = CURR_DIR
 
 from app.src.modules.legacy_rag.vector_loader import vector_store
-from app.src.config.similarity import get_similarity_threshold, evaluate_retrieval_confidence
 
 DEFAULT_QUESTIONS_YAML = Path(__file__).resolve().parent / "questions_eval_v3.yaml"
 
@@ -71,7 +69,7 @@ def evaluate_mode(
     failures = []
 
     for q in in_scope_questions:
-        qid = q["id"]
+        q["id"]
         q_text = q["question"]
         exp_book = q.get("expected_book_code", "").strip().lower()
         exp_ch = str(q.get("expected_chapter_number", "")).strip()
@@ -291,7 +289,7 @@ def print_failures_report(failures: List[Dict[str, Any]], title: str):
             sub_v = c.get("subject")
             snippet = c.get("text", "").replace("\n", " ")[:140]
             print(f"      {r_idx}. [Score: {score:.4f}] Book={b} Ch={ch} ({ch_t}) | Class={cls_v} Subj={sub_v}")
-            print(f"         \"{snippet}...\"")
+            print(f'         "{snippet}..."')
 
 
 def main():
@@ -320,7 +318,7 @@ def main():
                     break
 
     if not yaml_file or not yaml_file.exists():
-        print(f"Error: questions file not found.")
+        print("Error: questions file not found.")
         sys.exit(1)
 
     print("\nPreloading FAISS Vector Index V2...")

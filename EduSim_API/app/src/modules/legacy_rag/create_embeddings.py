@@ -20,9 +20,9 @@ DATA_DIR = ROOT_DIR / "data"
 VECTORSTORE_DIR = ROOT_DIR / "vectorstore"
 
 def create_embeddings_for_subject(pdf_path: Path, subject: str, embeddings_model):
-    logger.info(f"\n=========================================")
+    logger.info("\n=========================================")
     logger.info(f"Processing Subject: {subject.upper()}")
-    logger.info(f"=========================================")
+    logger.info("=========================================")
     
     subject_dir = VECTORSTORE_DIR / subject
     
@@ -39,14 +39,14 @@ def create_embeddings_for_subject(pdf_path: Path, subject: str, embeddings_model
         return
 
     # 2. Split Docs
-    logger.info(f"[2/4] Splitting documents into chunks...")
+    logger.info("[2/4] Splitting documents into chunks...")
     chunks = split_docs(docs)
     logger.info(f"      Total chunks: {len(chunks)}")
     
     texts = [chunk.page_content for chunk in chunks]
 
     # 3. Create Embeddings
-    logger.info(f"[3/4] Generating embeddings...")
+    logger.info("[3/4] Generating embeddings...")
     embeddings = embeddings_model.encode(
         texts,
         convert_to_numpy=True,
@@ -56,7 +56,7 @@ def create_embeddings_for_subject(pdf_path: Path, subject: str, embeddings_model
     faiss.normalize_L2(embeddings)
     
     # 4. Create FAISS Index & Metadata
-    logger.info(f"[4/4] Creating and saving FAISS index...")
+    logger.info("[4/4] Creating and saving FAISS index...")
     dimension = embeddings.shape[1]
     index = faiss.IndexFlatIP(dimension)
     index.add(embeddings)
@@ -94,9 +94,9 @@ def main():
     # Iterate through all PDFs in data/
     for file in os.listdir(DATA_DIR):
         if file.lower().endswith(".pdf"):
-            subject = file.replace(".pdf", "").lower()
+            subject = file.replace(".pd", "").lower()
             # If the filename has spaces/dashes, extract base subject if possible.
-            # Example: "physics_grade9.pdf" -> "physics". 
+            # Example: "physics_grade9.pd" -> "physics". 
             # We'll just split by space or underscore and take the first word as a heuristic,
             # or just use the whole filename minus pdf.
             base_subject = subject.replace("-", " ").replace("_", " ").split()[0]

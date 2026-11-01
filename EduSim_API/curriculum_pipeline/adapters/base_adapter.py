@@ -10,7 +10,6 @@ from __future__ import annotations
 import re
 from collections import Counter
 import yaml
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from curriculum_pipeline.pipeline_config import API_ROOT
@@ -446,7 +445,7 @@ class BaseSubjectAdapter:
 
         def line_sort_key(l):
             b = l.get("bbox", [0, 0, 0, 0]) if l.get("bbox") else [0, 0, 0, 0]
-            y0, y1, x0, x1 = b[1], b[3], b[0], b[2]
+            y0, y1, x0, _ = b[1], b[3], b[0], b[2]
 
             band_idx = 0
             is_cut = False
@@ -490,7 +489,7 @@ class BaseSubjectAdapter:
             line = line_info.get("text", "").strip()
             spans = line_info.get("spans", [])
             bbox = line_info.get("bbox", [0, 0, 0, 0])
-            y0 = bbox[1] if bbox else 0.0
+
 
             w = (bbox[2] - bbox[0]) if bbox else 0.0
             h = (bbox[3] - bbox[1]) if bbox else 0.0
@@ -507,7 +506,6 @@ class BaseSubjectAdapter:
                 prev_y1 = bbox[3] if bbox else prev_y1
                 continue
 
-            spacing_above = round(y0 - prev_y1, 2) if prev_y1 is not None and y0 >= prev_y1 else 0.0
             prev_y1 = bbox[3] if bbox else prev_y1
 
             # Check for exercise/summary section boundaries (end of chapter)

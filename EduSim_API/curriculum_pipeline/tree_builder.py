@@ -88,7 +88,6 @@ class CurriculumTreeBuilder:
         # Maintain pointers to the active hierarchy
         current_topic: Optional[Dict[str, Any]] = None
         current_subtopic: Optional[Dict[str, Any]] = None
-        current_activity: Optional[Dict[str, Any]] = None
 
         for cand in effective_candidates:
             level = cand["level"]
@@ -154,7 +153,6 @@ class CurriculumTreeBuilder:
                     existing_topic["page_end"] = max(existing_topic["page_end"], page)
                     current_topic = existing_topic
                     current_subtopic = None
-                    current_activity = None
                     continue
 
                 node_id = self._next_id("top")
@@ -181,7 +179,6 @@ class CurriculumTreeBuilder:
                 chapter_node["nodes"].append(node)
                 current_topic = node
                 current_subtopic = None
-                current_activity = None
 
             elif level == "subtopic":
                 target_parent = current_topic
@@ -226,7 +223,6 @@ class CurriculumTreeBuilder:
                         existing_subtopic["normalized_title"] = norm_t
                     existing_subtopic["page_end"] = max(existing_subtopic["page_end"], page)
                     current_subtopic = existing_subtopic
-                    current_activity = None
                     continue
 
                 node_id = self._next_id("subtop")
@@ -252,7 +248,6 @@ class CurriculumTreeBuilder:
                 }
                 target_parent["nodes"].append(node)
                 current_subtopic = node
-                current_activity = None
 
             elif level == "activity":
                 target_parent = current_subtopic or current_topic
@@ -302,14 +297,12 @@ class CurriculumTreeBuilder:
                     "nodes": [],
                 }
                 target_parent["nodes"].append(node)
-                current_activity = node
 
             elif level == "subheading":
                 target_parent = current_subtopic or current_topic or chapter_node
                 level_skipped = False
                 if not (current_subtopic or current_topic):
                     level_skipped = True
-                current_activity = None
 
                 node_id = self._next_id("subh")
                 node = {

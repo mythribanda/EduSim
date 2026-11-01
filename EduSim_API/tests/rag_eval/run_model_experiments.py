@@ -13,7 +13,6 @@ Does NOT touch production faiss_index_v2.
 
 import json
 import logging
-import os
 import sys
 import time
 from pathlib import Path
@@ -472,9 +471,9 @@ def run_all_experiments():
     results = []
 
     for var in variants:
-        logger.info(f"\n=======================================================")
+        logger.info("\n=======================================================")
         logger.info(f"RUNNING VARIANT {var['id']}: {var['name']}")
-        logger.info(f"=======================================================")
+        logger.info("=======================================================")
 
         # Build Index
         build_time, vec_count = build_faiss_index(

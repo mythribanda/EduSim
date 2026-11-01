@@ -13,7 +13,7 @@ on demand to support educational formulas.
 
 
 from __future__ import annotations
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Optional
 from pydantic import BaseModel, Field
 
 

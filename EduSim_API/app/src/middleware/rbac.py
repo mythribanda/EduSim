@@ -9,7 +9,6 @@ Exposes only:
 
 import logging
 from typing import Callable
-from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request, status
 

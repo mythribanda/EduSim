@@ -4,11 +4,11 @@ logger = logging.getLogger("EduSim.modules.legacy_rag.vector_store")
 import faiss
 import numpy as np
 import pickle
-import shutil
 from pathlib import Path
 
+
 import os
-from pathlib import Path
+
 
 # =========================================================
 # VECTOR STORE PATHS
@@ -211,7 +211,7 @@ def create_vector_store(
     # =====================================================
     # FINAL LOGS
     # =====================================================
-    logger.info(f"\n✓ Saved FAISS index")
+    logger.info("\n✓ Saved FAISS index")
 
     logger.info(f"✓ Total indexed chunks: {len(metadata)}")
 

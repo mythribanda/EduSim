@@ -10,8 +10,6 @@ from app.src.config.database import SessionLocal
 from app.src.models.school import Question
 from app.src.services.ai_router import call_ai
 from app.src.models.question_models import (
-    QuestionGenerateRequest,
-    QuestionItem,
     QuestionGenerationResponse,
 )
 

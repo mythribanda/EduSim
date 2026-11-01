@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Column, DateTime, Integer, String, Boolean, UUID, Text, Index, ForeignKey, CheckConstraint
+from sqlalchemy import Column, DateTime, Integer, String, Boolean, UUID, Index, CheckConstraint
 from sqlalchemy.sql import func
 
 from app.src.config.database import Base

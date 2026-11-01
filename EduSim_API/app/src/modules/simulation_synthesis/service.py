@@ -10,7 +10,6 @@ from uuid import uuid4
 
 logger = logging.getLogger("EduSim.simulation_synthesis")
 
-from app.src.modules.legacy_rag.retriever import get_retriever
 from app.src.modules.legacy_rag.generator import generate_llm_text
 from .prompt_builder import build_dsl_prompt as _build_dsl_prompt
 from .sanitizer import sanitize_json

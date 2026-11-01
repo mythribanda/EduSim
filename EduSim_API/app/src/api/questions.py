@@ -1,6 +1,6 @@
 import logging
-from typing import List, Dict, Any, Union, Optional
-from fastapi import APIRouter, Depends, Body, Header, status
+from typing import List, Optional
+from fastapi import APIRouter, Depends, Body, Header
 from sqlalchemy.orm import Session
 
 from app.src.config.database import get_db
@@ -9,7 +9,6 @@ from app.src.services.persistence_service import resolve_user_from_authorization
 from app.src.models.question_models import (
     QuestionGenerateRequest,
     QuestionItem,
-    QuestionGenerationResponse,
     QuestionSubmitRequest,
     QuestionSubmitResponse,
 )

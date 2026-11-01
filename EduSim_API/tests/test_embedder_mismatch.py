@@ -1,12 +1,11 @@
 import json
-import os
 import shutil
 import tempfile
 from pathlib import Path
 import pytest
 import faiss
 
-from app.src.modules.legacy_rag.vector_loader import VectorStoreManager, vector_store
+from app.src.modules.legacy_rag.vector_loader import vector_store
 import app.src.modules.legacy_rag.vector_loader as vl_module
 
 

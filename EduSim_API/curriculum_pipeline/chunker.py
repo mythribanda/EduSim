@@ -37,13 +37,12 @@ import argparse
 import csv
 import json
 import logging
-import os
 import random
 import re
 import sqlite3
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 if sys.stdout and hasattr(sys.stdout, "reconfigure"):
     try:
@@ -417,7 +416,7 @@ class CurriculumChunker:
                 "node_id": node_id,
                 "page_start": page_start,
                 "page_end": page_end,
-                "source_pdf": base_meta["source_pdf"],
+                "source_pd": base_meta["source_pdf"],
                 "text": text,
                 "token_count": estimate_tokens(text),
                 "content_hash": compute_content_hash(
@@ -866,7 +865,7 @@ def verify_chunks_and_sample(chunks_dir: Path, num_samples: int = 5, book_codes:
         random.seed(42)  # Deterministic seed for reproducible verification
         samples = random.sample(collected_chunks, sample_size)
         print("=" * 80)
-        print(f"5 RANDOMLY CHOSEN CHUNKS WITH FULL METADATA:")
+        print("5 RANDOMLY CHOSEN CHUNKS WITH FULL METADATA:")
         print("=" * 80)
         for idx, sample in enumerate(samples, 1):
             print(f"\n--- SAMPLE CHUNK {idx} ---")

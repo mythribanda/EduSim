@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, model_validator
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional
 
 class Vector2D(BaseModel):
     x: float

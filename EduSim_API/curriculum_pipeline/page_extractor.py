@@ -19,15 +19,12 @@ Resumable: skips if sha256 and extractor version hash match.
 from __future__ import annotations
 
 import hashlib
-import io
 import json
 import logging
-import os
 import re
 import shutil
-import sys
 import unicodedata
-from collections import Counter, defaultdict
+from collections import Counter
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 

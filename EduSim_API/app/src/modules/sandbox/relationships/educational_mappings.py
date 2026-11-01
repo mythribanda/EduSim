@@ -22,7 +22,7 @@ ARCHITECTURE & SCALABILITY
 
 
 from __future__ import annotations
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Any
 from pydantic import BaseModel, Field
 from app.src.modules.sandbox.schemas.relationship_schema import CurriculumLevel
 

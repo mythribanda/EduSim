@@ -12,10 +12,9 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
@@ -302,7 +301,7 @@ def print_pilot_comparison(book_codes, books_curriculum, textbooks_dir, files_by
         p2 = nd.get("page_end", "")
         method = nd.get("detection_method", "")
         skipped = " [LEVEL-SKIPPED]" if nd.get("level_skipped") else ""
-        preview = f" | \"{nd.get('preview')}\"" if nd.get("preview") else ""
+        preview = " | \"{nd.get('preview')}\"" if nd.get("preview") else ""
         indent = "    " * depth
         label = f"[{lvl.upper()}]{skipped}"
         print(f"{indent}• {label:<16} {num:<8} {otitle[:50]:<52} (pp.{p1}-{p2}) [{method}]{preview}")
@@ -326,7 +325,7 @@ def print_pilot_comparison(book_codes, books_curriculum, textbooks_dir, files_by
         level_counts = __import__("collections").Counter()
         topics_no_children = 0
 
-        print(f"\n==========================================================================================")
+        print("\n==========================================================================================")
         print(f"BOOK: {bcode} | Class: {b_class} | Subject: {b_subject} | Title: {title}")
         print(f"Status: {cov.get('status')} | TOC Match: {cov.get('toc_match_ratio', 0.0)} | Pages: {cov.get('pages_total', 0)}")
         if cov.get("status_reasons"):
@@ -523,7 +522,7 @@ def cmd_validate(args: argparse.Namespace):
             print(f"  ⚠️  [WARNING] {warn['rule_id']}: {warn['message']}")
 
     print("\n" + "=" * 70)
-    print(f"Validation Summary:")
+    print("Validation Summary:")
     print(f"  Files checked   : {checked}")
     print(f"  Files with ERR  : {files_err} (total errors: {total_errors})")
     print(f"  Files with WARN : {files_warn} (total warnings: {total_warnings})")

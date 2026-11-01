@@ -34,7 +34,6 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
-from app.src.modules.legacy_rag import load_all_pdfs
 from app.src.api.simulation_router import simulation_router
 from app.src.api.rag_router import rag_router
 from app.src.api.tutor_router import tutor_router

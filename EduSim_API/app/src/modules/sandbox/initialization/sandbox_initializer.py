@@ -11,10 +11,10 @@ import logging
 logger = logging.getLogger("EduSim.sandbox.initializer")
 
 import traceback
-from typing import Any, Dict, Optional, Callable
+from typing import Any, Dict, Callable
 
 from app.src.modules.sandbox.schemas.sandbox_schema import SandboxSchema
-from app.src.modules.sandbox.initialization.pipeline import InitializationPipeline, PipelineStage
+from app.src.modules.sandbox.initialization.pipeline import InitializationPipeline
 from app.src.modules.sandbox.initialization.runtime_builder import RuntimeBuilder
 
 

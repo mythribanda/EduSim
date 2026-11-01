@@ -12,7 +12,7 @@ It handles scalar/vector gravity healing, default presets for atmospheres
 
 
 from __future__ import annotations
-from typing import Any, Dict
+from typing import Any
 
 from app.src.modules.sandbox.schemas.environment_schema import (
     SandboxEnvironment,
@@ -26,14 +26,12 @@ from app.src.modules.sandbox.schemas.environment_schema import (
 )
 from app.src.modules.sandbox.initialization.normalizers import (
     normalize_gravity,
-    normalize_number,
-    normalize_vector_2d
+    normalize_number
 )
 from app.src.modules.sandbox.initialization.defaults import (
     DEFAULT_GRAVITY_X,
     DEFAULT_GRAVITY_Y,
-    DEFAULT_GRAVITY_SCALE,
-    DEFAULT_AIR_RESISTANCE
+    DEFAULT_GRAVITY_SCALE
 )
 
 

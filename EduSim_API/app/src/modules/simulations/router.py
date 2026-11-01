@@ -7,7 +7,7 @@ FastAPI REST router for deterministic static physics simulations and AI explanat
 import json
 import logging
 import re
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 from fastapi import APIRouter, Body, HTTPException, Path
 from pydantic import BaseModel, Field
 

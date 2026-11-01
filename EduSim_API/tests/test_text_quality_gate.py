@@ -1,10 +1,8 @@
-import sys
 import unittest
 
 from curriculum_pipeline.page_extractor import (
     normalize_devanagari,
     compute_page_quality_metrics,
-    detect_script,
 )
 from curriculum_pipeline.chunker import CurriculumChunker
 

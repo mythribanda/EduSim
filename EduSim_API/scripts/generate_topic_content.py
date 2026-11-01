@@ -14,7 +14,7 @@ import argparse
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, List
 import httpx
 from pydantic import ValidationError
 

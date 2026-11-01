@@ -8,7 +8,6 @@ Routes generation through the AI router and persists Q&A interactions to chat hi
 
 import uuid
 import logging
-import re
 from typing import List, Optional, Union, Dict, Any
 from sqlalchemy.orm import Session
 

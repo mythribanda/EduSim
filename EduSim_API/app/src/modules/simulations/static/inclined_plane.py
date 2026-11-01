@@ -103,7 +103,7 @@ def compute(params: Union[InclinedPlaneParams, Dict[str, Any]]) -> Dict[str, Any
     ]
 
     final_ke = 0.5 * m * (final_velocity * final_velocity)
-    final_h = length * sin_theta
+    length * sin_theta
 
     return {
         "acceleration": round(acceleration, 4),

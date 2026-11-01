@@ -3,7 +3,6 @@ Subject-specific synthesis prompt templates for EduSim Simulation Synthesis Syst
 Each template emphasizes different educational visualization approaches for its domain.
 """
 
-import re
 from typing import Literal
 
 SubjectType = Literal["physics", "chemistry", "astronomy", "biology", "mathematics"]

@@ -14,7 +14,7 @@ It performs data healing for gravity vectors, position coordinates, units string
 
 from __future__ import annotations
 import re
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict
 
 
 def normalize_number(val: Any, default_val: float = 0.0) -> float:

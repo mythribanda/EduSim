@@ -13,7 +13,6 @@ from app.src.services.persistence_service import record_activity, record_search_
 from app.src.modules.tutor.controller import analyze_tutor_controller, TutorQueryRequest
 from app.src.modules.tutor import service as tutor_service
 from app.src.models.persistence import ChatHistory
-from app.src.modules.legacy_rag.generator import generate_openrouter_text_async
 from fastapi.responses import StreamingResponse
 
 tutor_router = APIRouter()
@@ -39,9 +38,7 @@ def generate_learning_summary(explanation: str) -> str:
 
 from pydantic import BaseModel, Field
 from typing import List, Any
-from app.src.services.tutor import build_tutor_prompt, ask_tutor_service, identify_topic_from_text
-from app.src.services.ai_router import call_ai
-from app.src.services.mastery import update_mastery
+from app.src.services.tutor import ask_tutor_service
 
 class AskTutorRequest(BaseModel):
     query: str = Field(..., min_length=1, description="Student question or physics prompt")
@@ -148,7 +145,6 @@ async def analyze_query(
         if authorization and authorization.startswith("Bearer "):
             token_preview = authorization.split(" ", 1)[1][:20] + "..."
             logger.info(f"  Token preview: {token_preview}")
-            from app.src.utils.auth import decode_token as _decode
             raw_token = authorization.split(" ", 1)[1].strip()
             try:
                 import jwt as _jwt
@@ -445,7 +441,7 @@ async def search_curriculum(
             db.commit()
             logger.info("[Database] User setting saved in the database: updated")
             return {"query": q, "results": results, "message": "Settings saved successfully."}
-        except Exception as e:
+        except Exception:
             db.rollback()
             from fastapi.responses import JSONResponse
             return JSONResponse(status_code=500, content={"success": False, "message": "Failed to save settings."})
@@ -476,7 +472,7 @@ async def autocomplete(
             db.commit()
             logger.info("[Database] User setting saved in the database: updated")
             return {"query": q, "results": suggestions, "suggestions": suggestions, "message": "Settings saved successfully."}
-        except Exception as e:
+        except Exception:
             db.rollback()
             from fastapi.responses import JSONResponse
             return JSONResponse(status_code=500, content={"success": False, "message": "Failed to save settings."})
@@ -511,7 +507,7 @@ async def get_topic(
             logger.info("[Database] Activity logs saved in the database: updated")
             if isinstance(content, dict):
                 content["message"] = "Settings saved successfully."
-        except Exception as e:
+        except Exception:
             db.rollback()
             from fastapi.responses import JSONResponse
             return JSONResponse(status_code=500, content={"success": False, "message": "Failed to save settings."})

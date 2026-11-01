@@ -13,18 +13,15 @@ from __future__ import annotations
 
 import csv
 import json
-import os
 import re
-import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import fitz
 
 from curriculum_pipeline.adapters.specialized_adapters import get_adapter_for_subject
-from curriculum_pipeline.catalog_builder import build_books_catalog
 from curriculum_pipeline.coverage_prover import CoverageProver
-from curriculum_pipeline.page_extractor import PageExtractor, compute_file_sha256
+from curriculum_pipeline.page_extractor import PageExtractor
 from curriculum_pipeline.pipeline_config import (
     NCERT_PATTERN,
     PIPELINE_OUTPUT_ROOT,
@@ -759,7 +756,6 @@ class CurriculumExtractorEngine:
             if norm_lower in ["answers", "answer", "solutions", "revision", "syllabus", "academic standards", "instructions", "front pages", "0 front pages"] or norm_lower.startswith("answers"):
                 continue
 
-            norm_c_title = re.sub(r"[^\w]", "", clean_ch_title).lower()
             ocr_pages_set = {p.get("page_no") for p in pages if p.get("ocr_needed")}
             ch_ocr_needed = any(p_no in ocr_pages_set for p_no in range(c_start, c_end + 1))
 

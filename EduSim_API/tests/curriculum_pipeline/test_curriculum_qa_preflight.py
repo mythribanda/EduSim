@@ -3,12 +3,11 @@ Tests for Curriculum Pipeline QA Reporter, Preflight, and Parallel Extraction (S
 """
 import json
 import pytest
-from pathlib import Path
 
 from curriculum_pipeline.preflight import analyze_pdf_text_quality
 from curriculum_pipeline.qa_reporter import generate_qa_report
 from curriculum_pipeline.page_extractor import PageExtractor
-from curriculum_pipeline.pipeline_config import TEXTBOOKS_DIR, PIPELINE_OUTPUT_ROOT
+from curriculum_pipeline.pipeline_config import TEXTBOOKS_DIR
 
 
 def test_preflight_classification_standard_pdf():

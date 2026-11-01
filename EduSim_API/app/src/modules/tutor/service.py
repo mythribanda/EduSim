@@ -5,11 +5,7 @@ import time
 import unicodedata
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
-from app.src.modules.legacy_rag.retriever import get_retriever
-from app.src.modules.legacy_rag.generator import generate_llm_text, is_topic_change
-import pickle
-import faiss
-from sentence_transformers import SentenceTransformer
+from app.src.modules.legacy_rag.generator import is_topic_change
 import os
 from dotenv import load_dotenv
 import logging
@@ -737,7 +733,7 @@ async def explain_simulation_query(
     """
     Direct, single-LLM explanation for physics sandbox simulation events.
     """
-    request_started = time.perf_counter()
+    time.perf_counter()
     from app.src.modules.legacy_rag.generator import generate_llm_text_async
 
     prompt = f"""
@@ -850,7 +846,7 @@ async def analyze_tutor_query_stream(
     """
     Streaming SSE generator for ultra-fast first token.
     """
-    request_started = time.perf_counter()
+    time.perf_counter()
     
     dependent_pronouns = re.compile(
         r"\b(it|its|this|that|these|those|they|them|their|theirs)\b", 

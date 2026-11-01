@@ -14,14 +14,13 @@ from __future__ import annotations
 import json
 import logging
 import os
-import pickle
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 import faiss
 
 from .embedder import get_embeddings
-from .retriever import CurriculumRetriever, get_retriever, normalize_subject, parse_class_name
+from .retriever import CurriculumRetriever, normalize_subject
 from typing import Set
 
 logger = logging.getLogger("EduSim.modules.legacy_rag.vector_loader")

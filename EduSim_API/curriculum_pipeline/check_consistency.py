@@ -21,9 +21,9 @@ import argparse
 import json
 import logging
 import sys
-from collections import Counter, defaultdict
+from collections import Counter
 from pathlib import Path
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any, Dict, List, Set
 
 import faiss
 
@@ -301,7 +301,7 @@ def print_consistency_table(audit: Dict[str, Any]):
 
 def main():
     parser = argparse.ArgumentParser(description="Audit consistency between chunks and FAISS index")
-    args = parser.parse_args()
+    parser.parse_args()
 
     audit = run_consistency_check()
     print_consistency_table(audit)

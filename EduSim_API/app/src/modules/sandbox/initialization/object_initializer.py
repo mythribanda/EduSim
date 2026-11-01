@@ -25,7 +25,6 @@ from typing import Any, Dict, List, Optional, Callable
 
 from app.src.modules.sandbox.schemas.object_schema import (
     SandboxObject,
-    ShapeType,
     ObjectRole,
     Vector2D,
     PhysicsProperties,

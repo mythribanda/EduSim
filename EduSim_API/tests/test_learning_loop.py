@@ -15,13 +15,12 @@ if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
 from app.src.config.database import Base
-from app.src.models.persistence import Topic, Chapter, Subject, CurriculumClass, SessionEvent, StudentProfile
 from app.src.models.user import User
 from app.src.models.school import StudentTopicMastery, Question
 from app.src.services.mastery import calculate_mastery_score
-from app.src.modules.simulation_synthesis.templates import get_precompiled_template, PRECOMPILED_PHYSICS_TEMPLATES
+from app.src.modules.simulation_synthesis.templates import get_precompiled_template
 from app.src.services.question_service import QuestionService
-from app.src.api.students_router import determine_recommended_next, resolve_topic_name
+from app.src.api.students_router import determine_recommended_next
 
 
 @pytest.fixture(scope="module")

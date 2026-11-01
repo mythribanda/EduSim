@@ -1,7 +1,6 @@
 import logging
 logger = logging.getLogger("EduSim.modules.legacy_rag.rebuild_index")
 
-import os
 from .loader import load_all_pdfs
 from .splitter import split_docs
 from .embedder import get_embeddings

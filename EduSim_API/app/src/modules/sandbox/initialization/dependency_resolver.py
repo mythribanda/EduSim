@@ -16,7 +16,7 @@ It contains:
 
 
 from __future__ import annotations
-from typing import List, Dict, Set, Optional, Tuple
+from typing import List, Dict, Set
 from app.src.modules.sandbox.schemas.sandbox_schema import SandboxSchema
 from app.src.modules.sandbox.schemas.observable_schema import SandboxObservable
 from app.src.modules.sandbox.schemas.relationship_schema import EducationalRelationship
@@ -24,7 +24,6 @@ from app.src.modules.sandbox.schemas.relationship_schema import EducationalRelat
 
 class DependencyResolutionError(ValueError):
     """Raised when there is an unresolved reference or circular loop in sandbox dependencies."""
-    pass
 
 
 class DependencyResolver:
@@ -41,7 +40,7 @@ class DependencyResolver:
         object_ids = {obj.id for obj in sandbox.objects}
         constraint_ids = {c.id for c in sandbox.constraints}
         observable_ids = {o.id for o in sandbox.observables}
-        relationship_ids = {r.id for r in sandbox.relationships}
+        {r.id for r in sandbox.relationships}
         valid_ids = object_ids.union(constraint_ids)
 
         # 1. Verify constraints

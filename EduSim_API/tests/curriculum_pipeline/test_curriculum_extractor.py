@@ -10,9 +10,8 @@ Tests:
 """
 
 import pytest
-from pathlib import Path
 from curriculum_pipeline.adapters.base_adapter import BaseSubjectAdapter
-from curriculum_pipeline.coverage_prover import CoverageProver, find_unassigned_ranges
+from curriculum_pipeline.coverage_prover import CoverageProver
 from curriculum_pipeline.page_extractor import calculate_garbled_metrics, detect_script
 from curriculum_pipeline.tree_builder import CurriculumTreeBuilder
 
@@ -508,7 +507,7 @@ def test_fixtures_aejm101_and_aemr101_output_trees():
     engine = CurriculumExtractorEngine()
 
     def _extract_ch(pdf_path, subject, bcode):
-        res = engine.page_extractor.extract_file(pdf_path, file_id=pdf_path.name)
+        _ = engine.page_extractor.extract_file(pdf_path, file_id=pdf_path.name)
         j_path = engine.page_extractor.get_output_path(pdf_path.name)
         pages = []
         with open(j_path, "r", encoding="utf-8") as f:

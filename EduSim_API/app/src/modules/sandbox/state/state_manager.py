@@ -25,7 +25,6 @@ dispatched by Matter.js.
 
 from typing import Any, Dict, List, Callable, Optional
 from app.src.modules.sandbox.state.runtime_store import RuntimeStore
-from app.src.modules.sandbox.state.object_state import ObjectRuntimeState
 from app.src.modules.sandbox.state.mutations import apply_force
 
 logger = logging.getLogger("EduSim.sandbox.state_manager")

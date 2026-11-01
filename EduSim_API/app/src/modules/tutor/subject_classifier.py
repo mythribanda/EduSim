@@ -1,4 +1,3 @@
-import re
 
 
 def detect_subject(query: str) -> str:

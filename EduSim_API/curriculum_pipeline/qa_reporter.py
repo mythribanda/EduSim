@@ -24,10 +24,9 @@ import csv
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from curriculum_pipeline.pipeline_config import (
-    CURRICULUM_JSON_DIR,
     PIPELINE_OUTPUT_ROOT,
     REPORTS_DIR,
 )

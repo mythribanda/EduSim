@@ -26,11 +26,9 @@ ARCHITECTURE & SCALABILITY
 
 from __future__ import annotations
 from typing import Dict, List, Optional
-from copy import deepcopy
 
 from app.src.modules.sandbox.schemas.relationship_schema import (
     EducationalRelationship,
-    VariableBinding,
     RelationshipScope,
     CurriculumLevel
 )

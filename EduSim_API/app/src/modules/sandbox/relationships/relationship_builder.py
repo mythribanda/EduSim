@@ -33,14 +33,12 @@ ARCHITECTURE & COMPOSITION
 """
 
 
-from typing import List, Dict, Any, Type
-from copy import deepcopy
+from typing import List
 
 from app.src.modules.sandbox.schemas.sandbox_schema import SandboxSchema
 from app.src.modules.sandbox.schemas.relationship_schema import (
     EducationalRelationship,
-    VariableBinding,
-    RelationshipScope
+    VariableBinding
 )
 from app.src.modules.sandbox.relationships.registry import registry
 
@@ -170,7 +168,6 @@ class PendulumDetector(RelationshipDetector):
                 period_temp.name = f"Swing Period for {bob.name}"
                 period_temp.object_ids = [bob.id]
                 
-                length_val = 1.0 # Default fallback
                 prop_path = None
                 if constraint:
                     period_temp.object_ids.append(constraint.id)

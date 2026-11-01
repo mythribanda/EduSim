@@ -1,4 +1,3 @@
-from typing import Dict, Any
 from .schema import EduSimResponse
 
 def validate_simulation(data: dict) -> dict:
