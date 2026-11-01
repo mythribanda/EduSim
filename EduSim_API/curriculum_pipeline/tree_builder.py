@@ -305,13 +305,11 @@ class CurriculumTreeBuilder:
                 current_activity = node
 
             elif level == "subheading":
-                target_parent = current_activity or current_subtopic or current_topic
+                target_parent = current_subtopic or current_topic or chapter_node
                 level_skipped = False
-                if not current_activity:
+                if not (current_subtopic or current_topic):
                     level_skipped = True
-                if not target_parent:
-                    target_parent = chapter_node
-                    level_skipped = True
+                current_activity = None
 
                 node_id = self._next_id("subh")
                 node = {

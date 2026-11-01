@@ -326,8 +326,6 @@ async def unified_tutor_generation_async(
     Generates the complete tutor analysis, explanation, simulation guide, and summary
     in AT MOST ONE OpenRouter API call.
     """
-    from app.src.modules.legacy_rag.generator import generate_llm_text_async
-
     system_prompt = (
         "You are an expert AI STEM and physics tutor for EduSim, an interactive learning platform.\n"
         "Analyze the user's question and any textbook context provided. You must provide a comprehensive,\n"
@@ -372,8 +370,16 @@ async def unified_tutor_generation_async(
     )
 
     try:
-        user_prompt = f"Textbook Context:\n{context}\n\nStudent Query:\n{query}"
-        from app.src.services.ai_router import call_ai
+        from app.src.services.ai_router import call_ai, limit_context_budget
+
+        use_cloud = os.getenv("USE_CLOUD_AI", "false").lower() in ("true", "1", "yes")
+        effective_context = context
+        if not use_cloud:
+            ollama_chunks = int(os.getenv("OLLAMA_MAX_CHUNKS", "4"))
+            ollama_tokens = int(os.getenv("OLLAMA_MAX_CONTEXT_TOKENS", "1500"))
+            effective_context = limit_context_budget(context, max_chunks=ollama_chunks, max_tokens=ollama_tokens)
+
+        user_prompt = f"Textbook Context:\n{effective_context}\n\nStudent Query:\n{query}"
 
         ai_resp = await call_ai(
             prompt=user_prompt,
@@ -387,6 +393,15 @@ async def unified_tutor_generation_async(
         response_text = ai_resp.get("text", "")
         provider_used = ai_resp.get("provider", "unknown")
         tokens_used = ai_resp.get("tokens_used", 0)
+
+        if ai_resp.get("generation_failed"):
+            return _empty_tutor_payload(
+                ai_resp.get("message", "Local LLM is unavailable."),
+                error_type=ai_resp.get("error_type", "LOCAL_LLM_UNAVAILABLE"),
+                status_code=503,
+                provider=provider_used,
+                tokens_used=tokens_used,
+            )
 
         if not response_text:
             return _empty_tutor_payload(
@@ -638,11 +653,25 @@ async def analyze_tutor_query(
     fallback_mode = not bool(valid_docs)
     
     if not fallback_mode:
-        for doc in valid_docs[:3]:
+        use_cloud = os.getenv("USE_CLOUD_AI", "false").lower() in ("true", "1", "yes")
+        max_chunks = int(os.getenv("OPENROUTER_MAX_CHUNKS", "8")) if use_cloud else int(os.getenv("OLLAMA_MAX_CHUNKS", "4"))
+        max_tokens = int(os.getenv("OPENROUTER_MAX_CONTEXT_TOKENS", "4000")) if use_cloud else int(os.getenv("OLLAMA_MAX_CONTEXT_TOKENS", "1500"))
+
+        current_tokens = 0
+        for doc in valid_docs[:max_chunks]:
             source = os.path.basename(doc.get("source", "Textbook"))
-            content = re.sub(r'\s+', ' ', doc.get("text", "")).strip()
-            rag_content.append({"title": source, "content": content})
-            context += f"{content}\n\n"
+            doc_content = re.sub(r'\s+', ' ', doc.get("text", "")).strip()
+            doc_tokens = max(1, len(doc_content) // 4)
+            if current_tokens + doc_tokens > max_tokens and rag_content:
+                remaining = max(0, max_tokens - current_tokens)
+                if remaining > 25:
+                    doc_content = doc_content[: remaining * 4].rstrip() + "..."
+                    rag_content.append({"title": source, "content": doc_content})
+                    context += f"{doc_content}\n\n"
+                break
+            rag_content.append({"title": source, "content": doc_content})
+            context += f"{doc_content}\n\n"
+            current_tokens += doc_tokens
             
     retrieval_time = time.perf_counter() - retrieval_start
     logger.info("[RAG] %.2fs (Subject: %s)", retrieval_time, target_subject)
@@ -1281,7 +1310,8 @@ def _format_class_name(value: Any) -> str:
     return f"Class {text}"
 
 
-# TODO: [Curriculum V2 Migration] Migrate tutor autocomplete and topic content from static curriculum.json to books and curriculum_nodes (V2)
+# TODO: [Curriculum V2 Migration] Migrate tutor autocomplete and topic content from static curriculum.json to books and curriculum_nodes (V2)
+
 def _load_curriculum() -> Dict[str, Any]:
     """Load curriculum data from the generated JSON file."""
     global _curriculum_data

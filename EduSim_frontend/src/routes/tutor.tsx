@@ -87,16 +87,22 @@ function TutorPage() {
         class_name: searchParams.class_name,
         subject: searchParams.subject,
         chapter: searchParams.chapter,
-        topic: searchParams.topic
+        topic: searchParams.topic,
       };
-      const response = await TutorService.analyzeQuery(query, contextArgs, history, activeSessionId, controller.signal);
+      const response = await TutorService.analyzeQuery(
+        query,
+        contextArgs,
+        history,
+        activeSessionId,
+        controller.signal,
+      );
       if (response.success) {
         setTutorData(response.data);
         setTutorResponse(response.data); // Sync with store for FAB
-        
+
         if (response.session_id && response.session_id !== activeSessionId) {
           setActiveSessionId(response.session_id);
-          setRefreshTrigger(prev => prev + 1);
+          setRefreshTrigger((prev) => prev + 1);
         }
       } else {
         setError("Failed to analyze question.");
@@ -125,14 +131,17 @@ function TutorPage() {
       const res = await TutorService.getSessionMessages(sessionId);
       if (res.success && res.session) {
         setActiveSessionId(sessionId);
-        const formatted = res.session.messages.map((m: any) => {
+        const sessionData = res.session as {
+          messages?: Array<{ id: string; role: string; content: string; created_at: string }>;
+        };
+        const formatted = (sessionData.messages || []).map((m) => {
           const date = new Date(m.created_at);
           const timeStr = date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
           return {
             id: m.id,
-            role: m.role === "assistant" ? "ai" : "user",
+            role: (m.role === "assistant" ? "ai" : "user") as "user" | "ai",
             content: m.content,
-            timestamp: timeStr
+            timestamp: timeStr,
           };
         });
         setMessages(formatted);
@@ -178,10 +187,12 @@ function TutorPage() {
       )}
 
       <div className="relative mx-auto flex h-full w-full max-w-[100rem] items-stretch">
-        <div className={`
+        <div
+          className={`
           ${isHistoryOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
           fixed lg:relative inset-y-0 left-0 z-[80] lg:z-30 transition-transform duration-300 lg:transition-none flex shrink-0
-        `}>
+        `}
+        >
           <ChatHistorySidebar
             activeSessionId={activeSessionId}
             onSelectSession={(sessionId) => {
@@ -198,7 +209,7 @@ function TutorPage() {
 
         {/* Backdrop for mobile */}
         {isHistoryOpen && (
-          <div 
+          <div
             onClick={() => setIsHistoryOpen(false)}
             className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[70] lg:hidden"
           />
@@ -207,7 +218,15 @@ function TutorPage() {
         <div className="flex w-full items-stretch flex-1 min-w-0">
           <ChatWorkspace
             onSend={handleAnalyze}
-            aiResponse={(tutorData as any)?.explanation || (tutorData as any)?.ai_explanation || null}
+            aiResponse={
+              tutorData
+                ? ((tutorData as Record<string, unknown>).explanation as string) ||
+                  ((tutorData as Record<string, unknown>).ai_explanation as string) ||
+                  null
+                : null
+            }
+            error={error}
+            onClearError={() => setError(null)}
             loading={isLoading || topicLoading}
             initialPrompt={
               searchParams.prompt ||
@@ -218,17 +237,10 @@ function TutorPage() {
             topicContext={compactTopicContext}
             messages={messages}
             onNewChat={handleNewChat}
-            toggleHistory={() => setIsHistoryOpen(prev => !prev)}
+            toggleHistory={() => setIsHistoryOpen((prev) => !prev)}
           />
         </div>
       </div>
-
-      {/* Global Error Toast */}
-      {error && (
-        <div className="fixed bottom-6 right-6 bg-red-500/10 border border-red-500/30 rounded-2xl p-4 max-w-md animate-in slide-in-from-right-8 shadow-2xl backdrop-blur-md z-50">
-          <p className="text-sm text-red-400 font-bold">{error}</p>
-        </div>
-      )}
     </div>
   );
 }

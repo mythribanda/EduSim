@@ -10,34 +10,178 @@ Supports filtering by:
   - book_code (str): e.g. "aejm1", "jesc1"
 
 Filter Strategy:
-  Builds a row-id allow-list from aligned metadata and queries FAISS using
-  faiss.IDSelectorBatch within faiss.SearchParameters.
-  
-  Why faiss.IDSelectorBatch over post-filtering with oversampling:
-  1. Guaranteed Recall / Exact Top-K: Post-filtering with oversampling can easily
-     yield 0 hits if the target class/subject is a small percentage of the total corpus.
-     IDSelectorBatch restricts the inner product search inside FAISS before ranking,
-     guaranteeing exact top-k hits from only the filtered subset.
-  2. Computational Efficiency: FAISS evaluates dot products only across allowed vectors
-     without having to retrieve, sort, and throw away large arbitrary oversampled candidate sets.
-  3. Zero Filter Leakage: It is mathematically impossible for out-of-filter items to be returned.
+  Precomputes inverted indexes at load time (dict from class/subject/board/book_code -> np.array of row ids)
+  and intersects them using NumPy, then queries FAISS using faiss.IDSelectorBatch.
 """
 
 from __future__ import annotations
 
 import logging
 import os
-from typing import Any, Callable, Dict, List, Optional
+import re
+from typing import Any, Callable, Dict, List, Optional, Set, Union
 
 import faiss
 import numpy as np
+from app.src.config.similarity import get_similarity_threshold
 
 logger = logging.getLogger("EduSim.modules.legacy_rag.retriever")
 
 
+# Comprehensive Subject Alias Mapping
+SUBJECT_ALIASES: Dict[str, str] = {
+    "math": "mathematics",
+    "maths": "mathematics",
+    "mathematics": "mathematics",
+    "maths 1": "mathematics",
+    "maths 2": "mathematics",
+    "applied maths": "mathematics",
+    "calc": "mathematics",
+    "calculus": "mathematics",
+    "algebra": "mathematics",
+    "geometry": "mathematics",
+    "social science": "social-science",
+    "social-science": "social-science",
+    "social_science": "social-science",
+    "social studies": "social-science",
+    "social-studies": "social-science",
+    "sst": "social-science",
+    "cs": "computer-science",
+    "computer science": "computer-science",
+    "computer-science": "computer-science",
+    "computer_science": "computer-science",
+    "comp sci": "computer-science",
+    "it": "computer-science",
+    "information technology": "computer-science",
+    "business studies": "business-studies",
+    "business-studies": "business-studies",
+    "business_studies": "business-studies",
+    "bst": "business-studies",
+    "home science": "home-science",
+    "home-science": "home-science",
+    "home_science": "home-science",
+    "political science": "political-science",
+    "political-science": "political-science",
+    "political_science": "political-science",
+    "pol sci": "political-science",
+    "polscience": "political-science",
+    "civics": "political-science",
+    "politics": "political-science",
+    "bio": "biology",
+    "biology": "biology",
+    "chem": "chemistry",
+    "chemistry": "chemistry",
+    "phy": "physics",
+    "physics": "physics",
+    "physical science": "physics",
+    "econ": "economics",
+    "eco": "economics",
+    "economics": "economics",
+    "geo": "geography",
+    "geography": "geography",
+    "hist": "history",
+    "history": "history",
+    "psych": "psychology",
+    "psychology": "psychology",
+    "soc": "sociology",
+    "sociology": "sociology",
+    "evs": "evs",
+    "environmental studies": "evs",
+    "environmental science": "evs",
+    "biotech": "biotechnology",
+    "biotechnology": "biotechnology",
+    "accountancy": "accountancy",
+    "accounts": "accountancy",
+}
+
+
+def normalize_subject(subject: Optional[str]) -> Optional[str]:
+    """
+    Normalizes subject names to lowercase slugs matching index values
+    (e.g., 'Maths' -> 'mathematics', 'Social Science' -> 'social-science').
+    """
+    if subject is None:
+        return None
+    raw = str(subject).strip()
+    if not raw:
+        return ""
+    clean = raw.lower()
+    if clean in SUBJECT_ALIASES:
+        return SUBJECT_ALIASES[clean]
+    no_punct = re.sub(r"[-_]+", " ", clean).strip()
+    if no_punct in SUBJECT_ALIASES:
+        return SUBJECT_ALIASES[no_punct]
+    slug = re.sub(r"[\s_]+", "-", clean).strip("-")
+    if slug in SUBJECT_ALIASES:
+        return SUBJECT_ALIASES[slug]
+    return slug
+
+
+ROMAN_TO_INT: Dict[str, int] = {
+    "i": 1,
+    "ii": 2,
+    "iii": 3,
+    "iv": 4,
+    "v": 5,
+    "vi": 6,
+    "vii": 7,
+    "viii": 8,
+    "ix": 9,
+    "x": 10,
+    "xi": 11,
+    "xii": 12,
+}
+
+
+def parse_class_name(val: Any) -> Optional[int]:
+    """
+    Parses class representation from class_name ("Class 10", "10th", "X", 10) into an int.
+    Returns None if unparseable or outside 1..12.
+    """
+    if val is None:
+        return None
+    if isinstance(val, int):
+        return val if 1 <= val <= 12 else None
+    s = str(val).strip()
+    if not s:
+        return None
+    if s.isdigit():
+        n = int(s)
+        return n if 1 <= n <= 12 else None
+
+    # Remove standard prefix like "class", "grade", "std", "standard"
+    clean = re.sub(r"^(class|grade|std|standard)\s*[-:_]?\s*", "", s, flags=re.IGNORECASE).strip()
+
+    # Digits with optional ordinal suffix (e.g. 10th, 1st, 2nd)
+    m = re.match(r"^(\d+)(?:st|nd|rd|th)?(?:\s*(?:grade|class|standard|std))?$", clean, flags=re.IGNORECASE)
+    if m:
+        n = int(m.group(1))
+        return n if 1 <= n <= 12 else None
+
+    # Roman numerals (e.g. X, XII, IV)
+    clean_lower = clean.lower()
+    if clean_lower in ROMAN_TO_INT:
+        return ROMAN_TO_INT[clean_lower]
+
+    # Search for standalone number
+    m2 = re.search(r"\b(\d+)(?:st|nd|rd|th)?\b", s, flags=re.IGNORECASE)
+    if m2:
+        n = int(m2.group(1))
+        return n if 1 <= n <= 12 else None
+
+    # Search for standalone roman numeral tokens
+    for token in re.findall(r"\b[a-zA-Z]+\b", s):
+        t_low = token.lower()
+        if t_low in ROMAN_TO_INT:
+            return ROMAN_TO_INT[t_low]
+
+    return None
+
+
 class CurriculumRetriever:
     """
-    Unified metadata-filtered retriever for EduSim curriculum FAISS indices.
+    Unified metadata-filtered retriever for EduSim curriculum FAISS indices
+    with precomputed inverted indexes for high-speed sub-millisecond filtering.
     """
 
     def __init__(
@@ -54,6 +198,51 @@ class CurriculumRetriever:
         self.default_k = default_k
         self.default_threshold = default_threshold
 
+        # Precompute inverted indexes at load time
+        class_map: Dict[int, List[int]] = {}
+        subject_map: Dict[str, List[int]] = {}
+        board_map: Dict[str, List[int]] = {}
+        book_code_map: Dict[str, List[int]] = {}
+
+        for idx, meta in enumerate(metadata):
+            cls_val = meta.get("class")
+            if cls_val is not None:
+                try:
+                    class_map.setdefault(int(cls_val), []).append(idx)
+                except (ValueError, TypeError):
+                    pass
+
+            subj_val = meta.get("subject")
+            if subj_val:
+                s_norm = normalize_subject(str(subj_val))
+                if s_norm:
+                    subject_map.setdefault(s_norm, []).append(idx)
+
+            board_val = meta.get("board")
+            if board_val:
+                b_norm = str(board_val).strip().upper()
+                board_map.setdefault(b_norm, []).append(idx)
+
+            bcode_val = meta.get("book_code")
+            if bcode_val:
+                bc_norm = str(bcode_val).strip().lower()
+                book_code_map.setdefault(bc_norm, []).append(idx)
+
+        self._class_index: Dict[int, np.ndarray] = {
+            k: np.array(v, dtype=np.int64) for k, v in class_map.items()
+        }
+        self._subject_index: Dict[str, np.ndarray] = {
+            k: np.array(v, dtype=np.int64) for k, v in subject_map.items()
+        }
+        self._board_index: Dict[str, np.ndarray] = {
+            k: np.array(v, dtype=np.int64) for k, v in board_map.items()
+        }
+        self._book_code_index: Dict[str, np.ndarray] = {
+            k: np.array(v, dtype=np.int64) for k, v in book_code_map.items()
+        }
+
+        self.valid_subjects: Set[str] = set(self._subject_index.keys())
+
     def retrieve(
         self,
         query: str,
@@ -67,7 +256,8 @@ class CurriculumRetriever:
         min_score: Optional[float] = None,
     ) -> List[Dict[str, Any]]:
         """
-        Retrieves top-k chunks matching the semantic query and metadata filters.
+        Retrieves top-k chunks matching semantic query and metadata filters
+        via inverted index intersection and FAISS IDSelectorBatch.
         """
         if not query or not query.strip():
             return []
@@ -75,23 +265,25 @@ class CurriculumRetriever:
         search_k = k if k is not None else self.default_k
 
         # Determine similarity threshold
-        env_threshold = os.getenv("RAG_SIMILARITY_THRESHOLD")
         if min_score is not None:
             threshold = float(min_score)
         elif self.default_threshold is not None:
             threshold = float(self.default_threshold)
-        elif env_threshold is not None:
-            try:
-                threshold = float(env_threshold)
-            except ValueError:
-                threshold = 0.35
         else:
-            threshold = 0.35
+            model_name = getattr(self.embeddings_model, "model_name", None)
+            threshold = get_similarity_threshold(model_name)
 
         try:
-            # 1. Encode query
+            # 1. Encode query (with e5 query prefix if applicable)
+            if hasattr(self.embeddings_model, "is_e5") and self.embeddings_model.is_e5:
+                q_to_encode = f"query: {query}" if not query.startswith("query: ") else query
+            elif "e5" in str(getattr(self.embeddings_model, "model_name", "")).lower():
+                q_to_encode = f"query: {query}" if not query.startswith("query: ") else query
+            else:
+                q_to_encode = query
+
             query_embedding = self.embeddings_model.encode(
-                query,
+                q_to_encode,
                 convert_to_numpy=True,
                 normalize_embeddings=True,
             )
@@ -112,10 +304,62 @@ class CurriculumRetriever:
             )
 
             if has_filter:
-                norm_subj = subject.strip().lower() if subject else None
+                norm_subj = normalize_subject(subject) if subject else None
                 norm_board = board.strip().upper() if board else None
                 norm_bcode = book_code.strip().lower() if book_code else None
                 target_cls = int(class_num) if class_num is not None else None
+
+                # Intersect precomputed inverted indexes
+                candidates: Optional[np.ndarray] = None
+
+                if target_cls is not None:
+                    cls_arr = self._class_index.get(target_cls)
+                    if cls_arr is None or len(cls_arr) == 0:
+                        logger.info(f"[RETRIEVER] Class {target_cls} matched 0 documents in index.")
+                        return []
+                    candidates = cls_arr
+
+                if norm_subj is not None:
+                    subj_arr = self._subject_index.get(norm_subj)
+                    if subj_arr is None or len(subj_arr) == 0:
+                        logger.info(f"[RETRIEVER] Subject '{norm_subj}' matched 0 documents in index.")
+                        return []
+                    if candidates is None:
+                        candidates = subj_arr
+                    else:
+                        candidates = np.intersect1d(candidates, subj_arr, assume_unique=True)
+                        if len(candidates) == 0:
+                            return []
+
+                if norm_board is not None:
+                    board_arr = self._board_index.get(norm_board)
+                    if board_arr is None or len(board_arr) == 0:
+                        logger.info(f"[RETRIEVER] Board '{norm_board}' matched 0 documents in index.")
+                        return []
+                    if candidates is None:
+                        candidates = board_arr
+                    else:
+                        candidates = np.intersect1d(candidates, board_arr, assume_unique=True)
+                        if len(candidates) == 0:
+                            return []
+
+                if norm_bcode is not None:
+                    bcode_arr = self._book_code_index.get(norm_bcode)
+                    if bcode_arr is None or len(bcode_arr) == 0:
+                        logger.info(f"[RETRIEVER] Book code '{norm_bcode}' matched 0 documents in index.")
+                        return []
+                    if candidates is None:
+                        candidates = bcode_arr
+                    else:
+                        candidates = np.intersect1d(candidates, bcode_arr, assume_unique=True)
+                        if len(candidates) == 0:
+                            return []
+
+                # If no primary filter matched, candidate list is all documents
+                if candidates is None:
+                    candidates_list = list(range(len(self.metadata)))
+                else:
+                    candidates_list = candidates.tolist()
 
                 target_cnum: Optional[str] = None
                 if chapter_number is not None:
@@ -130,39 +374,37 @@ class CurriculumRetriever:
                 if chapter_title is not None and str(chapter_title).strip():
                     norm_ctitle = str(chapter_title).strip().lower()
 
-                # Build row-id allow-list
-                allow_ids: List[int] = []
-                for idx, meta in enumerate(self.metadata):
-                    if target_cls is not None and meta.get("class") != target_cls:
-                        continue
-                    if norm_subj is not None and str(meta.get("subject", "")).strip().lower() != norm_subj:
-                        continue
-                    if norm_board is not None and str(meta.get("board", "")).strip().upper() != norm_board:
-                        continue
-                    if norm_bcode is not None and str(meta.get("book_code", "")).strip().lower() != norm_bcode:
-                        continue
-                    if target_cnum is not None:
-                        raw_cnum = meta.get("chapter_number")
-                        if raw_cnum is None:
-                            continue
-                        meta_cnum_str = str(raw_cnum).strip()
-                        matched_cnum = False
-                        if meta_cnum_str == target_cnum:
-                            matched_cnum = True
-                        else:
-                            try:
-                                if int(meta_cnum_str) == int(target_cnum):
-                                    matched_cnum = True
-                            except ValueError:
-                                if meta_cnum_str.lower() == target_cnum:
-                                    matched_cnum = True
-                        if not matched_cnum:
-                            continue
-                    if norm_ctitle is not None:
-                        meta_title = str(meta.get("chapter_title") or meta.get("chapter") or "").strip().lower()
-                        if not meta_title or (norm_ctitle not in meta_title and meta_title not in norm_ctitle):
-                            continue
-                    allow_ids.append(idx)
+                if target_cnum is not None or norm_ctitle is not None:
+                    filtered_ids = []
+                    for idx in candidates_list:
+                        meta = self.metadata[idx]
+                        if target_cnum is not None:
+                            raw_cnum = meta.get("chapter_number")
+                            if raw_cnum is None:
+                                continue
+                            meta_cnum_str = str(raw_cnum).strip()
+                            matched_cnum = False
+                            if meta_cnum_str == target_cnum:
+                                matched_cnum = True
+                            else:
+                                try:
+                                    if int(meta_cnum_str) == int(target_cnum):
+                                        matched_cnum = True
+                                except ValueError:
+                                    if meta_cnum_str.lower() == target_cnum:
+                                        matched_cnum = True
+                            if not matched_cnum:
+                                continue
+
+                        if norm_ctitle is not None:
+                            meta_title = str(meta.get("chapter_title") or meta.get("chapter") or "").strip().lower()
+                            if not meta_title or (norm_ctitle not in meta_title and meta_title not in norm_ctitle):
+                                continue
+
+                        filtered_ids.append(idx)
+                    allow_ids = filtered_ids
+                else:
+                    allow_ids = candidates_list
 
                 if not allow_ids:
                     logger.info(

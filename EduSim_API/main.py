@@ -29,8 +29,11 @@ sys.path.append(os.path.join(root_dir, "app", "src", "modules"))
 sys.path.append(os.path.join(root_dir, "app", "src"))
 
 import logging
-from fastapi import FastAPI
+import uuid
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 from app.src.modules.legacy_rag import load_all_pdfs
 from app.src.api.simulation_router import simulation_router
 from app.src.api.rag_router import rag_router
@@ -73,11 +76,39 @@ async def lifespan(app: FastAPI):
 
     # Preload FAISS globally
     vector_store.load_all()
+    logger.info(
+        "[VectorStore] Resolved index dir: %s | Vectors: %d | Subjects: %d",
+        vector_store.resolved_index_dir,
+        vector_store.vector_count,
+        vector_store.subject_count,
+    )
     
     # Database schema is managed via Alembic migrations (alembic upgrade head)
     # Note: Curriculum data is managed via books/curriculum_nodes (V2 curriculum pipeline)
         
     yield
+
+class CatchAllExceptionsMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        try:
+            return await call_next(request)
+        except Exception as exc:
+            request_id = request.headers.get("x-request-id") or f"req_{uuid.uuid4().hex[:12]}"
+            logger.exception(
+                "Unhandled exception on %s %s (request_id=%s): %s",
+                request.method,
+                request.url.path,
+                request_id,
+                exc,
+            )
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "success": False,
+                    "message": "Internal server error",
+                    "request_id": request_id,
+                },
+            )
 
 app = FastAPI(
     title="EduSim Physics API",
@@ -85,6 +116,11 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
+# Catch-all exception middleware — registered BEFORE CORSMiddleware so that
+# CORSMiddleware (registered last, outermost) wraps it and attaches CORS headers
+# (e.g. Access-Control-Allow-Origin) to 500 error responses.
+app.add_middleware(CatchAllExceptionsMiddleware)
 
 # CORS — origins are restricted to the ALLOWED_ORIGINS env var (see top of file).
 # allow_credentials=True is safe here because origins are never wildcarded.

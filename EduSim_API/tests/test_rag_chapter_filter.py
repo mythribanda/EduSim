@@ -35,7 +35,7 @@ if BASE_DIR not in sys.path:
 from app.src.config.database import Base, get_db
 from app.src.models.user import User
 from app.src.utils.auth import create_access_token, hash_password
-from app.src.modules.legacy_rag.retriever import CurriculumRetriever
+from app.src.modules.legacy_rag.retriever import CurriculumRetriever, normalize_subject, parse_class_name
 from app.src.services.rag_service import RagService
 from main import app
 
@@ -328,3 +328,181 @@ def test_api_rag_search_chapter_filtering(api_test_client):
         assert resp.status_code == 200
         data = resp.json()
         assert len(data["chunks"]) == 5
+
+
+def test_subject_normalizer_and_aliases():
+    """Verify subject aliases normalize to canonical metadata slugs."""
+    assert normalize_subject("Maths") == "mathematics"
+    assert normalize_subject("math") == "mathematics"
+    assert normalize_subject("Social Science") == "social-science"
+    assert normalize_subject("SST") == "social-science"
+    assert normalize_subject("cs") == "computer-science"
+    assert normalize_subject("Computer Science") == "computer-science"
+    assert normalize_subject("Physics") == "physics"
+    assert normalize_subject("unknown-subject") == "unknown-subject"
+    assert normalize_subject(None) is None
+
+
+def test_parse_class_name():
+    """Verify class_name variations parse to integer grade numbers."""
+    assert parse_class_name(10) == 10
+    assert parse_class_name("10") == 10
+    assert parse_class_name("Class 10") == 10
+    assert parse_class_name("class 10th") == 10
+    assert parse_class_name("10th") == 10
+    assert parse_class_name("Grade 12") == 12
+    assert parse_class_name("X") == 10
+    assert parse_class_name("XII") == 12
+    assert parse_class_name("ix") == 9
+    assert parse_class_name("invalid") is None
+    assert parse_class_name(None) is None
+
+
+def test_rag_service_unknown_subject_triggers_fallback_and_warning(caplog):
+    """Verify unknown subject logs a warning, falls back to unfiltered retrieval, and sets subject_fallback flag."""
+    mock_retriever = MagicMock(return_value=list(MOCK_CHUNKS))
+    with patch("app.src.services.rag_service.vector_store.get_valid_subjects", return_value={"physics", "mathematics"}),          patch("app.src.services.rag_service.vector_store.get_retriever", return_value=mock_retriever) as mock_get_ret:
+        
+        with caplog.at_level("WARNING"):
+            results = RagService.search_chunks(subject="Astrology", query="stars")
+
+    assert getattr(results, "subject_fallback", False) is True
+    assert len(results) == 5
+    assert all(r.get("subject_fallback") is True for r in results)
+    mock_get_ret.assert_called_with(None)
+    assert any("Astrology" in record.message for record in caplog.records)
+
+
+def test_rag_service_maths_alias_normalizes_to_mathematics():
+    """Verify 'Maths' alias resolves to 'mathematics' retriever."""
+    mock_retriever = MagicMock(return_value=[{"text": "mock math", "score": 0.9, "class": 10}])
+    with patch("app.src.services.rag_service.vector_store.get_valid_subjects", return_value={"physics", "mathematics"}),          patch("app.src.services.rag_service.vector_store.get_retriever", return_value=mock_retriever) as mock_get_ret:
+        
+        results = RagService.search_chunks(subject="Maths", query="calculus")
+
+    mock_get_ret.assert_called_with("mathematics")
+    assert getattr(results, "subject_fallback", False) is False
+    assert len(results) == 1
+
+
+def test_rag_service_class_name_filter_respected():
+    """Verify class_name ('Class 11' or '11th') is respected and filters results."""
+    mock_chunks = [
+        {"chunk_id": "c1", "class": 10, "text": "grade 10"},
+        {"chunk_id": "c2", "class": 11, "text": "grade 11"},
+    ]
+    mock_retriever = MagicMock(return_value=mock_chunks)
+    with patch("app.src.services.rag_service.vector_store.get_valid_subjects", return_value={"physics"}),          patch("app.src.services.rag_service.vector_store.get_retriever", return_value=mock_retriever):
+        
+        results = RagService.search_chunks(subject="physics", query="motion", class_name="Class 11")
+        assert len(results) == 1
+        assert results[0]["chunk_id"] == "c2"
+
+        # Also with Roman numeral
+        results_x = RagService.search_chunks(subject="physics", query="motion", class_name="X")
+        assert len(results_x) == 1
+        assert results_x[0]["chunk_id"] == "c1"
+
+
+def test_curriculum_retriever_inverted_index_filtering():
+    """Verify CurriculumRetriever precomputes inverted index and filters by class and subject."""
+    chunks = [
+        {"chunk_id": "c1", "class": 9, "subject": "science", "board": "NCERT", "book_code": "b1", "text": "c1"},
+        {"chunk_id": "c2", "class": 10, "subject": "science", "board": "NCERT", "book_code": "b1", "text": "c2"},
+        {"chunk_id": "c3", "class": 10, "subject": "mathematics", "board": "NCERT", "book_code": "b2", "text": "c3"},
+    ]
+    mock_index = MagicMock()
+    mock_index.search.return_value = (
+        np.array([[0.95]], dtype=np.float32),
+        np.array([[1]], dtype=np.int64),
+    )
+    mock_index.ntotal = len(chunks)
+
+    mock_embeddings = MagicMock()
+    mock_embeddings.encode.return_value = np.zeros((384,), dtype=np.float32)
+
+    retriever = CurriculumRetriever(
+        index=mock_index,
+        metadata=chunks,
+        embeddings_model=mock_embeddings,
+    )
+
+    # Inverted index check
+    assert 10 in retriever._class_index
+    assert "science" in retriever._subject_index
+    assert retriever.valid_subjects == {"science", "mathematics"}
+
+    # Intersected search for class 10 and science -> row 1 only
+    res = retriever.retrieve("test", class_num=10, subject="science")
+    assert len(res) == 1
+    assert res[0]["chunk_id"] == "c2"
+
+
+def test_api_rag_search_unknown_subject_and_class_name(api_test_client):
+    """Verify /api/rag/search endpoint returns subject_fallback=True on unknown subject and respects class_name."""
+    client = api_test_client["client"]
+    token = api_test_client["token"]
+
+    mock_retriever = MagicMock(return_value=list(MOCK_CHUNKS))
+    with patch("app.src.services.rag_service.vector_store.get_valid_subjects", return_value={"physics"}),          patch("app.src.services.rag_service.vector_store.get_retriever", return_value=mock_retriever),          patch("app.src.api.rag_router.require_vector_index"):
+
+        resp = client.post(
+            "/api/rag/search",
+            json={"subject": "QuantumWarping", "class_name": "11th", "query": "units"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data.get("subject_fallback") is True
+        assert len(data["chunks"]) == 5
+
+
+def test_api_empty_result_messaging(api_test_client):
+    """Verify empty result messaging across search and query endpoints."""
+    client = api_test_client["client"]
+    token = api_test_client["token"]
+
+    # 1. /api/rag/search with no matching chunks
+    mock_retriever = MagicMock(return_value=[])
+    with patch("app.src.services.rag_service.vector_store.get_valid_subjects", return_value={"physics"}),          patch("app.src.services.rag_service.vector_store.get_retriever", return_value=mock_retriever),          patch("app.src.api.rag_router.require_vector_index"):
+
+        resp = client.post(
+            "/api/rag/search",
+            json={"subject": "physics", "query": "nothing here"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["chunks"] == []
+        assert len(data["chunks"]) == 0
+
+    # 2. /api/rag/query with no matching chunks -> returns standard refusal message without LLM call
+    with patch("app.src.modules.legacy_rag.service.vector_store.get_valid_subjects", return_value={"physics"}),          patch("app.src.modules.legacy_rag.service.vector_store.retrieve", return_value=[]):
+
+        resp = client.post(
+            "/api/rag/query",
+            json={"query": "something not in textbooks", "subject": "physics"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["success"] is True
+        assert data["answer"] == "I couldn't find this in the textbooks."
+        assert data["sources"] == []
+        assert data["fallback_mode"] is True
+
+
+def test_vector_store_fails_loudly_when_index_missing():
+    """Verify vector_store.load_all raises FileNotFoundError with clear message when index is missing."""
+    import tempfile
+    from pathlib import Path
+    from app.src.modules.legacy_rag.vector_loader import VectorStoreManager
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with patch("app.src.modules.legacy_rag.vector_loader.INDEX_V2_DIR", Path(tmpdir)):
+            mgr = VectorStoreManager()
+            with pytest.raises(FileNotFoundError) as exc_info:
+                mgr.load_all(force_reload=True)
+
+            assert "No FAISS vector index found" in str(exc_info.value)
+            assert "rebuild_index.py" in str(exc_info.value)

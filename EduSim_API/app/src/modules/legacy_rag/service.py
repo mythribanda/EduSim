@@ -3,6 +3,8 @@ import os
 from typing import List, Dict, Any, Optional
 from .vector_loader import vector_store
 from .generator import generate_response
+from .retriever import normalize_subject
+from app.src.config.similarity import get_similarity_threshold, evaluate_retrieval_confidence
 
 logger = logging.getLogger("EduSim.RAGService")
 
@@ -19,23 +21,36 @@ async def query_rag_service(
     Core RAG service logic: retrieve context with metadata filters and generate grounded response.
     """
     try:
-        threshold = float(os.getenv("RAG_SIMILARITY_THRESHOLD", "0.35"))
+        model_name = getattr(vector_store._embeddings_model, "model_name", None)
+        threshold = get_similarity_threshold(model_name)
+
+        norm_subject = normalize_subject(subject) if subject else None
+        subject_fallback = False
+        valid_subjects = vector_store.get_valid_subjects()
+        if norm_subject and valid_subjects and norm_subject not in valid_subjects:
+            logger.warning(
+                f"[RAG] Subject '{subject}' (normalized: '{norm_subject}') not found in vector index. Falling back to unfiltered retrieval."
+            )
+            norm_subject = None
+            subject_fallback = True
 
         # 1. Retrieve documents using unified vector store with metadata filtering
-        results = vector_store.retrieve(
+        raw_results = vector_store.retrieve(
             query=query,
             k=5,
             class_num=class_num,
-            subject=subject,
+            subject=norm_subject,
             board=board,
             book_code=book_code,
-            min_score=threshold,
+            min_score=0.0,
         )
 
-        # 2. Refuse immediately if no chunks pass threshold
-        if not results:
+        is_confident, reason = evaluate_retrieval_confidence(raw_results, threshold=threshold)
+
+        # 2. Refuse immediately if no chunks pass threshold / relative confidence
+        if not is_confident:
             logger.info(
-                f"[RAG] No chunks passed similarity threshold ({threshold}) for query='{query[:50]}'. "
+                f"[RAG] Retrieval refused ({reason}) for query='{query[:50]}'. "
                 "Refusing immediately without calling LLM."
             )
             return {
@@ -43,7 +58,14 @@ async def query_rag_service(
                 "sources": [],
                 "context": [],
                 "fallback_mode": True,
+                "subject_fallback": subject_fallback,
             }
+
+        # Filter chunks that are sufficiently relevant (score >= threshold or rescued)
+        floor = max(0.20, threshold - 0.15) if "rescued" in reason else threshold
+        results = [r for r in raw_results if float(r.get("score", 0.0)) >= floor]
+        if not results:
+            results = raw_results[:2]
 
         # 3. Extract rich sources
         sources = []
@@ -65,8 +87,9 @@ async def query_rag_service(
         context_blocks = []
         for r, s in zip(results, sources):
             header = f"[BOOK]: {s['book']}\n[CHAPTER]: {s['chapter']}\n[PAGE]: {s['page']}"
-            if s.get("topic_subtopic_path"):
-                header += f"\n[TOPIC]: {s['topic_subtopic_path']}"
+            topic_str = s.get("topic_subtopic_path") or s.get("chapter")
+            if topic_str:
+                header += f"\n[TOPIC]: {topic_str}"
             context_blocks.append(f"{header}\n\n{r.get('text', '')}")
 
         context = "\n\n---\n\n".join(context_blocks)
@@ -83,6 +106,7 @@ async def query_rag_service(
             "sources": sources,
             "context": results,
             "fallback_mode": False,
+            "subject_fallback": subject_fallback,
         }
 
     except Exception as e:

@@ -1,6 +1,8 @@
 import logging
 logger = logging.getLogger("EduSim.api.tutor_router")
 
+import re
+import inspect
 from fastapi import APIRouter, Query, Depends, Header, BackgroundTasks
 from typing import Optional
 from sqlalchemy.orm import Session
@@ -15,6 +17,25 @@ from app.src.modules.legacy_rag.generator import generate_openrouter_text_async
 from fastapi.responses import StreamingResponse
 
 tutor_router = APIRouter()
+
+
+def generate_learning_summary(explanation: str) -> str:
+    """
+    Generate a concise deterministic summary (first 1 to 2 sentences, max ~200 chars)
+    with NO extra LLM call to guarantee at most one LLM call per action.
+    """
+    if not explanation:
+        return ""
+    clean = re.sub(r"#+\s*", "", explanation).strip()
+    clean = re.sub(r"\s+", " ", clean)
+    sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", clean) if s.strip()]
+    if not sentences:
+        summary = clean[:200]
+    else:
+        summary = " ".join(sentences[:2])
+    if len(summary) > 200:
+        summary = summary[:197].rstrip() + "..."
+    return summary
 
 from pydantic import BaseModel, Field
 from typing import List, Any
@@ -68,7 +89,6 @@ async def analyze_query_stream(
     Analyzes a physics query and streams the response back for ultra-fast first token.
     """
     from app.src.modules.tutor.service import analyze_tutor_query_stream
-    from fastapi.responses import StreamingResponse
     from app.src.config.database import SessionLocal
     
     user = resolve_user_from_authorization(authorization, db)
@@ -172,39 +192,59 @@ async def analyze_query(
                 "data": data,
             }
         )
+
+    is_503 = (
+        data.get("status_code") == 503
+        or data.get("error_type") == "LOCAL_LLM_UNAVAILABLE"
+        or response.get("error_type") == "LOCAL_LLM_UNAVAILABLE"
+    )
+
+    if is_503:
+        from fastapi.responses import JSONResponse
+        err_msg = data.get("message") or explanation or "Local LLM is unavailable."
+        logger.error("[DB SAVE SKIPPED] Tutor generation failed due to HTTP 503 Local LLM Unavailable: %s", err_msg[:150])
+        return JSONResponse(
+            status_code=503,
+            content={
+                "success": False,
+                "message": err_msg,
+                "error_type": "LOCAL_LLM_UNAVAILABLE",
+                "detail": err_msg,
+                "data": data,
+            }
+        )
     
     if is_failed:
         logger.error("[DB SAVE SKIPPED] Tutor generation failed: %s", explanation[:150])
         return response
 
     if user:
-        from app.src.repositories.persistence_repository import PersistenceRepository
-        repo = PersistenceRepository(db)
-        sessions = repo.list_tutor_sessions(user.id)
-        
-        session_id = None
-        if request.session_id:
-            try:
-                session_id = uuid.UUID(request.session_id)
-            except Exception:
-                pass
-                
-        if not session_id:
-            session_id = uuid.uuid4()
-        
-        # 1. Extract the topic
-        concepts = data.get("concepts") or []
-        topic = concepts[0] if concepts else request.query
-        if len(topic) > 100:
-            topic = topic[:97] + "..."
-            
-        # 2. Extract concise summary directly from the unified response (0 extra LLM calls)
-        summary = data.get("summary")
-        if not summary:
-            summary = await generate_learning_summary(explanation)
-        
-        # 3. Save the summary and explanation into chat_history
         try:
+            
+            session_id = None
+            if request.session_id:
+                try:
+                    session_id = uuid.UUID(request.session_id)
+                except Exception:
+                    pass
+                    
+            if not session_id:
+                session_id = uuid.uuid4()
+            
+            # 1. Extract the topic
+            concepts = data.get("concepts") or []
+            topic = concepts[0] if concepts else request.query
+            if len(topic) > 100:
+                topic = topic[:97] + "..."
+                
+            # 2. Extract concise summary directly from the unified response (0 extra LLM calls)
+            summary = data.get("summary")
+            if not summary:
+                summary = generate_learning_summary(explanation)
+                if inspect.isawaitable(summary):
+                    summary = await summary
+            
+            # 3. Save the summary and explanation into chat_history
             user_record = ChatHistory(
                 user_id=user.id,
                 session_id=session_id,
@@ -281,9 +321,8 @@ async def analyze_query(
                 )
         except Exception as e:
             db.rollback()
-            logger.error(f"Exception during save: {repr(e)}", exc_info=True)
-            from fastapi.responses import JSONResponse
-            return JSONResponse(status_code=500, content={"success": False, "message": "Failed to save learning summary."})
+            logger.error(f"Failed to persist chat history / learning summary: {repr(e)}", exc_info=True)
+            # Never lose the already-generated tutor answer on persistence failure
     
     logger.info("Tutor request: %s", request.query)
     if explanation:

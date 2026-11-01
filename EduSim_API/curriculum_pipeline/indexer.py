@@ -16,6 +16,7 @@ import logging
 import os
 import shutil
 import sys
+import datetime
 import uuid
 from collections import Counter
 from pathlib import Path
@@ -39,7 +40,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 
 CHUNKS_DIR: Path = PIPELINE_OUTPUT_ROOT / "chunks"
 BOOKS_DIR: Path = PIPELINE_OUTPUT_ROOT / "curriculum" / "books"
-INDEX_V2_DIR: Path = API_ROOT / "faiss_index_v2"
+INDEX_V2_DIR: Path = Path(os.getenv("FAISS_INDEX_V2_DIR", str(API_ROOT / "faiss_index_v2"))).resolve()
 INDEX_V2_FILE: Path = INDEX_V2_DIR / "index.faiss"
 METADATA_V2_FILE: Path = INDEX_V2_DIR / "metadata.json"
 MODEL_NAME: str = "all-MiniLM-L6-v2"
@@ -52,7 +53,7 @@ class CurriculumIndexer:
         chunks_dir: Optional[Path] = None,
         books_dir: Optional[Path] = None,
         index_dir: Optional[Path] = None,
-        model_name: str = MODEL_NAME,
+        model_name: Optional[str] = None,
         batch_size: int = 64,
     ):
         self.chunks_dir = chunks_dir or CHUNKS_DIR
@@ -60,17 +61,44 @@ class CurriculumIndexer:
         self.index_dir = index_dir or INDEX_V2_DIR
         self.index_file = self.index_dir / "index.faiss"
         self.metadata_file = self.index_dir / "metadata.json"
-        self.model_name = model_name
+        self.manifest_file = self.index_dir / "index_manifest.json"
+        self.model_name = model_name or os.getenv("EMBEDDING_MODEL", MODEL_NAME)
         self.batch_size = batch_size
         self.index_dir.mkdir(parents=True, exist_ok=True)
         self._model = None
+        self._dim = None
+        self.is_e5 = "e5" in self.model_name.lower()
+
+    @property
+    def embedding_dim(self) -> int:
+        if self._dim is None:
+            _ = self.model
+        return self._dim
 
     @property
     def model(self) -> SentenceTransformer:
         if self._model is None:
             logger.info(f"Loading SentenceTransformer model '{self.model_name}'...")
             self._model = SentenceTransformer(self.model_name)
+            if hasattr(self._model, "get_sentence_embedding_dimension"):
+                self._dim = self._model.get_sentence_embedding_dimension()
+            elif hasattr(self._model, "get_embedding_dimension"):
+                self._dim = self._model.get_embedding_dimension()
+            else:
+                self._dim = 384
+            self.is_e5 = "e5" in self.model_name.lower()
         return self._model
+
+    def write_manifest(self, vector_count: int, output_dir: Optional[Path] = None):
+        target = (output_dir or self.index_dir) / "index_manifest.json"
+        manifest = {
+            "model_name": self.model_name,
+            "dimension": self.embedding_dim,
+            "vector_count": vector_count,
+            "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        }
+        with open(target, "w", encoding="utf-8") as f:
+            json.dump(manifest, f, indent=2)
 
     def load_existing_index(self) -> Tuple[Optional[faiss.IndexFlatIP], List[Dict[str, Any]], Dict[str, str]]:
         """Loads existing FAISS index and metadata map (chunk_id -> content_hash)."""
@@ -170,7 +198,10 @@ class CurriculumIndexer:
         logger.info(f"Found {len(new_chunks)} new chunks to embed and index ({len(all_chunks) - len(new_chunks)} skipped).")
 
         if new_chunks:
-            texts = [c["text"] for c in new_chunks]
+            if self.is_e5:
+                texts = [f"passage: {c['text']}" if not c['text'].startswith("passage: ") else c['text'] for c in new_chunks]
+            else:
+                texts = [c["text"] for c in new_chunks]
             logger.info(f"Embedding {len(texts)} chunks using {self.model_name} (batch_size={self.batch_size})...")
 
             embeddings = self.model.encode(
@@ -199,6 +230,7 @@ class CurriculumIndexer:
             logger.info(f"Saving updated metadata ({len(metadata)} rows) to {self.metadata_file}...")
             with open(self.metadata_file, "w", encoding="utf-8") as f:
                 json.dump(metadata, f, ensure_ascii=False, indent=2)
+            self.write_manifest(vector_count=index.ntotal)
 
         stats = self.compute_stats(metadata)
         return stats
@@ -210,12 +242,16 @@ class CurriculumIndexer:
         temp_index_file = temp_dir / "index.faiss"
         temp_metadata_file = temp_dir / "metadata.json"
 
-        logger.info(f"Rebuilding index from scratch with {len(all_chunks)} chunks in {temp_dir}...")
-        index = faiss.IndexFlatIP(EMBEDDING_DIM)
+        dim = self.embedding_dim
+        logger.info(f"Rebuilding index from scratch with {len(all_chunks)} chunks (dim={dim}) in {temp_dir}...")
+        index = faiss.IndexFlatIP(dim)
         metadata = []
 
         if all_chunks:
-            texts = [c["text"] for c in all_chunks]
+            if self.is_e5:
+                texts = [f"passage: {c['text']}" if not c['text'].startswith("passage: ") else c['text'] for c in all_chunks]
+            else:
+                texts = [c["text"] for c in all_chunks]
             embeddings = self.model.encode(
                 texts,
                 batch_size=self.batch_size,
@@ -235,6 +271,7 @@ class CurriculumIndexer:
         faiss.write_index(index, str(temp_index_file))
         with open(temp_metadata_file, "w", encoding="utf-8") as f:
             json.dump(metadata, f, ensure_ascii=False, indent=2)
+        self.write_manifest(vector_count=index.ntotal, output_dir=temp_dir)
 
         # Atomic swap
         backup_dir = self.index_dir.parent / f"{self.index_dir.name}_bak_{uuid.uuid4().hex[:6]}"
@@ -246,6 +283,8 @@ class CurriculumIndexer:
                 # Fallback to copy/replace
                 shutil.copy2(str(temp_index_file), str(self.index_file))
                 shutil.copy2(str(temp_metadata_file), str(self.metadata_file))
+                if (temp_dir / "index_manifest.json").exists():
+                    shutil.copy2(str(temp_dir / "index_manifest.json"), str(self.manifest_file))
                 shutil.rmtree(temp_dir, ignore_errors=True)
                 stats = self.compute_stats(metadata)
                 return stats
@@ -305,12 +344,15 @@ def print_stats_report(stats: Dict[str, Any]):
 
 def main():
     parser = argparse.ArgumentParser(description="Build EduSim FAISS V2 vector index")
+    parser.add_argument("--model", type=str, default=None, help="SentenceTransformer model name")
+    parser.add_argument("--output-dir", type=str, default=None, help="Output directory for the index")
     parser.add_argument("--force", action="store_true", help="Force re-evaluate index from scratch")
     parser.add_argument("--rebuild", action="store_true", help="Atomically rebuild FAISS index from scratch in temp dir")
     parser.add_argument("--batch-size", type=int, default=64, help="Embedding batch size")
     args = parser.parse_args()
 
-    indexer = CurriculumIndexer(batch_size=args.batch_size)
+    out_dir = Path(args.output_dir).resolve() if args.output_dir else None
+    indexer = CurriculumIndexer(index_dir=out_dir, model_name=args.model, batch_size=args.batch_size)
     stats = indexer.build_or_update_index(force=args.force, rebuild=args.rebuild)
     print_stats_report(stats)
 

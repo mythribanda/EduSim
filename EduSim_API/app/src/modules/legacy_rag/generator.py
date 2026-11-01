@@ -1379,15 +1379,22 @@ async def generate_response(
     Generates educational response grounded in textbook context using local Ollama (gemma3:4b).
     OpenRouter is only used if opt-in env var RAG_ENABLE_OPENROUTER_FALLBACK=true is set.
     """
-    from app.src.services.ai_router import call_ai
+    from app.src.services.ai_router import call_ai, limit_context_budget
 
     allow_cloud_fallback = os.getenv("RAG_ENABLE_OPENROUTER_FALLBACK", "false").lower() in ("true", "1", "yes")
+
+    use_cloud_ai = os.getenv("USE_CLOUD_AI", "false").lower() in ("true", "1", "yes")
+    effective_context = context
+    if not use_cloud_ai:
+        ollama_chunks = int(os.getenv("OLLAMA_MAX_CHUNKS", "4"))
+        ollama_tokens = int(os.getenv("OLLAMA_MAX_CONTEXT_TOKENS", "1500"))
+        effective_context = limit_context_budget(context, max_chunks=ollama_chunks, max_tokens=ollama_tokens)
 
     rag_user_prompt = f"""=========================================================
 TEXTBOOK CONTEXT
 =========================================================
 
-{context}
+{effective_context}
 
 =========================================================
 STUDENT QUESTION / TOPIC
@@ -1404,6 +1411,8 @@ Please answer the student's question using ONLY the textbook context above. If t
         temperature=0.2,
         allow_fallback=allow_cloud_fallback,
     )
+    if result.get("generation_failed"):
+        raise RuntimeError(f"Ollama generation failed ({result.get('message')}). OpenRouter fallback is disabled.")
     return result.get("text", "")
 
 

@@ -97,12 +97,32 @@ class StyleProfiler:
         heading_candidates.sort(key=lambda x: (x[0][0], x[0][1]), reverse=True)
 
         # Cluster distinct sizes into Title, H1, H2, H3
-        distinct_sizes = sorted(list({c[0][0] for c in heading_candidates}), reverse=True)
+        size_totals = {}
+        for (s, b), cnt in font_stats.items():
+            if s > body_size or (s == body_size and b):
+                size_totals[s] = size_totals.get(s, 0) + cnt
 
-        title_size = distinct_sizes[0] if distinct_sizes else body_size + 4.0
-        h1_size = distinct_sizes[1] if len(distinct_sizes) > 1 else max(title_size - 2.0, body_size + 2.0)
-        h2_size = distinct_sizes[2] if len(distinct_sizes) > 2 else max(h1_size - 1.5, body_size + 1.0)
-        h3_size = distinct_sizes[3] if len(distinct_sizes) > 3 else max(h2_size - 1.0, body_size + 0.5)
+        # Filter trivial single-glyph outliers (< 15 chars) unless it is the max size
+        filtered_sizes = sorted([s for s, cnt in size_totals.items() if cnt >= 15 or s == max(size_totals.keys())], reverse=True)
+        if not filtered_sizes:
+            filtered_sizes = sorted(list(size_totals.keys()), reverse=True)
+
+        # Cluster sizes with at least 1.2pt separation
+        clustered = []
+        for s in filtered_sizes:
+            if not clustered:
+                clustered.append(s)
+            elif abs(clustered[-1] - s) >= 1.2:
+                clustered.append(s)
+
+        title_size = clustered[0] if clustered else body_size + 4.0
+        section_sizes = [s for s in clustered if s <= max(body_size + 8.0, 18.0)]
+        if not section_sizes:
+            section_sizes = clustered[1:] if len(clustered) > 1 else clustered
+
+        h1_size = min(section_sizes[0], body_size + 6.0) if section_sizes else body_size + 6.0
+        h2_size = section_sizes[1] if len(section_sizes) > 1 else max(h1_size - 2.0, body_size + 3.0)
+        h3_size = min(section_sizes[2] if len(section_sizes) > 2 else max(h2_size - 1.5, body_size + 1.0), body_size + 1.5)
 
         profile = {
             "book_code": book_code,

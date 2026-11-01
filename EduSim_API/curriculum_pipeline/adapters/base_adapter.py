@@ -220,7 +220,11 @@ class BaseSubjectAdapter:
         if self.current_chapter_number and self.current_chapter_number.isdigit():
             ch_prefix = num.split(".")[0]
             if ch_prefix != self.current_chapter_number:
-                return None
+                # In multi-part books (Part 2 starting at Ch 7 or 8), adopt prefix if no earlier topic exists
+                if self.last_topic_tuple is None and ch_prefix.isdigit() and int(ch_prefix) > 0:
+                    self.current_chapter_number = ch_prefix
+                else:
+                    return None
 
         # Extract heading phrase if followed by multiple spaces or run-in sentence
         if "  " in title:
@@ -377,13 +381,10 @@ class BaseSubjectAdapter:
         h2_min = self.ranks.get("H2", {}).get("min_size") or (self.body_size + 3.0)
         h3_min = self.ranks.get("H3", {}).get("min_size") or (self.body_size + 1.0)
 
-        # In books where covers or banners skew H1/H2 ranks above body_size * 2.2:
-        if h1_min > self.body_size * 2.2 and h1_min > 24.0:
-            h1_min = max(self.body_size + 6.0, 22.0)
-        if h2_min > self.body_size * 2.0 and h2_min > 20.0:
-            h2_min = max(self.body_size + 3.0, 18.0)
-        if h3_min > self.body_size * 1.8 and h3_min > 16.0:
-            h3_min = max(self.body_size + 1.0, 14.0)
+        # Ensure section thresholds are reasonably bounded relative to body_size
+        h1_min = min(h1_min, self.body_size + 6.0)
+        h2_min = min(h2_min, self.body_size + 3.5)
+        h3_min = min(h3_min, self.body_size + 1.5)
 
         if avg_size >= h1_min and (has_bold or avg_size >= h1_min + 1.5):
             return "H1"
@@ -516,14 +517,15 @@ class BaseSubjectAdapter:
                     "summary", "exercises", "exercises.", "whatyouhavelearnt",
                     "whatyouhavelearned", "pointstoponder", "आपनेक्यासीखा",
                     "सारांश", "అభ్యాసం", "మనంఏంచర్చించాం", "questionsandactivities",
-                    "questionsandexercises", "solutions", "answers"
+                    "questionsandexercises", "answers"
                 ]
                 or clean_lower.startswith("whatyouhavelearnt")
                 or clean_lower.startswith("whatyouhavelearned")
                 or clean_lower.startswith("pointstoponder")
                 or clean_lower.startswith("questionsandactivities")
-                or re.search(r"^(chapter\s*\d+\s*[-–—]?\s*)?(solutions|answers)$", line.strip(), re.I)
-                or (("solutions" in clean_lower or "answers" in clean_lower) and "chapter" in clean_lower and not re.search(r"\d+\.\d+", line))
+                or re.search(r"^(chapter\s*\d+\s*[-–—]?\s*)?(answers\s+to\s+exercises|answers)$", line.strip(), re.I)
+                or re.search(r"^(solutions\s+to\s+(exercises|questions)|hints\s*(and|&)\s*solutions)$", line.strip(), re.I)
+                or (("answers" in clean_lower) and "chapter" in clean_lower and not re.search(r"\d+\.\d+", line))
             )
             if is_end_section:
                 self.end_of_chapter_reached = True

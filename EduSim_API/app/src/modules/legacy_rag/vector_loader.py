@@ -21,13 +21,16 @@ from typing import Any, Callable, Dict, List, Optional
 import faiss
 
 from .embedder import get_embeddings
-from .retriever import CurriculumRetriever, get_retriever
+from .retriever import CurriculumRetriever, get_retriever, normalize_subject, parse_class_name
+from typing import Set
 
 logger = logging.getLogger("EduSim.modules.legacy_rag.vector_loader")
 
 EDUSIM_API_DIR = Path(__file__).resolve().parents[4]
-INDEX_V2_DIR = Path(os.getenv("FAISS_INDEX_V2_DIR", str(EDUSIM_API_DIR / "faiss_index_v2")))
-INDEX_V1_DIR = Path(os.getenv("FAISS_INDEX_DIR", str(EDUSIM_API_DIR / "faiss_index")))
+INDEX_V2_DIR = Path(os.getenv("FAISS_INDEX_V2_DIR", str(EDUSIM_API_DIR / "faiss_index_v2"))).resolve()
+
+def get_index_dir() -> Path:
+    return Path(os.getenv("FAISS_INDEX_V2_DIR", str(INDEX_V2_DIR))).resolve()
 
 
 class VectorStoreManager:
@@ -65,16 +68,57 @@ class VectorStoreManager:
             self._is_loaded = True
             return
 
-        # 1. Prefer FAISS V2 (unified multi-subject curriculum index)
-        v2_index_file = INDEX_V2_DIR / "index.faiss"
-        v2_meta_file = INDEX_V2_DIR / "metadata.json"
+        # 1. Load FAISS V2 (unified multi-subject curriculum index)
+        index_dir = get_index_dir()
+        v2_index_file = index_dir / "index.faiss"
+        v2_meta_file = index_dir / "metadata.json"
+        manifest_file = index_dir / "index_manifest.json"
 
         if v2_index_file.exists() and v2_meta_file.exists():
             try:
-                logger.info(f"Loading FAISS V2 index from {INDEX_V2_DIR}...")
+                logger.info(f"Loading FAISS V2 index from {index_dir}...")
                 index = faiss.read_index(str(v2_index_file))
                 with open(v2_meta_file, "r", encoding="utf-8") as f:
                     metadata = json.load(f)
+
+                # Validate index manifest and dimensions against configured embedder
+                configured_model = getattr(self._embeddings_model, "model_name", "all-MiniLM-L6-v2")
+                configured_dim = getattr(self._embeddings_model, "dimension", 384)
+
+                if manifest_file.exists():
+                    try:
+                        with open(manifest_file, "r", encoding="utf-8") as mf:
+                            manifest = json.load(mf)
+                        manifest_model = manifest.get("model_name")
+                        manifest_dim = manifest.get("dimension")
+
+                        if manifest_dim is not None and manifest_dim != configured_dim:
+                            raise ValueError(
+                                f"[CRITICAL] Embedding dimension mismatch for index at {index_dir}: "
+                                f"index was built with dimension {manifest_dim} ({manifest_model}), "
+                                f"but configured embedder '{configured_model}' has dimension {configured_dim}. "
+                                "Please re-index using 'python rebuild_index.py --model ...' or set EMBEDDING_MODEL to match."
+                            )
+
+                        if manifest_model and manifest_model != configured_model:
+                            raise ValueError(
+                                f"[CRITICAL] Embedding model mismatch for index at {index_dir}: "
+                                f"index was built with model '{manifest_model}', "
+                                f"but configured embedder is '{configured_model}'. "
+                                "Please re-index using 'python rebuild_index.py --model ...' or set EMBEDDING_MODEL to match."
+                            )
+                    except ValueError:
+                        raise
+                    except Exception as e:
+                        logger.warning(f"Could not parse index_manifest.json: {e}")
+
+                if index.d != configured_dim:
+                    raise ValueError(
+                        f"[CRITICAL] Embedding dimension mismatch for index at {index_dir}: "
+                        f"FAISS index dimension is {index.d}, but configured embedder '{configured_model}' "
+                        f"produces {configured_dim}-dim vectors. "
+                        "Please re-index using 'python rebuild_index.py --model ...' or set EMBEDDING_MODEL to match."
+                    )
 
                 self._unified_index = index
                 self._unified_metadata = metadata
@@ -86,45 +130,25 @@ class VectorStoreManager:
                 )
                 self._index_version = "v2"
                 self._is_loaded = True
+                subject_count = len(self.get_valid_subjects())
                 logger.info(
-                    f"[SUCCESS] Loaded FAISS V2 index ({index.ntotal} vectors, "
-                    f"{len(metadata)} metadata rows) across all subjects."
+                    f"[SUCCESS] Loaded FAISS index from {index_dir} "
+                    f"(vectors: {index.ntotal}, subjects: {subject_count})."
                 )
                 return
             except Exception as e:
-                logger.error(f"[ERROR] Failed to load FAISS V2 index from {INDEX_V2_DIR}: {e}", exc_info=True)
+                logger.error(f"[ERROR] Failed to load FAISS V2 index from {index_dir}: {e}", exc_info=True)
+                raise e
 
-        # 2. Fallback to legacy index (V1)
-        v1_index_file = INDEX_V1_DIR / "index.faiss"
-        v1_meta_file = INDEX_V1_DIR / "metadata.pkl"
-
-        if v1_index_file.exists() and v1_meta_file.exists():
-            try:
-                logger.info(f"Loading legacy FAISS V1 index from {INDEX_V1_DIR}...")
-                index = faiss.read_index(str(v1_index_file))
-                with open(v1_meta_file, "rb") as f:
-                    metadata = pickle.load(f)
-
-                self._unified_index = index
-                self._unified_metadata = metadata
-                self._unified_retriever = CurriculumRetriever(
-                    index=index,
-                    metadata=metadata,
-                    embeddings_model=self._embeddings_model,
-                    default_k=5,
-                )
-                self._index_version = "v1"
-                self._is_loaded = True
-                logger.info(f"[SUCCESS] Loaded legacy FAISS V1 index ({index.ntotal} vectors).")
-                return
-            except Exception as e:
-                logger.error(f"[ERROR] Failed to load legacy index from {INDEX_V1_DIR}: {e}", exc_info=True)
-
-        logger.warning(
-            f"[WARNING] No FAISS vector index found at {INDEX_V2_DIR} or {INDEX_V1_DIR}. "
-            "RAG search endpoints will return 503 until index is built."
+        # Fail loudly if no index is found
+        err_msg = (
+            f"[CRITICAL] No FAISS vector index found at {index_dir}. "
+            f"Required files 'index.faiss' and 'metadata.json' are missing. "
+            "Please build the index using 'python rebuild_index.py' or ensure "
+            "FAISS_INDEX_V2_DIR points to a valid index directory."
         )
-        self._is_loaded = True
+        logger.error(err_msg)
+        raise FileNotFoundError(err_msg)
 
     def retrieve(
         self,
@@ -159,6 +183,23 @@ class VectorStoreManager:
             min_score=min_score,
         )
 
+    def get_valid_subjects(self) -> Set[str]:
+        """Returns the set of valid subject slugs present in the loaded vector index."""
+        if not self._is_loaded:
+            self.load_all()
+        if self._unified_retriever and hasattr(self._unified_retriever, "valid_subjects"):
+            return self._unified_retriever.valid_subjects
+        if self._unified_metadata:
+            valid = set()
+            for m in self._unified_metadata:
+                s = m.get("subject")
+                if s:
+                    sn = normalize_subject(str(s))
+                    if sn:
+                        valid.add(sn)
+            return valid
+        return set()
+
     def get_retriever(
         self,
         subject: Optional[str] = None,
@@ -179,9 +220,11 @@ class VectorStoreManager:
         if not self._unified_retriever:
             return None
 
+        norm_subject = normalize_subject(subject) if subject else None
+
         def _bound_retriever(q: str, **kwargs):
             filter_kwargs = {
-                "subject": subject,
+                "subject": norm_subject,
                 "class_num": class_num,
                 "board": board,
                 "book_code": book_code,
@@ -193,6 +236,18 @@ class VectorStoreManager:
             return self._unified_retriever.retrieve(q, **filter_kwargs)
 
         return _bound_retriever
+
+    @property
+    def resolved_index_dir(self) -> str:
+        return str(get_index_dir())
+
+    @property
+    def vector_count(self) -> int:
+        return self._unified_index.ntotal if self._unified_index else 0
+
+    @property
+    def subject_count(self) -> int:
+        return len(self.get_valid_subjects())
 
     @property
     def is_ready(self) -> bool:

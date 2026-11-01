@@ -252,19 +252,54 @@ EduSim is fully Dockerized with multi-container orchestration via Docker Compose
 
 ---
 
-If you are running on a machine without a local GPU/Ollama setup, you can switch the entire platform to cloud AI inference in seconds:
+## 🤖 The Three AI Inference Modes
 
-1. Open your backend environment file (`EduSim_API/.env`).
-2. Add or toggle the following flags:
-   ```dotenv
-   USE_CLOUD_AI=true
-   OPENROUTER_API_KEY=sk-or-v1-your-actual-openrouter-api-key-here
-   ```
-3. Restart the FastAPI backend.
+EduSim supports three flexible inference configurations to balance compute costs, privacy, and performance:
 
-**What happens behind the scenes:**
-- The AI router detects `USE_CLOUD_AI=true` and instantly bypasses local HTTP attempts to `http://localhost:11434`.
-- All Socratic tutor queries and concept explanations route directly to cloud LLMs via OpenRouter with zero startup delay.
+### Mode 1: Local Ollama on Host (Default & Recommended)
+Run Ollama natively on your host machine for maximum hardware acceleration and zero API cost.
+- **Run Ollama on host:**
+  ```bash
+  ollama serve
+  ollama run gemma3:4b
+  ```
+- **Configuration (`EduSim_API/.env`):**
+  ```dotenv
+  USE_CLOUD_AI=false
+  OLLAMA_BASE_URL=http://localhost:11434
+  OLLAMA_MODEL=gemma3:4b
+  OLLAMA_TIMEOUT=180
+  OLLAMA_KEEP_ALIVE=30m
+  OLLAMA_NUM_CTX=4096
+  OLLAMA_MAX_CHUNKS=4
+  OLLAMA_MAX_CONTEXT_TOKENS=1500
+  ALLOW_CLOUD_FALLBACK=false
+  ```
+- **Docker Compose Integration:** When running EduSim containers while Ollama runs on your host, `docker-compose.yml` configures `extra_hosts: ["host.docker.internal:host-gateway"]` and defaults `OLLAMA_BASE_URL=http://host.docker.internal:11434`.
+- **Preflight Check & Fallback Protection:** The AI router performs a fast 2s preflight check against `/api/tags` (cached for 30s). If Ollama is down or `gemma3:4b` is not pulled, it logs an actionable message immediately. When `ALLOW_CLOUD_FALLBACK=false`, the tutor route returns a structured HTTP 503 (`LOCAL_LLM_UNAVAILABLE`) instead of hanging or returning a 500.
+
+### Mode 2: Containerized Ollama (Docker Compose Profile)
+Run Ollama inside Docker via the optional `ollama` Compose profile.
+- **Launch with Ollama container:**
+  ```bash
+  docker compose --profile ollama up --build
+  ```
+- **Pull model inside container:**
+  ```bash
+  docker exec -it edusim_ollama ollama pull gemma3:4b
+  ```
+- **Configuration:** Set `OLLAMA_BASE_URL=http://ollama:11434` in your environment.
+
+### Mode 3: Cloud-Only Mode (OpenRouter)
+For low-spec host machines without local GPUs or CPU capacity for 4B LLM inference:
+- **Configuration (`EduSim_API/.env`):**
+  ```dotenv
+  USE_CLOUD_AI=true
+  OPENROUTER_API_KEY=sk-or-v1-your-actual-openrouter-api-key-here
+  OPENROUTER_MODEL=anthropic/claude-3.5-sonnet
+  ALLOW_CLOUD_FALLBACK=true
+  ```
+- **Behavior:** The AI router detects `USE_CLOUD_AI=true` and instantly bypasses local HTTP calls, routing queries directly to cloud LLMs with the larger token budget (`OPENROUTER_MAX_CHUNKS=8`, `OPENROUTER_MAX_CONTEXT_TOKENS=4000`).
 
 ---
 

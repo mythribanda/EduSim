@@ -261,11 +261,18 @@ class CurriculumChunker:
         is_whole_book: bool,
         first_ch_start: int,
         ch_title: str = "",
+        page_record: Optional[Dict[str, Any]] = None,
     ) -> Tuple[bool, Optional[str]]:
         """
         Explicit rules to skip front/back matter and non-teaching pages.
         Logged with explicit reason code.
         """
+        # Quality Gate Rule: Skip garbled pages or unresolved OCR-needed pages
+        if page_record and page_record.get("status") == "garbled":
+            return True, "garbled_text_quality_gate"
+        if page_record and page_record.get("ocr_needed") and page_record.get("method") != "ocr":
+            return True, "ocr_needed_unresolved"
+
         # Rule 2: Explicit front matter chapter
         if re.search(r"\b(front\s+pages|preliminary|preface|table\s+of\s+contents)\b", ch_title, re.I):
             return True, "rule_2_front_matter_chapter"
@@ -333,12 +340,10 @@ class CurriculumChunker:
             norm_t = (n.get("normalized_title") or title).strip().lower()
             ident_key = n.get("identity_key")
 
-            if lvl == "topic":
-                cur_path = title
-            elif lvl == "subtopic":
+            if title:
                 cur_path = f"{parent_path} > {title}" if parent_path else title
             else:
-                cur_path = parent_path if parent_path else None
+                cur_path = parent_path
 
             db_nid = self._resolve_db_node_id(
                 book_code, ch_num, lvl, norm_t, ident_key, n.get("id")
@@ -362,7 +367,7 @@ class CurriculumChunker:
                         book_code,
                         ch_num,
                         n["nodes"],
-                        cur_path if lvl in ("topic", "subtopic") else parent_path,
+                        cur_path,
                     )
                 )
         return flat
@@ -641,6 +646,7 @@ class CurriculumChunker:
                         is_whole_book,
                         first_ch_start,
                         ch_title,
+                        page_record=prec,
                     )
                     if should_skip:
                         skipped_pages_count += 1

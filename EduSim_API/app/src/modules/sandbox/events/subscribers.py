@@ -13,7 +13,7 @@ conversational Socratic tutor responses.
 """
 
 
-from typing import Any, Dict, List, Callable
+from typing import Any, Callable, Dict, List, Optional
 from app.src.modules.sandbox.events.event_context import EventContext
 
 

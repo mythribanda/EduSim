@@ -7,6 +7,8 @@ Extracts:
   - char_count
   - script (latin, devanagari, telugu, arabic/urdu, unknown)
   - method (native, ocr, none)
+  - status (ok, garbled, needs_ocr)
+  - quality_metrics (control_char_ratio, outside_script_ratio, replacement_char_ratio)
   - spans [{text, size, bold, font, bbox}]
   - lines [{text, bbox, spans}] (preserves line structure and stitches split numbers)
   - doc outline (TOC)
@@ -17,7 +19,9 @@ Resumable: skips if sha256 and extractor version hash match.
 from __future__ import annotations
 
 import hashlib
+import io
 import json
+import logging
 import os
 import re
 import shutil
@@ -31,8 +35,60 @@ import fitz
 
 from curriculum_pipeline.pipeline_config import PIPELINE_OUTPUT_ROOT
 
-EXTRACTOR_VERSION = "2.1.0"
+logger = logging.getLogger("EduSim.page_extractor")
+
+EXTRACTOR_VERSION = "2.2.0"
 PAGES_DIR = PIPELINE_OUTPUT_ROOT / "pages"
+OCR_CACHE_DIR = PIPELINE_OUTPUT_ROOT / "ocr_cache"
+
+
+def decode_pua_ascii(text: str) -> str:
+    """Decodes Adobe/Windows Symbol font PUA glyphs (0xF020-0xF0FF) back to ASCII characters."""
+    if not any(0xF020 <= ord(ch) <= 0xF0FF for ch in text):
+        return text
+    chars = []
+    for ch in text:
+        cp = ord(ch)
+        if 0xF020 <= cp <= 0xF07E:
+            chars.append(chr(cp - 0xF000))
+        elif cp == 0xF092:
+            chars.append("’")
+        elif cp == 0xF093:
+            chars.append("“")
+        elif cp == 0xF094:
+            chars.append("”")
+        elif cp == 0xF096:
+            chars.append("–")
+        elif cp == 0xF097:
+            chars.append("—")
+        else:
+            chars.append(ch)
+    return "".join(chars)
+
+
+def normalize_devanagari(text: str) -> str:
+    """
+    Normalizes Devanagari text:
+      - Applies Unicode NFC normalization
+      - Deduplicates multiple consecutive viramas (\u094d+)
+      - Strips stray ZWJ (\u200d) and ZWNJ (\u200c) around viramas that break conjuncts
+      - Repairs duplicated consonants in broken ligatures (e.g. पंक््\u200dतति -> पंक्ति)
+      - Cleans isolated zero-width formatting characters (preserving eyelash-ra \u0930\u094d\u200d)
+    """
+    if not text:
+        return text
+    # 1. Unicode NFC normalization
+    text = unicodedata.normalize("NFC", text)
+    # 2. Fix multiple consecutive viramas (halant): e.g. ्् -> ्
+    text = re.sub(r"\u094d+", "\u094d", text)
+    # 3. Strip stray ZWJ and ZWNJ following or preceding virama
+    text = re.sub(r"\u094d[\u200c\u200d]+", "\u094d", text)
+    text = re.sub(r"[\u200c\u200d]+\u094d", "\u094d", text)
+    # 4. Fix doubled consonants in broken ligatures before matra i (\u093f): e.g. पंक््तति -> पंक्ति
+    text = re.sub(r"(\u094d([\u0915-\u0939]))\2\u093f", lambda m: m.group(1) + "\u093f", text)
+    # 5. Clean up any remaining isolated zero-width characters not preceded by virama + Ra (eyelash-ra)
+    text = re.sub(r"(?<!\u0930\u094d)[\u200c\u200d]", "", text)
+    return text
 
 
 def detect_script(text: str) -> str:
@@ -64,6 +120,140 @@ def detect_script(text: str) -> str:
     return dominant
 
 
+def compute_page_quality_metrics(
+    text: str,
+    expected_lang: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Computes text quality metrics per page:
+      (a) control_char_ratio: ratio of control chars (\x00-\x1f except \n, \t, \r)
+      (b) outside_script_ratio: ratio of characters outside expected script for the book's language
+      (c) replacement_char_ratio: ratio of replacement (\ufffd) and PUA (\ue000-\uf8ff) chars
+    Pages exceeding thresholds get is_garbled=True (status="garbled").
+    """
+    total = len(text)
+    if total == 0:
+        return {
+            "control_char_ratio": 0.0,
+            "outside_script_ratio": 0.0,
+            "replacement_char_ratio": 0.0,
+            "total_chars": 0,
+            "letter_count": 0,
+            "is_garbled": False,
+            "garbled_reasons": [],
+        }
+
+    # (a) Control chars (\x00-\x1f except \n, \t, \r)
+    ctrl_count = sum(1 for ch in text if ord(ch) < 32 and ch not in ("\n", "\t", "\r"))
+    control_char_ratio = round(ctrl_count / total, 4)
+
+    # (c) Replacement & PUA chars (\ufffd, 0xE000-0xF8FF)
+    pua_count = sum(1 for ch in text if ch == "\ufffd" or 0xE000 <= ord(ch) <= 0xF8FF)
+    replacement_char_ratio = round(pua_count / total, 4)
+
+    # (b) Outside expected script ratio
+    letters = [ch for ch in text if ch.isalpha()]
+    letter_count = len(letters)
+    outside_script_ratio = 0.0
+    lang = (expected_lang or "").strip().lower()
+
+    if letter_count >= 30 and lang:
+        if lang in ("tel", "telugu", "te"):
+            tel_count = sum(1 for ch in letters if 0x0C00 <= ord(ch) <= 0x0C7F)
+            outside_script_ratio = round((letter_count - tel_count) / letter_count, 4)
+        elif lang in ("hin", "hindi", "hi", "sa", "sanskrit"):
+            hin_count = sum(1 for ch in letters if 0x0900 <= ord(ch) <= 0x097F)
+            outside_script_ratio = round((letter_count - hin_count) / letter_count, 4)
+        elif lang in ("urd", "urdu", "ur"):
+            urd_count = sum(
+                1 for ch in letters
+                if (0x0600 <= ord(ch) <= 0x06FF or 0x0750 <= ord(ch) <= 0x077F or
+                    0xFB50 <= ord(ch) <= 0xFDFF or 0xFE70 <= ord(ch) <= 0xFEFF)
+            )
+            outside_script_ratio = round((letter_count - urd_count) / letter_count, 4)
+        elif lang in ("eng", "english", "en"):
+            eng_count = sum(
+                1 for ch in letters
+                if (0x0041 <= ord(ch) <= 0x005A or 0x0061 <= ord(ch) <= 0x007A or 0x00C0 <= ord(ch) <= 0x024F)
+            )
+            outside_script_ratio = round((letter_count - eng_count) / letter_count, 4)
+
+    is_garbled = False
+    garbled_reasons = []
+
+    if control_char_ratio > 0.02:
+        is_garbled = True
+        garbled_reasons.append(f"control_chars_high ({control_char_ratio:.2%})")
+
+    if replacement_char_ratio > 0.05:
+        is_garbled = True
+        garbled_reasons.append(f"replacement_chars_high ({replacement_char_ratio:.2%})")
+
+    # If non-English language has > 50% letters outside expected script
+    if lang in ("tel", "telugu", "te", "hin", "hindi", "hi", "sa", "sanskrit", "urd", "urdu", "ur"):
+        if letter_count >= 30 and outside_script_ratio > 0.50:
+            is_garbled = True
+            garbled_reasons.append(f"outside_script_high ({outside_script_ratio:.2%} non-{lang})")
+
+    return {
+        "control_char_ratio": control_char_ratio,
+        "outside_script_ratio": outside_script_ratio,
+        "replacement_char_ratio": replacement_char_ratio,
+        "total_chars": total,
+        "letter_count": letter_count,
+        "is_garbled": is_garbled,
+        "garbled_reasons": garbled_reasons,
+    }
+
+
+def resolve_ocr_lang(
+    expected_lang: Optional[str],
+    detected_script: str,
+    filename: str,
+    file_id: str,
+) -> str:
+    lang = (expected_lang or "").strip().lower()
+    fn_lower = f"{filename} {file_id}".lower()
+    if lang in ("tel", "telugu", "te") or "tel" in fn_lower or detected_script == "telugu":
+        return "tel"
+    if lang in ("hin", "hindi", "hi", "sa", "sanskrit") or "hindi" in fn_lower or detected_script == "devanagari":
+        return "hin"
+    if lang in ("urd", "urdu", "ur") or "urdu" in fn_lower or detected_script == "urdu":
+        return "urd"
+    m = re.match(r"^[a-l]([ehus])", filename.lower())
+    if m:
+        c = m.group(1)
+        if c == "h":
+            return "hin"
+        if c == "u":
+            return "urd"
+        if c == "s":
+            return "hin"
+    return "eng"
+
+
+def infer_language_from_filename(filename: str) -> str:
+    fn_lower = filename.lower()
+    if re.search(r"(tel|telugu)", fn_lower) or "_tel_" in fn_lower or "tel" in fn_lower:
+        return "tel"
+    if re.search(r"(hin|hindi)", fn_lower) or "_hin_" in fn_lower or "hindi" in fn_lower:
+        return "hin"
+    if re.search(r"(urd|urdu)", fn_lower) or "_urd_" in fn_lower or "urdu" in fn_lower:
+        return "urd"
+    m = re.match(r"^[a-l]([ehus])", fn_lower)
+    if m:
+        code = m.group(1)
+        if code == "h":
+            return "hin"
+        if code == "u":
+            return "urd"
+        if code == "s":
+            return "hin"
+        if code == "e":
+            return "eng"
+    return "eng"
+
+
 def calculate_garbled_metrics(text: str) -> Tuple[int, int, float]:
     """Calculate total characters, PUA/replacement characters, and garbled percentage."""
     total = len(text)
@@ -82,10 +272,12 @@ def compute_file_sha256(filepath: Path) -> str:
 
 
 class PageExtractor:
-    def __init__(self, pages_output_dir: Optional[Path] = None):
+    def __init__(self, pages_output_dir: Optional[Path] = None, enable_ocr: bool = False):
         self.pages_dir = pages_output_dir or PAGES_DIR
         self.pages_dir.mkdir(parents=True, exist_ok=True)
+        self.enable_ocr = enable_ocr
         self.has_tesseract = shutil.which("tesseract") is not None
+        self._warned_no_tesseract = False
 
     def get_output_path(self, file_id: str) -> Path:
         clean_id = re.sub(r"[^a-zA-Z0-9_\-\.]", "_", file_id)
@@ -111,11 +303,90 @@ class PageExtractor:
             return False
         return False
 
+    def _get_ocr_cache_path(self, file_sha256: str, page_no: int, ocr_lang: str) -> Path:
+        return OCR_CACHE_DIR / file_sha256 / f"p_{page_no}_{ocr_lang}.json"
+
+    def is_ocr_cached(self, file_sha256: str, page_no: int, ocr_lang: str) -> bool:
+        return self._get_ocr_cache_path(file_sha256, page_no, ocr_lang).exists()
+
+    def _ocr_page_fallback(
+        self,
+        page: fitz.Page,
+        page_no: int,
+        ocr_lang: str,
+        file_sha256: str,
+    ) -> Optional[str]:
+        cache_path = self._get_ocr_cache_path(file_sha256, page_no, ocr_lang)
+        if cache_path.exists():
+            try:
+                with open(cache_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    return data.get("text")
+            except Exception as e:
+                logger.warning(f"Failed reading OCR cache {cache_path}: {e}")
+
+        if not self.enable_ocr:
+            return None
+
+        if not self.has_tesseract:
+            self.has_tesseract = shutil.which("tesseract") is not None
+
+        if not self.has_tesseract:
+            if not self._warned_no_tesseract:
+                logger.warning(
+                    "Tesseract OCR is requested (--ocr) but 'tesseract' executable was not found in PATH.\n"
+                    "Please install Tesseract and language packs:\n"
+                    "  Debian/Ubuntu: apt install tesseract-ocr tesseract-ocr-tel tesseract-ocr-hin\n"
+                    "  Windows: Download installer from UB-Mannheim/tesseract/wiki and add to system PATH."
+                )
+                self._warned_no_tesseract = True
+            return None
+
+        try:
+            import pytesseract
+            from PIL import Image
+
+            # Rasterize page at 300 DPI
+            pix = page.get_pixmap(dpi=300)
+            img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+
+            lang_map = {
+                "tel": "tel",
+                "hin": "hin",
+                "eng": "eng",
+                "urd": "urd",
+            }
+            tess_lang = lang_map.get(ocr_lang, ocr_lang)
+
+            ocr_text = pytesseract.image_to_string(img, lang=tess_lang)
+            if ocr_lang in ("hin", "sa"):
+                ocr_text = normalize_devanagari(ocr_text)
+
+            # Cache per PDF sha256
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(cache_path, "w", encoding="utf-8") as f:
+                json.dump(
+                    {
+                        "file_sha256": file_sha256,
+                        "page_no": page_no,
+                        "lang": ocr_lang,
+                        "text": ocr_text,
+                        "success": True,
+                    },
+                    f,
+                    ensure_ascii=False,
+                )
+            return ocr_text
+        except Exception as e:
+            logger.warning(f"OCR failed for page {page_no} with lang {ocr_lang}: {e}")
+            return None
+
     def extract_file(
         self,
         pdf_path: Path,
         file_id: Optional[str] = None,
         force: bool = False,
+        expected_lang: Optional[str] = None,
     ) -> Dict[str, Any]:
         fid = file_id or pdf_path.name
         out_path = self.get_output_path(fid)
@@ -136,6 +407,9 @@ class PageExtractor:
 
         if not force and self.is_cached_and_valid(fid, file_sha256):
             return {"file_id": fid, "status": "skipped_cached", "sha256": file_sha256}
+
+        if not expected_lang:
+            expected_lang = infer_language_from_filename(fid)
 
         try:
             doc = fitz.open(pdf_path)
@@ -190,6 +464,8 @@ class PageExtractor:
         temp_out = out_path.with_suffix(".tmp")
         missing_ocr_languages: Set[str] = set()
         pages_needing_ocr = 0
+        pages_garbled = 0
+        pages_passed = 0
 
         with open(temp_out, "w", encoding="utf-8") as out_f:
             meta_record = {
@@ -221,7 +497,7 @@ class PageExtractor:
                         while i < len(raw_block_lines):
                             curr_line = raw_block_lines[i]
                             line_spans = curr_line.get("spans", [])
-                            line_text = "".join(s.get("text", "") for s in line_spans).strip()
+                            line_text = decode_pua_ascii("".join(s.get("text", "") for s in line_spans).strip())
 
                             if not line_text:
                                 i += 1
@@ -262,7 +538,7 @@ class PageExtractor:
                             # Clean spans
                             parsed_line_spans = []
                             for sp in line_spans:
-                                sp_text = sp.get("text", "")
+                                sp_text = decode_pua_ascii(sp.get("text", ""))
                                 if not sp_text.strip():
                                     continue
                                 flags = sp.get("flags", 0)
@@ -286,42 +562,57 @@ class PageExtractor:
                             i += 1
 
                 full_cleaned_text = "\n".join(cleaned_text_lines)
+
+                # Normalize Devanagari text if language/script indicates Devanagari
+                if expected_lang in ("hin", "hindi", "hi", "sa", "sanskrit") or detect_script(full_cleaned_text) == "devanagari":
+                    full_cleaned_text = normalize_devanagari(full_cleaned_text)
+                    for lr in lines_records:
+                        lr["text"] = normalize_devanagari(lr["text"])
+
                 char_count = len(full_cleaned_text)
                 script = detect_script(full_cleaned_text)
                 total_c, garb_c, garb_pct = calculate_garbled_metrics(full_cleaned_text)
+                quality_metrics = compute_page_quality_metrics(full_cleaned_text, expected_lang=expected_lang)
+                is_garbled = quality_metrics["is_garbled"]
 
                 method = "native"
                 ocr_needed = False
-                ocr_lang_needed = None
+                ocr_lang_needed = resolve_ocr_lang(expected_lang, script, pdf_path.name, fid)
+                status = "ok"
 
-                # Flag garbled Devanagari/Telugu/Urdu or low text
-                if (char_count < 60) or (garb_pct > 15.0):
+                # Check text-quality gate: garbled or low character count
+                if is_garbled or (char_count < 60) or (garb_pct > 15.0):
                     ocr_needed = True
-                    pages_needing_ocr += 1
+                    status = "garbled" if (is_garbled or garb_pct > 15.0) else "needs_ocr"
 
-                    if "telugu" in script or (garb_c > 0 and "tel" in pdf_path.name.lower()):
-                        ocr_lang_needed = "tel"
-                    elif "devanagari" in script or (garb_c > 0 and ("hindi" in pdf_path.name.lower() or "h" == fid[1:2])):
-                        ocr_lang_needed = "hin"
-                    elif "urdu" in script or ("u" == fid[1:2]):
-                        ocr_lang_needed = "urd"
-                    else:
-                        ocr_lang_needed = "eng"
-
-                    if not self.has_tesseract:
-                        missing_ocr_languages.add(ocr_lang_needed)
-                        method = "none (ocr_needed)"
-                    else:
-                        try:
-                            tp = page.get_textpage_ocr(language=ocr_lang_needed, full=True)
-                            ocr_text = tp.extractText()
-                            if len(ocr_text) > char_count:
-                                full_cleaned_text = ocr_text
+                    # OCR fallback attempt (if enabled or cached)
+                    if self.enable_ocr or self.is_ocr_cached(file_sha256, page_idx + 1, ocr_lang_needed):
+                        ocr_text = self._ocr_page_fallback(page, page_idx + 1, ocr_lang_needed, file_sha256)
+                        if ocr_text:
+                            ocr_text_clean = ocr_text.strip()
+                            if ocr_lang_needed in ("hin", "sa"):
+                                ocr_text_clean = normalize_devanagari(ocr_text_clean)
+                            ocr_metrics = compute_page_quality_metrics(ocr_text_clean, expected_lang=expected_lang)
+                            if not ocr_metrics["is_garbled"] and len(ocr_text_clean) >= 30:
+                                full_cleaned_text = ocr_text_clean
                                 char_count = len(full_cleaned_text)
+                                script = detect_script(full_cleaned_text)
                                 method = "ocr"
-                        except Exception:
-                            missing_ocr_languages.add(ocr_lang_needed)
-                            method = "none (ocr_failed)"
+                                status = "ok"
+                                ocr_needed = False
+                                quality_metrics = ocr_metrics
+                                garb_pct = ocr_metrics.get("replacement_char_ratio", 0.0) * 100.0
+
+                    if ocr_needed:
+                        pages_needing_ocr += 1
+                        missing_ocr_languages.add(ocr_lang_needed)
+                        if method == "native":
+                            method = "none (ocr_needed)"
+
+                if status == "garbled":
+                    pages_garbled += 1
+                elif status == "ok":
+                    pages_passed += 1
 
                 page_record = {
                     "page_no": page_idx + 1,
@@ -329,9 +620,11 @@ class PageExtractor:
                     "char_count": char_count,
                     "script": script,
                     "method": method,
+                    "status": status,
                     "ocr_needed": ocr_needed,
                     "ocr_lang_needed": ocr_lang_needed,
                     "garbled_pct": garb_pct,
+                    "quality_metrics": quality_metrics,
                     "spans": spans,
                     "lines": lines_records,
                 }
@@ -347,13 +640,15 @@ class PageExtractor:
             "status": "extracted",
             "pages_extracted": num_pages,
             "pages_needing_ocr": pages_needing_ocr,
+            "pages_garbled": pages_garbled,
+            "pages_passed": pages_passed,
             "missing_ocr_languages": list(missing_ocr_languages),
             "sha256": file_sha256,
         }
 
     def extract_batch_parallel(
         self,
-        tasks: List[Tuple[Path, str]],
+        tasks: List[Tuple[Any, ...]],
         workers: int = 4,
         force: bool = False,
     ) -> List[Dict[str, Any]]:
@@ -361,20 +656,33 @@ class PageExtractor:
         from concurrent.futures import ProcessPoolExecutor
 
         if workers <= 1:
-            return [self.extract_file(p, fid, force=force) for p, fid in tasks]
+            res = []
+            for item in tasks:
+                p = item[0]
+                fid = item[1]
+                exp_lang = item[2] if len(item) > 2 else None
+                res.append(self.extract_file(p, fid, force=force, expected_lang=exp_lang))
+            return res
 
         args_list = [
-            (str(p), fid, force, str(self.pages_dir))
-            for p, fid in tasks
+            (
+                str(item[0]),
+                item[1],
+                force,
+                str(self.pages_dir),
+                self.enable_ocr,
+                item[2] if len(item) > 2 else None,
+            )
+            for item in tasks
         ]
         with ProcessPoolExecutor(max_workers=workers) as executor:
             results = list(executor.map(_extract_file_worker, args_list))
         return results
 
 
-def _extract_file_worker(args: Tuple[str, str, bool, str]) -> Dict[str, Any]:
+def _extract_file_worker(args: Tuple[str, str, bool, str, bool, Optional[str]]) -> Dict[str, Any]:
     """Top-level picklable worker for parallel PDF extraction across processes."""
-    pdf_path_str, file_id, force, output_dir_str = args
+    pdf_path_str, file_id, force, output_dir_str, enable_ocr, exp_lang = args
     out_dir = Path(output_dir_str) if output_dir_str else None
-    extractor = PageExtractor(pages_output_dir=out_dir)
-    return extractor.extract_file(Path(pdf_path_str), file_id=file_id, force=force)
+    extractor = PageExtractor(pages_output_dir=out_dir, enable_ocr=enable_ocr)
+    return extractor.extract_file(Path(pdf_path_str), file_id=file_id, force=force, expected_lang=exp_lang)

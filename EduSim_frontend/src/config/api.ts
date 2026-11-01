@@ -4,7 +4,7 @@
 
 import { joinUrl } from "@/utils/urlUtils";
 
-const rawBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:8001";
+const rawBaseUrl = import.meta.env?.VITE_API_URL || "http://localhost:8001";
 // Sanitize BASE_URL to prevent trailing /api or trailing slash from duplicating endpoints (e.g. /api/api/...)
 const sanitizedBaseUrl = rawBaseUrl.replace(/\/api\/?$/, "").replace(/\/+$/, "");
 

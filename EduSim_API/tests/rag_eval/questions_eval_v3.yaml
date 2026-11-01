@@ -1,0 +1,295 @@
+# EduSim RAG Evaluation Suite v3
+# Covers NCERT Classes 6 to 12 across Science, Mathematics, Social Science, Hindi,
+# Physics, Chemistry, Biology, and Computer Science.
+# Includes 25 answerable questions (in_scope: true) and 10 out-of-scope questions (in_scope: false).
+
+- id: q01
+  question: How do plants and animals exhibit diversity in the living world?
+  expected_board: NCERT
+  expected_class: 6
+  expected_subject: science
+  expected_book_code: fecu1
+  expected_chapter_number: '2'
+  chapter_title: Diversity in the Living World
+  in_scope: true
+
+- id: q02
+  question: What are intersecting lines, parallel lines, and angles in basic geometry?
+  expected_board: NCERT
+  expected_class: 6
+  expected_subject: mathematics
+  expected_book_code: fegp1
+  expected_chapter_number: '2'
+  chapter_title: Lines and Angles
+  in_scope: true
+
+- id: q03
+  question: What are the major oceans and continents on Earth and how are they distributed?
+  expected_board: NCERT
+  expected_class: 6
+  expected_subject: social-science
+  expected_book_code: fees1
+  expected_chapter_number: '2'
+  chapter_title: Oceans and Continents
+  in_scope: true
+
+- id: q04
+  question: मातृभूमि कविता में कवि अपनी जन्मभूमि और मातृभूमि की क्या विशेषताएं बताता है?
+  expected_board: NCERT
+  expected_class: 6
+  expected_subject: hindi
+  expected_book_code: fhml1
+  expected_chapter_number: '1'
+  chapter_title: मातृभूमि
+  in_scope: true
+
+- id: q05
+  question: How do we test whether a substance is acidic or basic using natural indicators like litmus?
+  expected_board: NCERT
+  expected_class: 7
+  expected_subject: science
+  expected_book_code: gecu1
+  expected_chapter_number: '2'
+  chapter_title: 'Exploring Substances: Acidic, Basic and Neutral'
+  in_scope: true
+
+- id: q06
+  question: How do place value charts help in reading and writing large numbers up to crores?
+  expected_board: NCERT
+  expected_class: 7
+  expected_subject: mathematics
+  expected_book_code: gegp1
+  expected_chapter_number: '1'
+  chapter_title: LARGE NUMBERS AROUND US
+  in_scope: true
+
+- id: q07
+  question: What atmospheric factors determine daily weather conditions and climate patterns?
+  expected_board: NCERT
+  expected_class: 7
+  expected_subject: social-science
+  expected_book_code: gees1
+  expected_chapter_number: '2'
+  chapter_title: Understanding the Weather
+  in_scope: true
+
+- id: q08
+  question: तीन बुद्धिमान कहानी में तीनों पात्र अपनी चतुराई और सूझबूझ का प्रदर्शन कैसे करते हैं?
+  expected_board: NCERT
+  expected_class: 7
+  expected_subject: hindi
+  expected_book_code: ghml1
+  expected_chapter_number: '2'
+  chapter_title: तीन बुद्धिमान
+  in_scope: true
+
+- id: q09
+  question: What are microorganisms like bacteria, fungi, and protozoa and where do they live?
+  expected_board: NCERT
+  expected_class: 8
+  expected_subject: science
+  expected_book_code: hecu1
+  expected_chapter_number: '2'
+  chapter_title: 'The Invisible Living World: Beyond Our Naked Eyes'
+  in_scope: true
+
+- id: q10
+  question: What are the properties of square numbers and how do we find square roots?
+  expected_board: NCERT
+  expected_class: 8
+  expected_subject: mathematics
+  expected_book_code: hegp1
+  expected_chapter_number: '1'
+  chapter_title: A SQUARE AND A CUBE
+  in_scope: true
+
+- id: q11
+  question: How are natural resources classified into renewable and non-renewable resources?
+  expected_board: NCERT
+  expected_class: 8
+  expected_subject: social-science
+  expected_book_code: hees1
+  expected_chapter_number: '1'
+  chapter_title: Natural Resources and Their Use
+  in_scope: true
+
+- id: q12
+  question: स्वदेश कविता में देशप्रेम और अपनी धरती के प्रति क्या भाव व्यक्त किए गए हैं?
+  expected_board: NCERT
+  expected_class: 8
+  expected_subject: hindi
+  expected_book_code: hhml1
+  expected_chapter_number: '1'
+  chapter_title: स्वदेश
+  in_scope: true
+
+- id: q13
+  question: Why is the cell called the fundamental structural and functional unit of life?
+  expected_board: NCERT
+  expected_class: 9
+  expected_subject: science
+  expected_book_code: iesc1
+  expected_chapter_number: '2'
+  chapter_title: 'Cell: The Building Block of Life'
+  in_scope: true
+
+- id: q14
+  question: What is a polynomial in one variable and what are degrees of linear and quadratic polynomials?
+  expected_board: NCERT
+  expected_class: 9
+  expected_subject: mathematics
+  expected_book_code: iemh1
+  expected_chapter_number: '2'
+  chapter_title: Introduction to Linear Polynomials
+  in_scope: true
+
+- id: q15
+  question: How do you balance chemical equations and identify combination and decomposition reactions?
+  expected_board: NCERT
+  expected_class: 10
+  expected_subject: science
+  expected_book_code: jesc1
+  expected_chapter_number: '1'
+  chapter_title: Chemical Reactions and Equations
+  in_scope: true
+
+- id: q16
+  question: What is neutralization reaction when an acid reacts with a base to form salt and water?
+  expected_board: NCERT
+  expected_class: 10
+  expected_subject: science
+  expected_book_code: jesc1
+  expected_chapter_number: '2'
+  chapter_title: Acids, Bases and Salts
+  in_scope: true
+
+- id: q17
+  question: What is the Fundamental Theorem of Arithmetic regarding unique prime factorization of composite numbers?
+  expected_board: NCERT
+  expected_class: 10
+  expected_subject: mathematics
+  expected_book_code: jemh1
+  expected_chapter_number: '1'
+  chapter_title: REAL NUMBERS
+  in_scope: true
+
+- id: q18
+  question: Why is power sharing desirable in a democracy and how does it prevent conflict between social groups?
+  expected_board: NCERT
+  expected_class: 10
+  expected_subject: social-science
+  expected_book_code: jess4
+  expected_chapter_number: '1'
+  chapter_title: Power-sharing
+  in_scope: true
+
+- id: q19
+  question: What are the base SI units in physics and how is dimensional analysis used to verify equations?
+  expected_board: NCERT
+  expected_class: 11
+  expected_subject: physics
+  expected_book_code: keph1
+  expected_chapter_number: '1'
+  chapter_title: UNITS AND MEASUREMENT
+  in_scope: true
+
+- id: q20
+  question: What are the four quantum numbers and how do they describe an electron in an atom?
+  expected_board: NCERT
+  expected_class: 11
+  expected_subject: chemistry
+  expected_book_code: kech1
+  expected_chapter_number: '2'
+  chapter_title: structure of atom
+  in_scope: true
+
+- id: q21
+  question: What are the criteria used by R.H. Whittaker for the Five Kingdom classification of organisms?
+  expected_board: NCERT
+  expected_class: 11
+  expected_subject: biology
+  expected_book_code: kebo1
+  expected_chapter_number: '2'
+  chapter_title: BIOLOGICAL CLASSIFICATION
+  in_scope: true
+
+- id: q22
+  question: How do binary, octal, decimal, and hexadecimal number systems convert into each other in computer science?
+  expected_board: NCERT
+  expected_class: 11
+  expected_subject: computer-science
+  expected_book_code: kecs1
+  expected_chapter_number: '2'
+  chapter_title: Encoding Schemes and Number System
+  in_scope: true
+
+- id: q23
+  question: State Coulomb's law for electrostatic force between two point charges in vacuum.
+  expected_board: NCERT
+  expected_class: 12
+  expected_subject: physics
+  expected_book_code: leph1
+  expected_chapter_number: '1'
+  chapter_title: ELECTRIC CHARGES AND FIELDS
+  in_scope: true
+
+- id: q24
+  question: Describe the male and female reproductive systems and the process of spermatogenesis in humans.
+  expected_board: NCERT
+  expected_class: 12
+  expected_subject: biology
+  expected_book_code: lebo1
+  expected_chapter_number: '2'
+  chapter_title: HUMAN REPRODUCTION
+  in_scope: true
+
+- id: q25
+  question: How do try, except, else, and finally blocks handle runtime exceptions in Python?
+  expected_board: NCERT
+  expected_class: 12
+  expected_subject: computer-science
+  expected_book_code: lecs1
+  expected_chapter_number: '1'
+  chapter_title: Exception Handling in Python
+  in_scope: true
+
+# Out-of-scope / Unanswerable queries (in_scope: false)
+- id: oos01
+  question: How do you feed and maintain a sourdough starter culture for artisanal bread baking?
+  in_scope: false
+
+- id: oos02
+  question: What is the proof-of-stake consensus algorithm in Ethereum and how does validator slashing work?
+  in_scope: false
+
+- id: oos03
+  question: How do you configure external BGP peering and autonomous system path prepending on Cisco routers?
+  in_scope: false
+
+- id: oos04
+  question: What is the step-by-step procedure to change the engine oil and replace front brake pads on a 2021 Toyota Camry?
+  in_scope: false
+
+- id: oos05
+  question: What are the NBA salary cap luxury tax aprons and collective bargaining agreement rules for second apron teams?
+  in_scope: false
+
+- id: oos06
+  question: How do you mix two-part epoxy resin and prevent air bubbles when pouring a live-edge river table?
+  in_scope: false
+
+- id: oos07
+  question: What are the main opening moves and variations in the Sicilian Defense Dragon variation in chess?
+  in_scope: false
+
+- id: oos08
+  question: What is the recipe for preparing a Japanese highball cocktail using Nikka whiskey and yuzu soda?
+  in_scope: false
+
+- id: oos09
+  question: How do quantum hardware companies engineer topological qubits using non-Abelian anyons and Majorana zero modes?
+  in_scope: false
+
+- id: oos10
+  question: What documents and filing fees are required to register a limited liability company (LLC) with the Delaware Secretary of State?
+  in_scope: false

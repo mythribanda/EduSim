@@ -1,0 +1,254 @@
+- id: hq01
+  question: परिवार में बच्चे रंगोली क्यों बना रहे हैं और क्या काम कर रहे हैं?
+  expected_board: NCERT
+  expected_class: 1
+  expected_subject: hindi
+  expected_book_code: ahsr1
+  expected_chapter_number: '1'
+  chapter_title: परिवार
+- id: hq02
+  question: दादाजी और दादीजी किस रंग की खादी के कपड़े पहनते हैं?
+  expected_board: NCERT
+  expected_class: 1
+  expected_subject: hindi
+  expected_book_code: ahsr1
+  expected_chapter_number: '2'
+  chapter_title: दादा-दादी
+- id: hq03
+  question: रीना सुबह उठकर अपने दाँत किस दातुन से साफ़ करती है?
+  expected_board: NCERT
+  expected_class: 1
+  expected_subject: hindi
+  expected_book_code: ahsr1
+  expected_chapter_number: '3'
+  chapter_title: रीना का दिन
+- id: hq04
+  question: रमा और रानी दो बहनों में से कौन स्कूल जाने के लिए झोला उठाती है?
+  expected_board: NCERT
+  expected_class: 1
+  expected_subject: hindi
+  expected_book_code: ahsr1
+  expected_chapter_number: '4'
+  chapter_title: रानी भी
+- id: hq05
+  question: हाथी और बकरी जंगल में बेर के पेड़ के पास कैसे पहुँचे?
+  expected_board: NCERT
+  expected_class: 1
+  expected_subject: hindi
+  expected_book_code: ahsr1
+  expected_chapter_number: '6'
+  chapter_title: तीन साथी
+- id: hq06
+  question: वाह मेरे घोड़े कविता में घोड़ा कहाँ भागने की बात करता है?
+  expected_board: NCERT
+  expected_class: 1
+  expected_subject: hindi
+  expected_book_code: ahsr1
+  expected_chapter_number: '7'
+  chapter_title: वाह, मेरे घोड़े़!
+- id: hq07
+  question: धरती में बीजों को बोने और किसानी खेलने की बात किस कविता में है?
+  expected_board: NCERT
+  expected_class: 1
+  expected_subject: hindi
+  expected_book_code: ahsr1
+  expected_chapter_number: '10'
+  chapter_title: झूलम-झूली
+- id: hq08
+  question: नीना के नाना बाज़ार से क्या लाए थे जिसे उन्होंने जी भरकर खाया?
+  expected_board: NCERT
+  expected_class: 1
+  expected_subject: hindi
+  expected_book_code: ahsr1
+  expected_chapter_number: '11'
+  chapter_title: मिलकर पढ़िए
+- id: hq09
+  question: घर कविता में घर को माँ की गोदी सा क्यों बताया गया है?
+  expected_board: NCERT
+  expected_class: 2
+  expected_subject: hindi
+  expected_book_code: bhsr1
+  expected_chapter_number: '2'
+  chapter_title: घर
+- id: hq10
+  question: माला को उसकी माँ ने नीले कागज़ में क्या उपहार दिया था?
+  expected_board: NCERT
+  expected_class: 2
+  expected_subject: hindi
+  expected_book_code: bhsr1
+  expected_chapter_number: '3'
+  chapter_title: माला की चाँदी की पायल
+- id: hq11
+  question: माँ तुम कितनी भोली-भाली कविता में माँ से क्या साहस और प्रकाश मिलता है?
+  expected_board: NCERT
+  expected_class: 2
+  expected_subject: hindi
+  expected_book_code: bhsr1
+  expected_chapter_number: '4'
+  chapter_title: माँ
+- id: hq12
+  question: थाथू और मैं कहानी में बच्ची अपने दादाजी को प्यार से क्या बुलाती है?
+  expected_board: NCERT
+  expected_class: 2
+  expected_subject: hindi
+  expected_book_code: bhsr1
+  expected_chapter_number: '5'
+  chapter_title: थाथू और मैं
+- id: hq13
+  question: चींटा खेल गीत में चींटे को दूध लाकर क्या जमाने को कहा गया है?
+  expected_board: NCERT
+  expected_class: 2
+  expected_subject: hindi
+  expected_book_code: bhsr1
+  expected_chapter_number: '6'
+  chapter_title: चींटा
+- id: hq14
+  question: तीन दोस्त कहानी में लाल, पीला और नीला तीन रंगों की क्या विशेषता है?
+  expected_board: NCERT
+  expected_class: 2
+  expected_subject: hindi
+  expected_book_code: bhsr1
+  expected_chapter_number: '8'
+  chapter_title: तीन दोसत
+- id: hq15
+  question: अगर न होता चाँद रात में तो हमको दिशा कौन दिखाता?
+  expected_board: NCERT
+  expected_class: 2
+  expected_subject: hindi
+  expected_book_code: bhsr1
+  expected_chapter_number: '10'
+  chapter_title: कौन
+- id: hq16
+  question: बैंगनी जोजो कुत्ते को सपने में क्या दिखाई दिया था?
+  expected_board: NCERT
+  expected_class: 2
+  expected_subject: hindi
+  expected_book_code: bhsr1
+  expected_chapter_number: '11'
+  chapter_title: बैंगनी जोजो
+- id: hq17
+  question: तोसिया ने सपने में क्या देखा कि दुनिया के सारे रंग कहाँ चले गए?
+  expected_board: NCERT
+  expected_class: 2
+  expected_subject: hindi
+  expected_book_code: bhsr1
+  expected_chapter_number: '12'
+  chapter_title: तोसिया का सपना
+- id: hq18
+  question: आनंदमयी कविता में चार दिशाओं पूरब, पश्चिम, उत्तर, दक्षिण की क्या पहचान
+    है?
+  expected_board: NCERT
+  expected_class: 2
+  expected_subject: hindi
+  expected_book_code: bhsr1
+  expected_chapter_number: '22'
+  chapter_title: चार दिशाएँ
+- id: hq19
+  question: वीणा पुस्तक में प्रार्थना और प्रकृति का वर्णन किस प्रकार किया गया है?
+  expected_board: NCERT
+  expected_class: 3
+  expected_subject: vocational
+  expected_book_code: chve1
+  expected_chapter_number: '1'
+  chapter_title: सीखो
+- id: hq20
+  question: वीणा पुस्तक के पाठ में सहयोग और परिश्रम का क्या महत्व बताया गया है?
+  expected_board: NCERT
+  expected_class: 4
+  expected_subject: vocational
+  expected_book_code: dhve1
+  expected_chapter_number: '1'
+  chapter_title: ऐसा वर दो
+- id: hq21
+  question: वीणा कक्षा 5 के पहले पाठ में देश और प्रकृति का क्या संदेश है?
+  expected_board: NCERT
+  expected_class: 5
+  expected_subject: vocational
+  expected_book_code: ehve1
+  expected_chapter_number: '1'
+  chapter_title: किरन
+- id: hq22
+  question: पहली बूँद धरा पर आने से धरती और अंकुर पर क्या प्रभाव पड़ता है?
+  expected_board: NCERT
+  expected_class: 6
+  expected_subject: hindi
+  expected_book_code: fhml1
+  expected_chapter_number: '3'
+  chapter_title: पहली बूँद
+- id: hq23
+  question: बाबा भारती अपने घोड़े सुलतान से क्यों इतना प्रेम करते थे?
+  expected_board: NCERT
+  expected_class: 6
+  expected_subject: hindi
+  expected_book_code: fhml1
+  expected_chapter_number: '4'
+  chapter_title: हार की जीत
+- id: hq24
+  question: रहिमन धागा प्रेम का मत तोड़ो चटकाय दोहे का क्या अर्थ है?
+  expected_board: NCERT
+  expected_class: 6
+  expected_subject: hindi
+  expected_book_code: fhml1
+  expected_chapter_number: '5'
+  chapter_title: रहीम के दोहे*
+- id: hq25
+  question: बिस्मिल की माँ ने उन्हें लखनऊ कांग्रेस में जाने के लिए कैसे सहयोग दिया?
+  expected_board: NCERT
+  expected_class: 6
+  expected_subject: hindi
+  expected_book_code: fhml1
+  expected_chapter_number: '6'
+  chapter_title: मेरी माँ
+- id: hq26
+  question: सूरदास के पद में बालक कृष्ण यशोदा से माखन खाने के बारे में क्या सफाई देते
+    हैं?
+  expected_board: NCERT
+  expected_class: 6
+  expected_subject: hindi
+  expected_book_code: fhml1
+  expected_chapter_number: '9'
+  chapter_title: मैया मैं नहिं माखन खायो
+- id: hq27
+  question: दीवान सरदार सुजान सिंह ने नए दीवान के चुनाव के लिए क्या परीक्षा रखी?
+  expected_board: NCERT
+  expected_class: 6
+  expected_subject: hindi
+  expected_book_code: fhml1
+  expected_chapter_number: '10'
+  chapter_title: परीक्षा
+- id: hq28
+  question: रणभूमि में चेतक घोड़े ने राणा प्रताप के लिए कैसी वीरता दिखाई?
+  expected_board: NCERT
+  expected_class: 6
+  expected_subject: hindi
+  expected_book_code: fhml1
+  expected_chapter_number: '11'
+  chapter_title: चेतक की वीरता
+- id: hq29
+  question: माँ कह एक कहानी में उपवन में तात के भ्रमण और घायल हंस की क्या कथा है?
+  expected_board: NCERT
+  expected_class: 7
+  expected_subject: hindi
+  expected_book_code: ghml1
+  expected_chapter_number: '1'
+  chapter_title: “माँ, कह एक कहानी।” “बेटा, समझ िलया क्या तूने मुझको अपनी नानी?” “कहती
+    है मुझसे यह चेटी, तू मेरी नानी कì बेटी! कह माँ, कह, लेटी ही लेटी, राजा था या रानी?
+    राजा था या रानी? माँ, कह एक कहानी।” “तू है हठी मानधन मेरे, सुन, उपवन में बड़े सबेरे,
+    तात भ्रमण करते थे तेरे,
+- id: hq30
+  question: जल-चक्र क्या है और समुद्र से उठा पानी बादलों से होकर वापस कैसे मिलता है?
+  expected_board: NCERT
+  expected_class: 7
+  expected_subject: hindi
+  expected_book_code: ghml1
+  expected_chapter_number: '4'
+  chapter_title: कहाँ से आता है हमारा पानी और िफर कहाँ चला जाता है हमारा पानी? हमने
+    कभी इस बारे में कुछ सोचा है? सोचा तो नहीं होगा शायद, पर इस बारे में पढ़ा जरूर है।
+    भूगोल कì िकताब पढ़ते समय जल-चक्र जैसी बातें हमें बताई जाती हैं। एक सुंदर-सा िचत्र
+    भी होता है, इस पाठ के साथ। सूरज, समुद्र, बादल, हवा, धरती, िफर बरसात कì बूँदें
+    और लो िफर बहती हòई एक नदी और उसके िकनारे बसा तुम्हारा, हमारा घर, गाँव या शहर।
+    िचत्र के दूसरे भाग में यही नदी अपने चारों तरफ का पानी लेकर उसी समुद्र में िमलती
+    िदखती है। िचत्र में कुछ तीर भी बने रहते हैं। समुद्र से उठी भाप बादल बनकर पानी
+    में बदलती है और िफर इन तीरों के सहारे जल कì यात्रा एक तरफ से शुरू होकर समुद्र
+    में वािपस िमल जाती है। जल-चक्र पूरा हो जाता है। यह तो हòई जल-चक्र कì िकताबी बात।
+    पर अब तो हम सबके घरों में, स्कूल में, माता-िपता के

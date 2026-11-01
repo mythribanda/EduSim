@@ -9,7 +9,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     DEBIAN_FRONTEND=noninteractive \
     PORT=8001 \
-    HF_HOME=/app/.cache/huggingface
+    HF_HOME=/app/.cache/huggingface \
+    FAISS_INDEX_V2_DIR=/app/faiss_index_v2 \
+    TEXTBOOKS_DIR=/data/textbooks
 
 WORKDIR /app
 
@@ -41,8 +43,10 @@ RUN groupadd -r edusim && useradd -r -g edusim -u 1000 -d /app edusim
 # Copy application source code
 COPY . /app
 
-# Ensure directories exist for FAISS indices and textures/data with proper ownership
-RUN mkdir -p /app/faiss_index /data/textbooks && \
+# Ensure directories exist for FAISS indices and textbooks with proper ownership.
+# Preserve seed copy of faiss_index_v2 inside the image so entrypoint can seed named volumes.
+RUN if [ -d /app/faiss_index_v2 ]; then cp -r /app/faiss_index_v2 /app/faiss_index_v2_seed; fi && \
+    mkdir -p /app/faiss_index_v2 /data/textbooks && \
     chown -R edusim:edusim /app /data/textbooks && \
     chmod +x /app/entrypoint.sh
 

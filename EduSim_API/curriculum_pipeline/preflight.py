@@ -26,6 +26,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import fitz
 
+from curriculum_pipeline.page_extractor import decode_pua_ascii
 from curriculum_pipeline.pipeline_config import (
     PIPELINE_OUTPUT_ROOT,
     REPORTS_DIR,
@@ -114,7 +115,7 @@ def analyze_pdf_text_quality(pdf_path: Path, expected_lang: str) -> Dict[str, An
     all_sampled_text = ""
     for pno in sample_pages:
         try:
-            txt = doc[pno].get_text()
+            txt = decode_pua_ascii(doc[pno].get_text())
             all_sampled_text += txt
         except Exception:
             pass

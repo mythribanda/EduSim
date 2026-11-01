@@ -10,7 +10,7 @@ Rule: any unassigned text page range > 2 pages, or any garbled/ocr_needed page, 
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 
 def collect_node_assigned_pages(node: Dict[str, Any]) -> Set[int]:

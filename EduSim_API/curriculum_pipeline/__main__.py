@@ -83,7 +83,7 @@ def cmd_extract(args: argparse.Namespace):
             bcode = get_ssc_book_code(fn)
         files_by_book.setdefault(bcode, []).append(r)
 
-    engine = CurriculumExtractorEngine(textbooks_dir=tb_dir, resume=args.resume, workers=getattr(args, "workers", 1))
+    engine = CurriculumExtractorEngine(textbooks_dir=tb_dir, resume=args.resume, workers=getattr(args, "workers", 1), enable_ocr=getattr(args, "ocr", False))
     review_queue: List[Dict[str, Any]] = []
     extraction_reports: List[Dict[str, Any]] = []
     all_books_curriculum: List[Dict[str, Any]] = []
@@ -619,6 +619,7 @@ def main():
     p_extract.add_argument("--no-resume", action="store_false", dest="resume", help="Force re-extraction of all files.")
     p_extract.add_argument("--workers", type=int, default=2, help="Parallel worker count (default 2).")
     p_extract.add_argument("--dry-run", action="store_true", help="Print plan without running extraction.")
+    p_extract.add_argument("--ocr", action="store_true", default=False, help="Enable OCR fallback for garbled pages.")
     p_extract.set_defaults(func=cmd_extract)
 
     # validate command

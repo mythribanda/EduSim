@@ -34,24 +34,29 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "8001:8001"
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-edusim_secret_password}@postgres:5432/${POSTGRES_DB:-edusim}
-      JWT_SECRET: ${JWT_SECRET:-edusim_super_secure_jwt_secret_key_at_least_32_chars_long}
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-edusim_super_secure_jwt_secret_key_at_least_32_chars_long}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-1095504585852-r7ort3l6fmt852hi1paapo3k601d9f4o.apps.googleusercontent.com}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-${JWT_SECRET}}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?GOOGLE_CLIENT_ID must be set}
       ALLOWED_ORIGINS: http://localhost:8080,http://frontend:8080
       FRONTEND_URL: http://localhost:8080
-      OLLAMA_BASE_URL: http://ollama:11434
-      OLLAMA_TIMEOUT: "60"
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_TIMEOUT: ${OLLAMA_TIMEOUT:-180}
+      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-30m}
+      OLLAMA_NUM_CTX: ${OLLAMA_NUM_CTX:-4096}
+      ALLOW_CLOUD_FALLBACK: ${ALLOW_CLOUD_FALLBACK:-false}
       TEXTBOOKS_DIR: /data/textbooks
-      FAISS_INDEX_DIR: /app/faiss_index
+      FAISS_INDEX_V2_DIR: /app/faiss_index_v2
       USE_CLOUD_AI: ${USE_CLOUD_AI:-false}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
     volumes:
-      - ./textbooks:/data/textbooks:ro
-      - faiss_index_data:/app/faiss_index
+      - ./EduSim_API/textbooks:/data/textbooks:ro
+      - faiss_index_v2_data:/app/faiss_index_v2
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8001/api/db/health || exit 1"]
       interval: 10s
@@ -70,7 +75,7 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_API_URL: ${VITE_API_URL:-http://localhost:8001}
-        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-1095504585852-r7ort3l6fmt852hi1paapo3k601d9f4o.apps.googleusercontent.com}
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-${GOOGLE_CLIENT_ID:?GOOGLE_CLIENT_ID must be set}}
     container_name: edusim_frontend
     restart: unless-stopped
     depends_on:
@@ -112,8 +117,8 @@ services:
 volumes:
   postgres_data:
     name: edusim_postgres_data
-  faiss_index_data:
-    name: edusim_faiss_index_data
+  faiss_index_v2_data:
+    name: edusim_faiss_index_v2_data
   ollama_data:
     name: edusim_ollama_data
 

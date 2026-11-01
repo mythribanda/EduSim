@@ -1,0 +1,8 @@
+{
+  "all-MiniLM-L6-v2": 0.50,
+  "sentence-transformers/all-MiniLM-L6-v2": 0.50,
+  "intfloat/multilingual-e5-small": 0.82,
+  "paraphrase-multilingual-MiniLM-L12-v2": 0.45,
+  "BAAI/bge-m3": 0.55,
+  "default": 0.50
+}

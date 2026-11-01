@@ -8,6 +8,7 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
+    "test": "node --import ./test/register.mjs --test src/services/TutorService.test.ts",
     "lint": "eslint .",
     "format": "prettier --write .",
     "organize-assets": "node organizeAssets.cjs",

@@ -12,7 +12,7 @@ consumable by generic Matter.js/PixiJS runtime engines.
 
 from __future__ import annotations
 import json
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from app.src.modules.sandbox.schemas.sandbox_schema import SandboxSchema
 
 

@@ -15,11 +15,11 @@ from pathlib import Path
 # =========================================================
 EDUSIM_API_DIR = Path(__file__).resolve().parents[4]
 
-FAISS_INDEX_DIR_ENV = os.getenv("FAISS_INDEX_DIR")
-if FAISS_INDEX_DIR_ENV:
-    INDEX_PATH = Path(FAISS_INDEX_DIR_ENV).resolve()
+FAISS_INDEX_V2_DIR_ENV = os.getenv("FAISS_INDEX_V2_DIR") or os.getenv("FAISS_INDEX_DIR")
+if FAISS_INDEX_V2_DIR_ENV:
+    INDEX_PATH = Path(FAISS_INDEX_V2_DIR_ENV).resolve()
 else:
-    INDEX_PATH = (EDUSIM_API_DIR / "faiss_index").resolve()
+    INDEX_PATH = (EDUSIM_API_DIR / "faiss_index_v2").resolve()
 
 TEXTBOOKS_DIR_ENV = os.getenv("TEXTBOOKS_DIR")
 if TEXTBOOKS_DIR_ENV:
@@ -28,12 +28,14 @@ else:
     TEXTBOOKS_DIR = (EDUSIM_API_DIR / "textbooks").resolve()
 
 INDEX_FILE = INDEX_PATH / "index.faiss"
-METADATA_FILE = INDEX_PATH / "metadata.pkl"
+METADATA_FILE = INDEX_PATH / "metadata.json" if (INDEX_PATH / "metadata.json").exists() else INDEX_PATH / "metadata.pkl"
 
 
 def is_index_ready() -> bool:
     """Check if the FAISS index and metadata files are present."""
-    return INDEX_FILE.exists() and METADATA_FILE.exists()
+    return INDEX_FILE.exists() and (
+        (INDEX_PATH / "metadata.json").exists() or (INDEX_PATH / "metadata.pkl").exists()
+    )
 
 
 

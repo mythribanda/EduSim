@@ -39,11 +39,12 @@ REPORTS_OUT_DIR = PIPELINE_OUTPUT_ROOT / "reports"
 
 
 class CurriculumExtractorEngine:
-    def __init__(self, textbooks_dir: Optional[Path] = None, resume: bool = True, workers: int = 1):
+    def __init__(self, textbooks_dir: Optional[Path] = None, resume: bool = True, workers: int = 1, enable_ocr: bool = False):
         self.textbooks_dir = textbooks_dir or TEXTBOOKS_DIR
         self.resume = resume
         self.workers = max(1, workers)
-        self.page_extractor = PageExtractor()
+        self.enable_ocr = enable_ocr
+        self.page_extractor = PageExtractor(enable_ocr=enable_ocr)
         self.style_profiler = StyleProfiler()
         self.coverage_prover = CoverageProver()
 
@@ -165,13 +166,15 @@ class CurriculumExtractorEngine:
         cls = book_info["class"]
 
         # 1. Page extraction for each chapter file
+        file_entries = [fe if isinstance(fe, dict) else {"file": str(fe)} for fe in file_entries]
         jsonl_files = []
         source_shas = []
         missing_langs = set()
 
         # Sort file entries by chapter number
         def get_ch_num(entry):
-            m = NCERT_PATTERN.match(entry["file"])
+            fn = entry.get("file", "") if isinstance(entry, dict) else str(entry)
+            m = NCERT_PATTERN.match(fn)
             return int(m.group(5)) if m else 0
 
         file_entries_sorted = sorted(file_entries, key=get_ch_num)
@@ -180,9 +183,11 @@ class CurriculumExtractorEngine:
         book_tq = "ok"
         tq_reason = ""
         for fe in file_entries_sorted:
-            fn = fe.get("file", "")
+            fn = fe.get("file", "") if isinstance(fe, dict) else str(fe)
             pf = self.preflight_by_file.get(fn)
             if pf and pf.get("classification") != "ok":
+                if medium.lower() == "english" and pf.get("classification") == "legacy_encoding":
+                    continue
                 book_tq = pf.get("classification")
                 tq_reason = pf.get("notes", "")
                 break
@@ -204,12 +209,12 @@ class CurriculumExtractorEngine:
                 "medium": medium,
                 "book_title": book_title,
                 "adapter": "none",
-                "source_files": [fe["file"] for fe in file_entries_sorted],
+                "source_files": [fe.get("file", str(fe)) if isinstance(fe, dict) else str(fe) for fe in file_entries_sorted],
                 "source_sha256": "",
                 "text_quality": book_tq,
                 "extraction_status": f"skipped_{book_tq}",
                 "notes": tq_reason,
-                "total_pages": sum(int(fe.get("pages") or 0) for fe in file_entries_sorted),
+                "total_pages": sum(int(fe.get("pages", 0)) if isinstance(fe, dict) else 0 for fe in file_entries_sorted),
                 "chapters": [],
                 "coverage_proof": coverage_proof,
             }
@@ -220,16 +225,16 @@ class CurriculumExtractorEngine:
 
         tasks = []
         for entry in file_entries_sorted:
-            fn = entry["file"]
+            fn = entry.get("file", "") if isinstance(entry, dict) else str(entry)
             pdf_path = self.textbooks_dir / "ncert books" / fn
-            tasks.append((pdf_path, fn))
+            tasks.append((pdf_path, fn, medium))
             out_jsonl = self.page_extractor.get_output_path(fn)
             jsonl_files.append(out_jsonl)
 
         if self.workers > 1:
             batch_results = self.page_extractor.extract_batch_parallel(tasks, workers=self.workers, force=not self.resume)
         else:
-            batch_results = [self.page_extractor.extract_file(p, fid, force=not self.resume) for p, fid in tasks]
+            batch_results = [self.page_extractor.extract_file(p, fid, force=not self.resume, expected_lang=exp_lang) for p, fid, exp_lang in tasks]
 
         for extract_res in batch_results:
             if extract_res.get("sha256"):
@@ -312,7 +317,19 @@ class CurriculumExtractorEngine:
             toc_sec_nums = set(toc_sec_list)
             has_mini_toc = (len(toc_sec_nums) >= 3) or (len(toc_sec_nums) >= 2 and len(toc_sec_list) > len(toc_sec_nums))
 
-            adapter.reset_chapter_state(chapter_number=ch_no)
+            # Detect section number prefix (handles multi-part books e.g. Part 2 starting at Ch 8)
+            detected_prefix = None
+            for p in pages[:2]:
+                for l in p.get("lines", []):
+                    m_sec = re.match(r"^(\d{1,2})\.\d{1,2}\b", l.get("text", "").strip())
+                    if m_sec:
+                        detected_prefix = m_sec.group(1)
+                        break
+                if detected_prefix:
+                    break
+
+            effective_ch_num = detected_prefix if detected_prefix else str(ch_no)
+            adapter.reset_chapter_state(chapter_number=effective_ch_num)
             raw_candidates = []
             for p in pages:
                 page_actual = ch_start + p.get("page_no", 1) - 1
@@ -380,7 +397,7 @@ class CurriculumExtractorEngine:
 
             ch_info = {
                 "id": f"{book_code}_ch_{ch_no}",
-                "official_number": str(ch_no),
+                "official_number": str(effective_ch_num),
                 "official_title": ch_title,
                 "wrapper": wrapper,
                 "evidence": f"File {fn} - Chapter {ch_no}: {ch_title}",
@@ -508,22 +525,42 @@ class CurriculumExtractorEngine:
         book_title = book_info["book_title"]
         cls = book_info["class"]
 
+        # Extract pages first so text-quality gate and OCR evaluation run per-page
+        extract_res = self.page_extractor.extract_file(pdf_path, file_id=fn, force=not self.resume, expected_lang=medium)
+        j_path = self.page_extractor.get_output_path(fn)
+
+        total_extracted = extract_res.get("pages_extracted", 0)
+        garbled_count = extract_res.get("pages_garbled", 0)
+
         # Check preflight text quality
         pf = self.preflight_by_file.get(fn)
         ssc_tq = pf.get("classification", "ok") if pf else "ok"
         tq_reason = pf.get("notes", "") if pf else ""
 
+        is_garbled_gate = total_extracted > 0 and (garbled_count / total_extracted) >= 0.30
         is_flagged = (
             "errata" in fn.lower()
             or fn == "5em.pdf"
             or fn == "English - Class VI - Total Book - 08.11.2024.pdf"
             or ssc_tq != "ok"
+            or is_garbled_gate
         )
 
         if is_flagged:
-            # Step A.2 & A.3 & Fix A: keep flagged/skipped, do not process nodes
-            status = f"skipped_{ssc_tq}" if ssc_tq != "ok" else "flagged"
-            print(f"  [SKIP] Skipping SSC book {book_code} ({book_title}) due to text_quality='{ssc_tq}' / flagged ({tq_reason})")
+            if is_garbled_gate:
+                status = "skipped_garbled"
+                tq = "garbled"
+                reason = f"High garbled text ratio: {garbled_count}/{total_extracted} pages failed quality gate"
+            elif ssc_tq != "ok":
+                status = f"skipped_{ssc_tq}"
+                tq = ssc_tq
+                reason = tq_reason
+            else:
+                status = "flagged"
+                tq = "flagged"
+                reason = "Flagged document"
+
+            print(f"  [SKIP] Skipping SSC book {book_code} ({book_title}) due to text_quality='{tq}' / flagged ({reason})")
             coverage_proof = self.coverage_prover.prove_coverage(
                 book_code=book_code,
                 chapters=[],
@@ -541,9 +578,9 @@ class CurriculumExtractorEngine:
                 "adapter": "none",
                 "source_files": [fn],
                 "source_sha256": entry.get("sha256", ""),
-                "text_quality": ssc_tq,
+                "text_quality": tq,
                 "extraction_status": status,
-                "notes": tq_reason,
+                "notes": reason,
                 "chapters": [],
                 "coverage_proof": coverage_proof,
             }
@@ -551,10 +588,6 @@ class CurriculumExtractorEngine:
             with open(b_out, "w", encoding="utf-8") as f:
                 json.dump(result, f, indent=2, ensure_ascii=False)
             return result
-
-        # Extract pages
-        extract_res = self.page_extractor.extract_file(pdf_path, file_id=fn, force=not self.resume)
-        j_path = self.page_extractor.get_output_path(fn)
 
         pages: List[Dict[str, Any]] = []
         meta_rec: Dict[str, Any] = {}
@@ -730,8 +763,21 @@ class CurriculumExtractorEngine:
             ocr_pages_set = {p.get("page_no") for p in pages if p.get("ocr_needed")}
             ch_ocr_needed = any(p_no in ocr_pages_set for p_no in range(c_start, c_end + 1))
 
-            # Extract raw node candidates from chapter pages
-            adapter.reset_chapter_state(chapter_number=idx + 1)
+            # Detect section number prefix (handles multi-part books e.g. Part 2 starting at Ch 7 or 8)
+            detected_prefix = None
+            for p_no in range(c_start, min(c_end + 1, c_start + 4)):
+                p_rec = next((p for p in pages if p.get("page_no") == p_no), None)
+                if p_rec:
+                    for l in p_rec.get("lines", []):
+                        m_sec = re.match(r"^(\d{1,2})\.\d{1,2}", l.get("text", "").strip())
+                        if m_sec:
+                            detected_prefix = m_sec.group(1)
+                            break
+                if detected_prefix:
+                    break
+
+            effective_ch_num = detected_prefix if detected_prefix else str(idx + 1)
+            adapter.reset_chapter_state(chapter_number=effective_ch_num)
             raw_candidates = []
             for p_no in range(c_start, c_end + 1):
                 p_rec = next((p for p in pages if p.get("page_no") == p_no), None)

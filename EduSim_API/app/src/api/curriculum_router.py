@@ -101,7 +101,7 @@ def search_curriculum(q: str, db: Session = Depends(get_db)):
     return uniq[:12]
 
 from pydantic import BaseModel
-from typing import Optional, Union, List
+from typing import Optional, Union
 from sqlalchemy.dialects.postgresql import insert
 
 class TopicPayload(BaseModel):
