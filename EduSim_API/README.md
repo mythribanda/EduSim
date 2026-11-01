@@ -100,6 +100,20 @@ The FAISS vector index (`vectorstore/`) and the SQLite database (`edusim.db`) ar
 
 > **Note:** If no `vectorstore/` directory exists when the server starts, it will attempt to build the index on first startup from whatever PDFs are in `data/`. Running the rebuild script ahead of time is recommended for a faster startup.
 
+### Rebuilding Evaluation Experiments
+
+Evaluation experiment indices (`faiss_index_exp_a/b/c/d`) evaluate embedding models and chunk sizes:
+* **Variant A**: `all-MiniLM-L6-v2` + current chunks (baseline)
+* **Variant B**: `all-MiniLM-L6-v2` + chunks re-split <=200 tokens
+* **Variant C**: `BAAI/bge-small-en-v1.5` + current chunks (query instruction prefix)
+* **Variant D**: `BAAI/bge-small-en-v1.5` + chunks re-split <=300 tokens
+
+To re-run and rebuild these evaluation indices:
+```bash
+python -m tests.rag_eval.run_model_experiments
+```
+The script loads `tests/rag_eval/questions_eval_v2.yaml`, generates evaluation indices under `faiss_index_exp_*` (untracked in git), and outputs precision and recall metrics without altering production `faiss_index_v2`.
+
 ---
 
 ## Developer Playground & Testing

@@ -310,6 +310,7 @@ For low-spec host machines without local GPUs or CPU capacity for 4B LLM inferen
 3. **IDOR Defense on Sandbox & Sessions:** In-memory tracking and database ownership validation on all sandbox runtimes and historical sessions.
 4. **Resilient Vector Store Lifecycle:** Startup checks verify FAISS index availability gracefully without crashing the server, returning HTTP 503 if vectors have not yet been built.
 5. **Role-Based Segmentation:** Users select their account role (`student` or `teacher`) at signup; login verifies account role matching without role-based route fragmentation.
+6. **FAISS Vector Indices & Git LFS:** Production vector index (`EduSim_API/faiss_index_v2/`) is tracked via Git LFS (`*.faiss` and `metadata.json`). Experimental model/chunk benchmark indices (`faiss_index_exp_a/b/c/d`) are ignored by Git (saving ~125.5 MB). To rebuild experiments, run `python -m tests.rag_eval.run_model_experiments` from `EduSim_API`.
 
 ---
 

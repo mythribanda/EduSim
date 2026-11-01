@@ -14,6 +14,7 @@ dist/bo
 .vscode/
 .idea/
 faiss_index/
+faiss_index_exp_*/
 # Generated at runtime — do not commit. Regenerate locally with:
 #   python -m app.src.modules.legacy_rag.rebuild_index
 vectorstore/

@@ -55,6 +55,8 @@ out/
 *.sqlite3
 vectorstore/
 faiss_index/
+faiss_index_exp_*/
+EduSim_API/faiss_index_exp_*/
 
 # ---------------------------------------------------------------------------
 # Logs
