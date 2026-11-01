@@ -6,9 +6,7 @@ venv/
 Lib/
 site-packages/
 node_modules/
-# REVIEW: "dist/bo" looks like a typo for "dist/" (the standard build-output folder).
-#         If you meant to ignore the dist/ directory, change this line to: dist/
-dist/bo
+dist/
 .vite/
 .wrangler/
 .vscode/
@@ -20,17 +18,8 @@ faiss_index_exp_*/
 vectorstore/
 # SQLite database files — use DATABASE_URL for a real DB in production.
 *.db
-# REVIEW: This negation ("!data/README.md") has no effect because line 29 ignores
-#         the entire "data/" directory. Git cannot un-exclude a file inside an
-#         already-ignored directory. Either remove this line or restructure so
-#         "data/" is not wholesale-ignored.
-!data/README.md
 EduSim_frontend/
-# REVIEW: "dotencv.pyi" looks like a typo for "dotenv.pyi" (the file that exists
-#         at EduSim_API/dotenv.pyi). If so, fix the spelling.
-dotencv.pyi
 rag_app.py
-# DELETED: "README.md" was here — it prevented any README from ever being committed.
 rebuild_rag_index.py
 search_pdf.py   
 test_import.py
@@ -40,8 +29,6 @@ test_v1_gen.py
 v1_test_output.json
 final_test.py
 final_output.json
-# REVIEW: Ignoring the entire "data/" directory makes the "!data/README.md" negation
-#         above (line 15) dead. Confirm this is intentional.
 data/
 textbooks/
 tessdata/
