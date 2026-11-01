@@ -517,15 +517,15 @@ class BaseSubjectAdapter:
                     "summary", "exercises", "exercises.", "whatyouhavelearnt",
                     "whatyouhavelearned", "pointstoponder", "आपनेक्यासीखा",
                     "सारांश", "అభ్యాసం", "మనంఏంచర్చించాం", "questionsandactivities",
-                    "questionsandexercises", "answers"
+                    "questionsandexercises", "answers", "solutions"
                 ]
                 or clean_lower.startswith("whatyouhavelearnt")
                 or clean_lower.startswith("whatyouhavelearned")
                 or clean_lower.startswith("pointstoponder")
                 or clean_lower.startswith("questionsandactivities")
-                or re.search(r"^(chapter\s*\d+\s*[-–—]?\s*)?(answers\s+to\s+exercises|answers)$", line.strip(), re.I)
+                or re.search(r"^(chapter\s*\d+\s*[-–—]?\s*)?(answers\s+to\s+exercises|answers|solutions|hints\s*(and|&)\s*solutions)$", line.strip(), re.I)
                 or re.search(r"^(solutions\s+to\s+(exercises|questions)|hints\s*(and|&)\s*solutions)$", line.strip(), re.I)
-                or (("answers" in clean_lower) and "chapter" in clean_lower and not re.search(r"\d+\.\d+", line))
+                or ((any(x in clean_lower for x in ["answers", "solutions"])) and "chapter" in clean_lower and not re.search(r"\d+\.\d+", line))
             )
             if is_end_section:
                 self.end_of_chapter_reached = True

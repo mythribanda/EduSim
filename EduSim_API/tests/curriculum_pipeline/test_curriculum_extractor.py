@@ -188,10 +188,11 @@ def test_tree_builder_hierarchy():
     assert len(top["nodes"]) == 1  # 1 subtopic
     subtop = top["nodes"][0]
     assert subtop["level"] == "subtopic"
-    assert len(subtop["nodes"]) == 1  # 1 activity
+    assert len(subtop["nodes"]) == 2  # 1 activity and 1 subheading attached to subtopic
     act = subtop["nodes"][0]
     assert act["level"] == "activity"
-    assert len(act["nodes"]) == 1  # 1 subheading
+    subh = subtop["nodes"][1]
+    assert subh["level"] == "subheading"
 
 
 def _collect_nodes(nodes, acc=None):

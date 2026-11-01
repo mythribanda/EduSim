@@ -1,4 +1,6 @@
 import argparse
+import os
+import pytest
 import sys
 import json
 from pathlib import Path
@@ -16,6 +18,8 @@ from app.src.modules.simulation_synthesis.service import (
 )
 
 def test_generation_pipeline(prompt: str = "A block sliding down an inclined plane with friction"):
+    if os.getenv("RUN_LIVE_LLM_TESTS") != "1":
+        pytest.skip("Skipping live LLM simulation synthesis: RUN_LIVE_LLM_TESTS=1 not set")
     print(f"Testing Generation Pipeline for prompt: '{prompt}'")
     print("-" * 60)
     

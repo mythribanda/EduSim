@@ -41,7 +41,8 @@ def books_dir():
 
 def _load_book_chunks(chunks_dir: Path, book_code: str):
     chunk_file = chunks_dir / f"{book_code}.jsonl"
-    assert chunk_file.exists(), f"Chunk file {chunk_file.name} does not exist"
+    if not chunk_file.exists():
+        pytest.skip(f"Chunk file {chunk_file.name} does not exist in {chunks_dir}")
     chunks = []
     with open(chunk_file, "r", encoding="utf-8") as f:
         for line in f:

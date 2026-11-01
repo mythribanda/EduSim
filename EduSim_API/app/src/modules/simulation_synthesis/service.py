@@ -16,7 +16,7 @@ from .prompt_builder import build_dsl_prompt as _build_dsl_prompt
 from .sanitizer import sanitize_json
 from .validator import validate_simulation
 from app.src.modules.legacy_rag.vector_loader import vector_store
-from tutor.subject_classifier import detect_subject
+from app.src.modules.tutor.subject_classifier import detect_subject
 
 PERSISTENCE_FILE = Path("data/generated_simulations.json")
 _store_lock = asyncio.Lock()
