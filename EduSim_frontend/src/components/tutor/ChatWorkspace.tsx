@@ -96,7 +96,6 @@ export function ChatWorkspace({
     }
     executedPromptsRef.current.add(trimmed);
     send(trimmed);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialPrompt]);
 
   const handleRegenerate = () => {

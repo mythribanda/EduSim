@@ -20,6 +20,8 @@ export function Navbar() {
     return () => window.removeEventListener("resize", updateDesktop);
   }, []);
 
+  const { user } = useAuthStore();
+
   if (pathname.startsWith("/sandbox") || pathname.startsWith("/tutor")) {
     return null;
   }
@@ -32,8 +34,6 @@ export function Navbar() {
     if (path.includes("/settings")) return "Settings";
     return "EduSim";
   };
-
-  const { user } = useAuthStore();
 
   if (isDesktop) {
     return (

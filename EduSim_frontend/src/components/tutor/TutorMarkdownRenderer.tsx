@@ -527,70 +527,7 @@ function getSectionColorClasses(kind: SectionKind): { border: string; bg: string
 }
 
 function renderMarkdownBody(body: string, sectionKind: SectionKind, density: Density, isDark: boolean) {
-  const components: Components & { math?: any; inlineMath?: any } = {
-    h1: ({ children }) => (
-      <h1
-        id={slugify(flattenText(children))}
-        className="scroll-mt-28 text-base font-bold text-foreground! mt-4 mb-2"
-      >
-        {children}
-      </h1>
-    ),
-    h2: ({ children }) => (
-      <h2
-        id={slugify(flattenText(children))}
-        className="scroll-mt-28 text-sm font-semibold text-foreground/80! mt-3 mb-1.5"
-      >
-        {children}
-      </h2>
-    ),
-    h3: ({ children }) => {
-      const text = flattenText(children).trim();
-      const isExampleStep = /^(problem|given|formula|substitution|calculation|final answer|interpretation)$/i.test(text);
-      if (isExampleStep) {
-        return (
-          <div className="mt-4 mb-2">
-            <span className="inline-flex items-center rounded-lg bg-primary/10 border border-primary/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary shadow-sm">
-              {text}
-            </span>
-          </div>
-        );
-      }
-      return (
-        <h3 className="text-xs font-bold text-foreground/70! mt-4 mb-2 uppercase tracking-wider">
-          {children}
-        </h3>
-      );
-    },
-    p: ({ children }) => {
-      return (
-        <p className={cn(
-          "text-foreground/80! dark:text-foreground/90! text-sm sm:text-[15px] leading-relaxed w-full font-normal max-w-[85ch]",
-          density === "compact" ? "mb-1.5" : "mb-3"
-        )}>
-          {children}
-        </p>
-      );
-    },
-    strong: ({ children }) => <strong className="font-bold text-foreground!">{children}</strong>,
-    a: ({ children, href }) => (
-      <a href={href} className="font-semibold text-primary underline decoration-primary/30 underline-offset-4 transition-colors hover:decoration-primary">
-        {children}
-      </a>
-    ),
-    hr: () => <hr className="my-4 border-border/40" />,
-    blockquote: ({ children }) => {
-      return (
-        <div className="my-3.5 rounded-2xl border border-primary/20 bg-secondary/40 px-5 py-4 shadow-sm">
-          <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground/80">
-            <Lightbulb className="h-4.5 w-4.5 text-primary" />
-            <span>Callout</span>
-          </div>
-          <div className="space-y-1.5 text-sm leading-relaxed text-foreground/90">{children}</div>
-        </div>
-      );
-    },
-    ul: ({ children }) => {
+  const Ul = ({ children }: any) => {
       const depth = React.useContext(ListDepthContext);
       const items = React.Children.toArray(children);
       const texts = listItemTexts(children);
@@ -672,8 +609,8 @@ function renderMarkdownBody(body: string, sectionKind: SectionKind, density: Den
           </ul>
         </ListDepthContext.Provider>
       );
-    },
-    ol: ({ children }) => {
+  };
+  const Ol = ({ children }: any) => {
       const depth = React.useContext(ListDepthContext);
       return (
         <ListDepthContext.Provider value={depth + 1}>
@@ -682,8 +619,8 @@ function renderMarkdownBody(body: string, sectionKind: SectionKind, density: Den
           </ol>
         </ListDepthContext.Provider>
       );
-    },
-    li: ({ children }) => {
+  };
+  const Li = ({ children }: any) => {
       const depth = React.useContext(ListDepthContext);
       
       if (depth > 1) {
@@ -703,7 +640,74 @@ function renderMarkdownBody(body: string, sectionKind: SectionKind, density: Den
           <span className="min-w-0 flex-1 font-medium">{children}</span>
         </li>
       );
+  };
+
+  const components: Components & { math?: any; inlineMath?: any } = {
+    h1: ({ children }) => (
+      <h1
+        id={slugify(flattenText(children))}
+        className="scroll-mt-28 text-base font-bold text-foreground! mt-4 mb-2"
+      >
+        {children}
+      </h1>
+    ),
+    h2: ({ children }) => (
+      <h2
+        id={slugify(flattenText(children))}
+        className="scroll-mt-28 text-sm font-semibold text-foreground/80! mt-3 mb-1.5"
+      >
+        {children}
+      </h2>
+    ),
+    h3: ({ children }) => {
+      const text = flattenText(children).trim();
+      const isExampleStep = /^(problem|given|formula|substitution|calculation|final answer|interpretation)$/i.test(text);
+      if (isExampleStep) {
+        return (
+          <div className="mt-4 mb-2">
+            <span className="inline-flex items-center rounded-lg bg-primary/10 border border-primary/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary shadow-sm">
+              {text}
+            </span>
+          </div>
+        );
+      }
+      return (
+        <h3 className="text-xs font-bold text-foreground/70! mt-4 mb-2 uppercase tracking-wider">
+          {children}
+        </h3>
+      );
     },
+    p: ({ children }) => {
+      return (
+        <p className={cn(
+          "text-foreground/80! dark:text-foreground/90! text-sm sm:text-[15px] leading-relaxed w-full font-normal max-w-[85ch]",
+          density === "compact" ? "mb-1.5" : "mb-3"
+        )}>
+          {children}
+        </p>
+      );
+    },
+    strong: ({ children }) => <strong className="font-bold text-foreground!">{children}</strong>,
+    a: ({ children, href }) => (
+      <a href={href} className="font-semibold text-primary underline decoration-primary/30 underline-offset-4 transition-colors hover:decoration-primary">
+        {children}
+      </a>
+    ),
+    hr: () => <hr className="my-4 border-border/40" />,
+    blockquote: ({ children }) => {
+      return (
+        <div className="my-3.5 rounded-2xl border border-primary/20 bg-secondary/40 px-5 py-4 shadow-sm">
+          <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground/80">
+            <Lightbulb className="h-4.5 w-4.5 text-primary" />
+            <span>Callout</span>
+          </div>
+          <div className="space-y-1.5 text-sm leading-relaxed text-foreground/90">{children}</div>
+        </div>
+      );
+    },
+    ul: Ul,
+    ol: Ol,
+    li: Li,
     table: ({ children }) => (
       <div className="my-4 overflow-hidden rounded-2xl border border-border/40 bg-card/30 shadow-sm">
         <div className="overflow-x-auto">

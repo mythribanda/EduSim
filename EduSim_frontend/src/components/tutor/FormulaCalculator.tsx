@@ -6,16 +6,8 @@ interface Props {
 }
 
 export default function FormulaCalculator({ formulaDef }: Props) {
-  if (!formulaDef) {
-    return (
-      <div className="flex flex-col items-center justify-center p-6 text-center text-muted-foreground">
-        <p>No calculator available for this formula definition.</p>
-      </div>
-    );
-  }
-
-  const variables = formulaDef.variables;
-  const unitMap = formulaDef.unitMap || {};
+  const variables = formulaDef?.variables || {};
+  const unitMap = formulaDef?.unitMap || {};
   const symbols = Object.keys(variables);
 
   // Default target is the first variable (typically LHS of equation)
@@ -26,6 +18,7 @@ export default function FormulaCalculator({ formulaDef }: Props) {
 
   // Initialize values
   useEffect(() => {
+    if (!formulaDef) return;
     const initialValues: Record<string, string> = {};
     symbols.forEach((sym) => {
       if (sym !== targetSymbol) {
@@ -43,10 +36,11 @@ export default function FormulaCalculator({ formulaDef }: Props) {
     });
     setValues(initialValues);
     setErrorMsg(null);
-  }, [targetSymbol, formulaDef.id]);
+  }, [targetSymbol, formulaDef?.id]);
 
   // Recalculate
   useEffect(() => {
+    if (!formulaDef) return;
     setErrorMsg(null);
     const inputs: Record<string, number> = {};
     let hasEmpty = false;
@@ -118,7 +112,15 @@ export default function FormulaCalculator({ formulaDef }: Props) {
       setErrorMsg(e.message || "Calculation error");
       setResult(null);
     }
-  }, [values, targetSymbol, formulaDef.id]);
+  }, [values, targetSymbol, formulaDef?.id]);
+
+  if (!formulaDef) {
+    return (
+      <div className="flex flex-col items-center justify-center p-6 text-center text-muted-foreground">
+        <p>No calculator available for this formula definition.</p>
+      </div>
+    );
+  }
 
   const handleInputChange = (sym: string, val: string) => {
     setValues((prev) => ({ ...prev, [sym]: val }));

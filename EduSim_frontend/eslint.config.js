@@ -29,7 +29,7 @@ export default tseslint.config(
       "no-useless-escape": "off",
       "no-case-declarations": "off",
       "no-control-regex": "off",
-      "react-hooks/rules-of-hooks": "warn",
+      "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "off",
       "no-empty": "off",
     },
