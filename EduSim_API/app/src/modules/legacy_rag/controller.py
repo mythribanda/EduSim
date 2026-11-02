@@ -50,6 +50,17 @@ async def rag_query_controller(request: RagQueryRequest):
         raise
     except RuntimeError as e:
         logger.error(f"RAG AI Service Unavailable: {e}")
+        from app.src.modules.tutor.subject_classifier import detect_subject
+        is_non_physics = (normalized_subj and normalized_subj != "physics") or (detect_subject(request.query) != "physics")
+        if is_non_physics:
+            return {
+                "success": True,
+                "answer": "This topic is not in the curriculum yet.",
+                "sources": [],
+                "context": [],
+                "fallback_mode": True,
+                "subject_fallback": False,
+            }
         raise HTTPException(
             status_code=503,
             detail=f"AI service unavailable: {str(e)}",

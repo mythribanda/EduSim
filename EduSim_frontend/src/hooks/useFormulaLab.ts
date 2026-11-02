@@ -55,7 +55,7 @@ export function useFormulaLab() {
         if (!rag) {
           const response = await physicsSimulationApi.searchRag(
             params.topic,
-            params.subject || "physics",
+            params.subject,
             params.chapter || ""
           );
           if (response.success && response.data?.chunks) {

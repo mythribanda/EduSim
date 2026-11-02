@@ -8,6 +8,7 @@ from app.src.config.similarity import get_similarity_threshold, evaluate_retriev
 logger = logging.getLogger("EduSim.RAGService")
 
 REFUSAL_MESSAGE = "I couldn't find this in the textbooks."
+NOT_IN_CURRICULUM_MESSAGE = "This topic is not in the curriculum yet."
 
 async def query_rag_service(
     query: str,
@@ -52,8 +53,11 @@ async def query_rag_service(
                 f"[RAG] Retrieval refused ({reason}) for query='{query[:50]}'. "
                 "Refusing immediately without calling LLM."
             )
+            from app.src.modules.tutor.subject_classifier import detect_subject
+            is_non_physics = (norm_subject and norm_subject != "physics") or (detect_subject(query) != "physics")
+            refusal_text = NOT_IN_CURRICULUM_MESSAGE if is_non_physics else REFUSAL_MESSAGE
             return {
-                "answer": REFUSAL_MESSAGE,
+                "answer": refusal_text,
                 "sources": [],
                 "context": [],
                 "fallback_mode": True,
@@ -94,20 +98,44 @@ async def query_rag_service(
         context = "\n\n---\n\n".join(context_blocks)
 
         # 5. Generate response via local Ollama
-        answer = await generate_response(
-            context=context,
-            question=query,
-            fallback_mode=False,
-        )
+        try:
+            answer = await generate_response(
+                context=context,
+                question=query,
+                fallback_mode=False,
+            )
 
-        return {
-            "answer": answer,
-            "sources": sources,
-            "context": results,
-            "fallback_mode": False,
-            "subject_fallback": subject_fallback,
-        }
+            return {
+                "answer": answer,
+                "sources": sources,
+                "context": results,
+                "fallback_mode": False,
+                "subject_fallback": subject_fallback,
+            }
+        except Exception as e:
+            from app.src.modules.tutor.subject_classifier import detect_subject
+            is_non_physics = (norm_subject and norm_subject != "physics") or (detect_subject(query) != "physics")
+            if is_non_physics:
+                logger.warning(f"[RAG] LLM generation failed ({e}) for non-physics topic. Returning fallback response.")
+                return {
+                    "answer": NOT_IN_CURRICULUM_MESSAGE,
+                    "sources": sources,
+                    "context": results,
+                    "fallback_mode": True,
+                    "subject_fallback": subject_fallback,
+                }
+            raise e
 
     except Exception as e:
         logger.error(f"Error in query_rag_service: {e}", exc_info=True)
+        from app.src.modules.tutor.subject_classifier import detect_subject
+        is_non_physics = (subject and str(subject).lower() != "physics") or (detect_subject(query) != "physics")
+        if is_non_physics:
+            return {
+                "answer": NOT_IN_CURRICULUM_MESSAGE,
+                "sources": [],
+                "context": [],
+                "fallback_mode": True,
+                "subject_fallback": False,
+            }
         raise e

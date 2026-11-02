@@ -21,16 +21,26 @@ class PhysicsSimulationApi {
     chapter?: string,
   ): Promise<SimulationResponse<{ chunks: { text: string }[] }>> {
     try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      const token = typeof window !== "undefined" ? window.localStorage.getItem("token") : null;
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const bodyPayload: Record<string, any> = {
+        query,
+        chapter: chapter || "",
+      };
+      if (subject) {
+        bodyPayload.subject = subject;
+      }
+
       const response = await fetch(joinUrl(this.apiBaseUrl, "/api/rag/search"), {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          query,
-          subject: subject || "physics",
-          chapter: chapter || "",
-        }),
+        headers,
+        body: JSON.stringify(bodyPayload),
       });
 
       const data = await response.json();

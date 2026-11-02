@@ -174,7 +174,7 @@ const FormulaLabPage: React.FC<Props> = ({
     setIsSearchingAi(true);
     setAiSearchError(null);
     try {
-      const response = await physicsSimulationApi.searchRag(q, subject || "physics", chapter || "");
+      const response = await physicsSimulationApi.searchRag(q, subject, chapter || "");
       let rag = "";
       if (response.success && response.data?.chunks) {
         rag = response.data.chunks.map((c: any) => c.text).join("\n\n");

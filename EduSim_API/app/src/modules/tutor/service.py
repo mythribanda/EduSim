@@ -647,6 +647,30 @@ async def analyze_tutor_query(
         valid_docs = [doc for doc in docs if doc.get('score', 0) > 0.35]
         
     fallback_mode = not bool(valid_docs)
+
+    if fallback_mode and target_subject and target_subject.lower() != "physics":
+        not_in_curr_msg = "This topic is not in the curriculum yet."
+        return {
+            "title": f"{target_subject.capitalize()}: Curriculum Notice",
+            "description": query,
+            "formula": "",
+            "related_concepts": [target_subject.capitalize()],
+            "related_formulas": [],
+            "ai_explanation": not_in_curr_msg,
+            "sources": [],
+            "queryType": "concept",
+            "concepts": [target_subject.capitalize()],
+            "formulas": [],
+            "explanation": not_in_curr_msg,
+            "summary": not_in_curr_msg,
+            "ragContent": [],
+            "simulation_guide": {"is_buildable": False},
+            "generation_status": "success",
+            "generation_failed": False,
+            "status_code": 200,
+            "provider": "system",
+            "tokens_used": 0,
+        }
     
     if not fallback_mode:
         use_cloud = os.getenv("USE_CLOUD_AI", "false").lower() in ("true", "1", "yes")
@@ -970,6 +994,13 @@ async def analyze_tutor_query_stream(
         valid_docs = [doc for doc in docs if doc.get('score', 0) > 0.35]
         
     fallback_mode = not bool(valid_docs)
+
+    if fallback_mode and target_subject and target_subject.lower() != "physics":
+        not_in_curr_msg = "This topic is not in the curriculum yet."
+        yield "data: " + json.dumps({"ragContent": []}) + "\n\n"
+        yield "data: " + json.dumps({"explanation": not_in_curr_msg, "title": f"{target_subject.capitalize()}: Curriculum Notice", "formulas": [], "concepts": [target_subject.capitalize()], "simulation_guide": {"is_buildable": False}}) + "\n\n"
+        yield "data: [DONE]\n\n"
+        return
     
     if not fallback_mode:
         for doc in valid_docs[:3]: # Optimized to 3

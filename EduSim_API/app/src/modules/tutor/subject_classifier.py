@@ -1,5 +1,17 @@
 
 
+import re
+
+
+def _count_keyword_matches(keywords: list[str], text: str) -> int:
+    count = 0
+    for k in keywords:
+        pattern = r"\b" + re.escape(k) + r"\b"
+        if re.search(pattern, text):
+            count += 1
+    return count
+
+
 def detect_subject(query: str) -> str:
     """
     Lightweight keyword-based subject routing
@@ -276,10 +288,10 @@ def detect_subject(query: str) -> str:
     # SCORING
     # =====================================================
     scores = {
-        "physics": sum(1 for k in physics_keywords if k in q),
-        "chemistry": sum(1 for k in chemistry_keywords if k in q),
-        "maths": sum(1 for k in maths_keywords if k in q),
-        "biology": sum(1 for k in biology_keywords if k in q),
+        "physics": _count_keyword_matches(physics_keywords, q),
+        "chemistry": _count_keyword_matches(chemistry_keywords, q),
+        "maths": _count_keyword_matches(maths_keywords, q),
+        "biology": _count_keyword_matches(biology_keywords, q),
     }
 
     # =====================================================

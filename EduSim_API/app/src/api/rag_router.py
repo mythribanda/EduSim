@@ -22,7 +22,7 @@ def require_vector_index():
 
 
 class RagSearchRequest(BaseModel):
-    subject: str = "physics"
+    subject: Optional[str] = None
     class_name: Optional[Union[str, int]] = ""
     class_num: Optional[int] = None
     chapter: str = ""

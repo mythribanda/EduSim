@@ -20,7 +20,7 @@ class SearchResultList(list):
 class RagService:
     @staticmethod
     def search_chunks(
-        subject: str = "physics",
+        subject: Optional[str] = None,
         chapter: Optional[Union[str, int]] = None,
         query: str = "",
         chapter_number: Optional[Union[int, str]] = None,
@@ -36,6 +36,11 @@ class RagService:
 
         # 2. Normalize subject and check against valid subjects in the index
         norm_subject = normalize_subject(subject) if subject else None
+        if not norm_subject and query:
+            from app.src.modules.tutor.subject_classifier import detect_subject
+            detected = detect_subject(query)
+            if detected:
+                norm_subject = normalize_subject(detected)
         valid_subjects = vector_store.get_valid_subjects()
         subject_fallback = False
 

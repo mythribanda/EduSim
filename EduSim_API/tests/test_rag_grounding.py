@@ -279,3 +279,25 @@ async def test_ai_router_default_fallback_behavior_for_other_callers(monkeypatch
 
         assert "OpenRouter fallback is disabled" in str(exc_info.value)
         assert mock_cloud.call_count == 0
+
+
+@pytest.mark.asyncio
+async def test_non_physics_query_returns_not_in_curriculum_when_empty():
+    """
+    When RAG returns nothing for non-physics topics, return 'This topic is not in the curriculum yet.'
+    """
+    with patch("app.src.modules.legacy_rag.service.vector_store.retrieve", return_value=[]):
+        res = await query_rag_service(
+            query="photosynthesis in chloroplasts",
+            subject="biology",
+        )
+        assert res["answer"] == "This topic is not in the curriculum yet."
+        assert res["fallback_mode"] is True
+
+
+def test_photosynthesis_subject_classification():
+    """
+    Photosynthesis should be classified as biology, not chemistry.
+    """
+    from app.src.modules.tutor.subject_classifier import detect_subject
+    assert detect_subject("photosynthesis") == "biology"
