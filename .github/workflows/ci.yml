@@ -40,6 +40,10 @@ jobs:
         env:
           USE_CLOUD_AI: "true"
           DATABASE_URL: "sqlite:///ci_test.db"
+          JWT_SECRET: "ci-secret-token-key-for-testing-at-least-32-chars-long"
+          JWT_SECRET_KEY: "ci-secret-token-key-for-testing-at-least-32-chars-long"
+          SECRET_KEY: "ci-secret-token-key-for-testing-at-least-32-chars-long"
+          OPENROUTER_API_KEY: "mock-openrouter-key"
         run: |
           pytest -q
 

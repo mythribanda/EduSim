@@ -257,6 +257,8 @@ async def test_ai_router_default_fallback_behavior_for_other_callers(monkeypatch
     - If allow_fallback=False is explicitly passed, RuntimeError is raised without calling OpenRouter.
     """
     monkeypatch.setenv("ENABLE_OPENROUTER_FALLBACK", "true")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "dummy-openrouter-key")
+    monkeypatch.setenv("USE_CLOUD_AI", "false")
 
     # Mock Ollama post to fail
     with patch("httpx.AsyncClient.post", side_effect=httpx.ConnectError("Ollama down")), \
