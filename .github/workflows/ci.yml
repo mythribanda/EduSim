@@ -40,6 +40,7 @@ jobs:
         env:
           USE_CLOUD_AI: "true"
           DATABASE_URL: "sqlite:///ci_test.db"
+          PYTHONPATH: ${{ github.workspace }}/EduSim_API
         run: |
           pytest -q
 
