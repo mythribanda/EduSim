@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent / "EduSim_API"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "EduSim_API"))
 
 from app.src.modules.legacy_rag.vector_loader import vector_store
 
