@@ -1257,8 +1257,6 @@ async def analyze_tutor_query(
             "status_code": 200,
         }
 
-    is_follow_up = history and any(msg["role"] == "user" for msg in history)
-
     # Lightweight history summarization without extra LLM call
     history_summary = ""
     if history and len(history) > 16:
@@ -1692,8 +1690,6 @@ async def analyze_tutor_query_stream(
         full_context = f"{profile_context}{full_context}"
 
     is_follow_up = history and any(msg["role"] == "user" for msg in history)
-    run_simulation_gen = not is_follow_up or needs_simulation_generation(query)
-
     # Stream explanation text
     from app.src.modules.legacy_rag.generator import get_tutor_prompt, NEW_RENDERING_SYSTEM
     from app.src.services.ai_router import call_ai_stream
@@ -2445,4 +2441,3 @@ async def generate_tutor_guide(query: str) -> Dict[str, Any]:
         "title": structured.get("title", "Simulation Guide"),
         "simulation_guide": structured.get("simulation_guide", {"is_buildable": False}),
     }
-

@@ -13,7 +13,7 @@ import re
 import math
 from collections import defaultdict
 import sympy
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Tuple
 
 # Canonical Formula Registry with metadata
 CANONICAL_FORMULAS = {

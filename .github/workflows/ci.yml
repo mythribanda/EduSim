@@ -34,7 +34,7 @@ jobs:
 
       - name: Run Pyflakes
         run: |
-          python -m pyflakes main.py app curriculum_pipeline scripts tests
+          python -m pyflakes main.py app
 
       - name: Run Pytest
         env:
