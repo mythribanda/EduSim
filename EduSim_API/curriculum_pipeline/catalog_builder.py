@@ -1,7 +1,7 @@
 """
 EduSim Curriculum Pipeline — Catalog Builder
 Loads empirical NCERT and SSC book mappings from mapping.yaml,
-validates that all files are mapped (failing loudly and logging to unmapped_files.csv if not),
+validates that all files are mapped (logging to unmapped_files.csv if not),
 and generates books_catalog.csv.
 """
 
@@ -20,10 +20,12 @@ from curriculum_pipeline.pipeline_config import (
     MAPPING_YAML_PATH,
     NCERT_CLASS_MAP,
     NCERT_LANG_MAP,
-    NCERT_PATTERN,
     PIPELINE_OUTPUT_ROOT,
     TEXTBOOKS_DIR,
+    get_ncert_book_code,
     get_ssc_book_code,
+    is_ncert_filename,
+    parse_ncert_filename,
 )
 
 CATALOG_CSV_PATH = PIPELINE_OUTPUT_ROOT / "catalog" / "books_catalog.csv"
@@ -37,17 +39,6 @@ def load_mapping_config(yaml_path: Optional[Path] = None) -> Dict[str, Any]:
         raise FileNotFoundError(f"Mapping configuration file not found at {path}")
     with open(path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
-
-
-_MAPPING = load_mapping_config()
-_NCERT_SUBJECTS_CFG = _MAPPING.get("ncert", {}).get("subjects", {})
-_SSC_BOOKS_CFG = _MAPPING.get("ssc", {}).get("books", {})
-
-# Backwards compatible NCERT_KNOWN_SUBJECTS dict
-NCERT_KNOWN_SUBJECTS: Dict[str, Tuple[str, str]] = {
-    code: (data.get("subject", "general"), data.get("title", "Textbook"))
-    for code, data in _NCERT_SUBJECTS_CFG.items()
-}
 
 
 def extract_title_from_doc(doc: fitz.Document) -> str:
@@ -94,29 +85,49 @@ def build_books_catalog(
 
     for r in rows:
         fn = r["file"]
-        m = NCERT_PATTERN.match(fn)
-        if m:
-            c, lang, code, part, ch = m.groups()
-            bcode = f"{c.lower()}{lang.lower()}{code.lower()}{part}"
-            if code.lower() not in ncert_subjects:
+        board = r.get("board", "").lower()
+        source_type = r.get("source_type", "").lower()
+
+        # Check if NCERT
+        if board == "ncert" or "ncert" in source_type or is_ncert_filename(fn):
+            parsed = parse_ncert_filename(fn)
+            if not parsed:
+                # Check stem
+                stem = Path(fn).stem.lower()
+                if len(stem) == 4 and stem[0] in ncert_classes and stem[1] in ncert_langs:
+                    bcode = stem
+                    code = stem[2:4]
+                else:
+                    unmapped_files.append({
+                        "file": fn,
+                        "board": "ncert",
+                        "reason": f"Unparseable NCERT filename '{fn}'",
+                    })
+                    continue
+            else:
+                bcode = get_ncert_book_code(fn)
+                code = parsed["subject_code"]
+
+            if code not in ncert_subjects:
                 unmapped_files.append({
                     "file": fn,
                     "board": "ncert",
-                    "reason": f"Unknown NCERT subject code '{code.lower()}'"
+                    "reason": f"Unknown NCERT subject code '{code}'",
                 })
             else:
                 ncert_groups[bcode].append(r)
         else:
+            # SSC
             if fn not in ssc_books:
                 unmapped_files.append({
                     "file": fn,
                     "board": "ssc",
-                    "reason": "Filename not mapped in mapping.yaml ssc.books"
+                    "reason": "Filename not mapped in mapping.yaml ssc.books",
                 })
             else:
                 ssc_files.append(r)
 
-    # If unmapped files exist, record and fail loudly!
+    # If unmapped files exist, record and report
     if unmapped_files:
         with open(UNMAPPED_REPORT_PATH, "w", encoding="utf-8-sig", newline="") as uf:
             writer = csv.DictWriter(uf, fieldnames=["file", "board", "reason"])
@@ -128,7 +139,7 @@ def build_books_catalog(
             f"Add them to {MAPPING_YAML_PATH}."
         )
 
-    # If all mapped, write empty unmapped report if needed
+    # If all mapped, remove stale unmapped report if present
     if UNMAPPED_REPORT_PATH.exists():
         UNMAPPED_REPORT_PATH.unlink()
 
@@ -139,26 +150,20 @@ def build_books_catalog(
         c_letter = bcode[0]
         lang_letter = bcode[1]
         code = bcode[2:4]
-        part = int(bcode[4:])
+        part_str = bcode[4:] if len(bcode) > 4 else ""
 
         cls = ncert_classes.get(c_letter, 0)
         medium = ncert_langs.get(lang_letter, "en")
 
         subj_info = ncert_subjects.get(code, {})
         subj = subj_info.get("subject", "unknown")
-        base_title = f"{subj_info.get('title', 'Textbook')} Class {cls} Part {part}"
-
-        # Sample the first file to confirm / refine title
-        sample_file = tb_dir / "ncert books" / flist[0]["file"]
-        first_title = ""
-        if sample_file.exists():
-            try:
-                doc = fitz.open(sample_file)
-                first_title = extract_title_from_doc(doc)
-            except Exception:
-                pass
-
-        final_title = f"{base_title} ({first_title})" if first_title else base_title
+        title_base = subj_info.get("title", "Textbook")
+        
+        # Use verified mapping.yaml metadata as the primary title source
+        if part_str:
+            final_title = f"{title_base} Part {part_str}"
+        else:
+            final_title = title_base
 
         catalog_rows.append({
             "book_code": bcode,

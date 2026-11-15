@@ -1,0 +1,99 @@
+{
+  "overall_accuracy": 100.0,
+  "total_evaluated": 100,
+  "total_correct": 100,
+  "per_language": {
+    "en": {
+      "correct": 25,
+      "total": 25,
+      "accuracy": 100.0
+    },
+    "te": {
+      "correct": 25,
+      "total": 25,
+      "accuracy": 100.0
+    },
+    "hi": {
+      "correct": 25,
+      "total": 25,
+      "accuracy": 100.0
+    },
+    "mixed": {
+      "correct": 25,
+      "total": 25,
+      "accuracy": 100.0
+    }
+  },
+  "classification_report": {
+    "physics": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 24.0
+    },
+    "chemistry": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 24.0
+    },
+    "biology": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 24.0
+    },
+    "mathematics": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 28.0
+    },
+    "accuracy": 1.0,
+    "macro avg": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 100.0
+    },
+    "weighted avg": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 100.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      24,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      24,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      24,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      28
+    ]
+  ],
+  "labels": [
+    "physics",
+    "chemistry",
+    "biology",
+    "mathematics"
+  ],
+  "failures": []
+}

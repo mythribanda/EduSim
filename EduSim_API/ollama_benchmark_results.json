@@ -1,0 +1,35 @@
+[
+  {
+    "name": "Baseline: 4 Chunks, num_ctx=4096, default threads",
+    "wall_time": 31.48,
+    "load_time": 6.23,
+    "prompt_tokens": 441,
+    "prompt_time": 7.63,
+    "prompt_tok_per_sec": 57.8,
+    "eval_tokens": 213,
+    "eval_time": 17.33,
+    "eval_tok_per_sec": 12.3
+  },
+  {
+    "name": "Optimized: 2 Chunks, num_ctx=2048, num_predict=512",
+    "wall_time": 30.26,
+    "load_time": 6.15,
+    "prompt_tokens": 441,
+    "prompt_time": 7.46,
+    "prompt_tok_per_sec": 59.1,
+    "eval_tokens": 201,
+    "eval_time": 16.36,
+    "eval_tok_per_sec": 12.3
+  },
+  {
+    "name": "Optimized: 2 Chunks, num_ctx=2048, num_thread=8, num_predict=512",
+    "wall_time": 29.21,
+    "load_time": 5.9,
+    "prompt_tokens": 441,
+    "prompt_time": 7.59,
+    "prompt_tok_per_sec": 58.1,
+    "eval_tokens": 199,
+    "eval_time": 15.42,
+    "eval_tok_per_sec": 12.9
+  }
+]

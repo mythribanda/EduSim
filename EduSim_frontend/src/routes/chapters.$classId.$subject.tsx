@@ -136,13 +136,15 @@ function ChaptersPage() {
                 subject: s.id,
                 chapter: chapter.name,
               }}
+              className="h-full"
             >
-              <Card delay={i * 0.02}>
-                <div className="text-xs font-bold text-primary mb-2">CHAPTER</div>
+              <Card delay={i * 0.02} className="h-[150px] min-h-[150px] w-full flex flex-col justify-between p-5 border border-border bg-card shadow-sm hover:border-primary/50 rounded-2xl transition-all">
+                <div>
+                  <div className="text-xs font-bold text-primary mb-1">CHAPTER</div>
+                  <div className="text-sm sm:text-base font-bold mb-2 line-clamp-2 min-h-[2.5rem] leading-snug">{chapter.name}</div>
+                </div>
 
-                <div className="text-lg font-bold mb-2">{chapter.name}</div>
-
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground font-medium mt-2">
                   Chapter {i + 1} of {safeChapters.length}
                 </p>
               </Card>

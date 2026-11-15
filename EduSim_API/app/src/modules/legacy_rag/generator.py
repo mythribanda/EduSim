@@ -1386,8 +1386,8 @@ async def generate_response(
     use_cloud_ai = os.getenv("USE_CLOUD_AI", "false").lower() in ("true", "1", "yes")
     effective_context = context
     if not use_cloud_ai:
-        ollama_chunks = int(os.getenv("OLLAMA_MAX_CHUNKS", "4"))
-        ollama_tokens = int(os.getenv("OLLAMA_MAX_CONTEXT_TOKENS", "1500"))
+        ollama_chunks = int(os.getenv("OLLAMA_MAX_CHUNKS", "2"))
+        ollama_tokens = int(os.getenv("OLLAMA_MAX_CONTEXT_TOKENS", "1000"))
         effective_context = limit_context_budget(context, max_chunks=ollama_chunks, max_tokens=ollama_tokens)
 
     rag_user_prompt = f"""=========================================================

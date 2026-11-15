@@ -31,6 +31,7 @@ interface Props {
   messages?: Message[];
   onNewChat?: () => void;
   toggleHistory?: () => void;
+  isHistoryOpen?: boolean;
 }
 
 function formatTime(date: Date) {
@@ -50,6 +51,7 @@ export function ChatWorkspace({
   messages: propsMessages,
   onNewChat,
   toggleHistory,
+  isHistoryOpen,
 }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
 
@@ -196,6 +198,7 @@ export function ChatWorkspace({
         topicTitle={topicTitle}
         topicContext={topicContext}
         toggleHistory={toggleHistory}
+        isHistoryOpen={isHistoryOpen}
       />
 
       {messages.length === 0 && (

@@ -1,23 +1,59 @@
 
 
+import logging
 import re
+from pathlib import Path
+from typing import Optional
+
+logger = logging.getLogger("EduSim.tutor.subject_classifier")
+
+_NLP_MODEL = None
+_MODEL_PATH = Path(__file__).resolve().parent / "subject_classifier.joblib"
+
+def _get_nlp_model():
+    global _NLP_MODEL
+    if _NLP_MODEL is None and _MODEL_PATH.exists():
+        try:
+            import joblib
+            _NLP_MODEL = joblib.load(_MODEL_PATH)
+        except Exception as e:
+            logger.warning(f"Could not load subject_classifier.joblib: {e}")
+    return _NLP_MODEL
 
 
 def _count_keyword_matches(keywords: list[str], text: str) -> int:
     count = 0
     for k in keywords:
-        pattern = r"\b" + re.escape(k) + r"\b"
-        if re.search(pattern, text):
-            count += 1
+        if any(ord(c) > 127 for c in k):
+            if k in text:
+                count += 1
+        else:
+            pattern = r"\b" + re.escape(k) + r"\b"
+            if re.search(pattern, text):
+                count += 1
     return count
 
 
 def detect_subject(query: str) -> str:
     """
-    Lightweight keyword-based subject routing
-    for educational textbook retrieval.
+    Offline NLP Subject Classifier with hybrid word+character TF-IDF Logistic Regression
+    and graceful fallback to keyword rules.
     """
+    # 1. First attempt calibrated offline NLP model
+    model = _get_nlp_model()
+    if model is not None:
+        try:
+            probs = model.predict_proba([query])[0]
+            classes = model.classes_
+            top_idx = probs.argmax()
+            top_prob = probs[top_idx]
+            top_class = classes[top_idx]
+            if top_prob >= 0.38:
+                return "maths" if top_class == "mathematics" else top_class
+        except Exception as e:
+            logger.debug(f"NLP model prediction failed: {e}")
 
+    # 2. Rule-based / Keyword fallback
     q = query.lower()
 
     # =====================================================
@@ -84,6 +120,9 @@ def detect_subject(query: str) -> str:
         "radioactivity",
         "electron",
         "proton",
+                # Multilingual (Telugu & Hindi)
+        "గురుత్వాకర్షణ", "చలనం", "గతి", "వేగం", "త్వరణం", "బలం", "శక్తి", "పని", "కాంతి", "ధ్వని", "విద్యుత్", "విద్యుత్తు", "అయస్కాంతం", "పీడనం", "ఘర్షణ", "ద్రవ్యరాశి", "సాంద్రత", "ఉష్ణోగ్రత", "వేడి", "తరంగం",
+        "गुरुत्वाकर्षण", "गति", "वेग", "चाल", "त्वरण", "बल", "ऊर्जा", "कार्य", "प्रकाश", "ध्वनि", "विद्युत", "बिजली", "चुंबक", "दाब", "घर्षण", "द्रव्यमान", "घनत्व", "तापमान", "ऊष्मा", "तरंग",
         "neutron"
     ]
 
@@ -121,8 +160,17 @@ def detect_subject(query: str) -> str:
 
         # Bonding
         "bond",
+        "bonding",
+        "chemical bond",
+        "chemical bonding",
         "ionic bond",
         "covalent bond",
+        "covalent",
+        "ionic",
+        "valence",
+        "valency",
+        "catalyst",
+        "equilibrium",
 
         # Periodic Table
         "periodic table",
@@ -145,7 +193,11 @@ def detect_subject(query: str) -> str:
         # Quantities
         "mole",
         "molarity",
-        "molality"
+        "molality",
+
+        # Multilingual (Telugu & Hindi)
+        "రసాయన", "పరమాణువు", "అణువు", "మూలకం", "సమ్మేళనం", "మిశ్రమం", "ద్రావణం", "ఆమ్లం", "క్షారం", "లోహం", "అలోహం", "ఆక్సీకరణం", "బంధం", "బంధాలు", "సమయోజనీయ", "అయానిక", "సంయోజనీయత", "రసాయన చర్య", "ద్రావణాలు", "ఉత్ప్రేరకం",
+        "रसायन", "परमाणु", "अणु", "तत्व", "यौगिक", "मिश्रण", "विलयन", "अम्ल", "क्षार", "लवण", "धातु", "अधातु", "ऑक्सीकरण", "आबंधन", "आबंध", "सहसंयोजक", "सहसंयोजकता", "आयनिक", "संयोजकता", "रासायनिक अभिक्रिया", "उत्प्रेरक", "संतुलन",
     ]
 
     # =====================================================
@@ -158,6 +210,11 @@ def detect_subject(query: str) -> str:
         "equation",
         "linear equation",
         "quadratic equation",
+        "quadratic",
+        "quadratic formula",
+        "roots",
+        "roots of",
+        "zeros of",
         "polynomial",
         "factorization",
 
@@ -217,6 +274,9 @@ def detect_subject(query: str) -> str:
         "number system",
         "prime number",
         "rational number",
+                # Multilingual (Telugu & Hindi)
+        "గణితం", "త్రికోణమితి", "బీజగణితం", "జ్యామితి", "సంఖ్య", "సమీకరణం", "వైశాల్యం", "పరిధి", "వ్యాసార్థం", "త్రికోణం", "చతుర్భుజం", "సంభావ్యత", "భిన్నం", "వర్గ", "ద్విఘాత", "మూలాలు", "శూన్యాలు", "గుణకాలు", "శ్రేఢులు", "అంకశ్రేఢి",
+        "गणित", "त्रिकोणमिति", "बीजगणित", "ज्यामिति", "संख्या", "समीकरण", "क्षेत्रफल", "परिधि", "त्रिज्या", "त्रिभुज", "चतुर्भुज", "प्रायिकता", "भिन्न", "द्विघात", "मूल", "शून्यक", "गुणांक", "श्रेणी", "समांतर श्रेणी",
         "irrational number"
     ]
 
@@ -281,6 +341,9 @@ def detect_subject(query: str) -> str:
         # Health
         "disease",
         "immunity",
+                # Multilingual (Telugu & Hindi)
+        "కణం", "కణజాలం", "కిరణజన్య", "శ్వాసక్రియ", "జీర్ణక్రియ", "రక్త ప్రసరణ", "ప్రత్యుత్పత్తి", "వృక్ష", "జంతు", "డీఎన్‌ఏ", "జన్యువు", "హరితరేణువు", "హరితరేణువులు", "క్లోరోప్లాస్ట్", "మైటోకాండ్రియా", "జీవక్రియ", "జీర్ణవ్యవస్థ", "ఉద్గార",
+        "कोशिका", "ऊतक", "प्रकाश संश्लेषण", "श्वसन", "पाचन", "रक्त", "जनन", "पादप", "जंतु", "डीएनए", "जीन", "हरितलवक", "क्लोरोप्लास्ट", "माइटोकॉन्ड्रिया", "जैव प्रक्रम", "पाचन तंत्र", "उत्सर्जन", "कायिक",
         "vaccine"
     ]
 

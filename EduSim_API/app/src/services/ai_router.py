@@ -17,12 +17,22 @@ try:
 except (ValueError, TypeError):
     OLLAMA_TIMEOUT = 180.0
 
-OLLAMA_KEEP_ALIVE = os.getenv("OLLAMA_KEEP_ALIVE", "30m").strip() or "30m"
+OLLAMA_KEEP_ALIVE = os.getenv("OLLAMA_KEEP_ALIVE", "24h").strip() or "24h"
 
 try:
     OLLAMA_NUM_CTX = int(os.getenv("OLLAMA_NUM_CTX", "4096"))
 except (ValueError, TypeError):
     OLLAMA_NUM_CTX = 4096
+
+try:
+    OLLAMA_NUM_THREADS = int(os.getenv("OLLAMA_NUM_THREADS", "8"))
+except (ValueError, TypeError):
+    OLLAMA_NUM_THREADS = 8
+
+try:
+    OLLAMA_NUM_PREDICT = int(os.getenv("OLLAMA_NUM_PREDICT", "1024"))
+except (ValueError, TypeError):
+    OLLAMA_NUM_PREDICT = 1024
 
 _TAGS_CACHE_TTL = 30.0
 _tags_cache: Dict[str, Any] = {
@@ -225,14 +235,22 @@ async def call_ai(
                     if history_lines:
                         ollama_prompt = "\n".join(history_lines) + f"\nUser: {prompt}\nAssistant:"
 
+                cur_keep_alive = os.getenv("OLLAMA_KEEP_ALIVE", OLLAMA_KEEP_ALIVE).strip() or "24h"
+                try:
+                    cur_num_ctx = int(os.getenv("OLLAMA_NUM_CTX", str(OLLAMA_NUM_CTX)))
+                except (ValueError, TypeError):
+                    cur_num_ctx = 4096
+
                 payload: Dict[str, Any] = {
                     "model": effective_model,
                     "prompt": ollama_prompt,
                     "stream": False,
-                    "keep_alive": OLLAMA_KEEP_ALIVE,
+                    "keep_alive": cur_keep_alive,
                     "options": {
                         "temperature": temperature,
-                        "num_ctx": OLLAMA_NUM_CTX,
+                        "num_ctx": cur_num_ctx,
+                        "num_thread": OLLAMA_NUM_THREADS,
+                        "num_predict": OLLAMA_NUM_PREDICT,
                     },
                 }
                 if system_prompt:
@@ -282,7 +300,7 @@ async def call_ai(
         logger.warning(
             f"[AI ROUTER] Ollama attempt failed (reason=\"{ollama_error_reason}\") and cloud fallback is disabled."
         )
-        if allow_fallback is False and os.getenv("ALLOW_CLOUD_FALLBACK") is None:
+        if allow_fallback is False:
             raise RuntimeError(
                 f"Ollama generation failed ({ollama_error_reason}). OpenRouter fallback is disabled."
             )
@@ -326,8 +344,91 @@ async def call_ai(
     }
 
 
+async def call_ai_stream(
+    prompt: str,
+    system_prompt: str = "",
+    model: str = "gemma3:4b",
+    history: list[dict[str, str]] | None = None,
+    temperature: float = 0.2,
+    request_id: str | None = None,
+    timeout: float | None = None,
+    send_done: bool = True,
+):
+    """
+    Streaming generator for fast first-token response via local Ollama.
+    Falls back to OpenRouter streaming if Ollama is unreachable.
+    """
+    import json
+    req_id = request_id or f"req_{uuid.uuid4().hex[:12]}"
+    effective_model = model or OLLAMA_DEFAULT_MODEL
+    effective_timeout = timeout if timeout is not None else OLLAMA_TIMEOUT
+    use_cloud_ai = os.getenv("USE_CLOUD_AI", "false").lower() in ("true", "1", "yes")
+
+    preflight_ok, _ = await preflight_ollama_check(OLLAMA_BASE_URL, effective_model) if not use_cloud_ai else (False, None)
+
+    if preflight_ok:
+        try:
+            ollama_prompt = prompt
+            if history:
+                history_lines = []
+                for msg in history:
+                    role = "User" if msg.get("role") == "user" else "Assistant"
+                    content = msg.get("content", "").strip()
+                    if content:
+                        history_lines.append(f"{role}: {content}")
+                if history_lines:
+                    ollama_prompt = "\n".join(history_lines) + f"\nUser: {prompt}\nAssistant:"
+
+            payload = {
+                "model": effective_model,
+                "prompt": ollama_prompt,
+                "stream": True,
+                "keep_alive": OLLAMA_KEEP_ALIVE,
+                "options": {
+                    "temperature": temperature,
+                    "num_ctx": OLLAMA_NUM_CTX,
+                    "num_thread": OLLAMA_NUM_THREADS,
+                    "num_predict": OLLAMA_NUM_PREDICT,
+                },
+            }
+            if system_prompt:
+                payload["system"] = system_prompt
+
+            async with httpx.AsyncClient(timeout=httpx.Timeout(effective_timeout, connect=3.0)) as client:
+                async with client.stream("POST", OLLAMA_GENERATE_URL, json=payload) as resp:
+                    if resp.status_code == 200:
+                        async for line in resp.aiter_lines():
+                            if line.strip():
+                                try:
+                                    item = json.loads(line)
+                                    tok = item.get("response", "")
+                                    if tok:
+                                        yield f"data: {json.dumps({'content': tok})}\n\n"
+                                except Exception:
+                                    continue
+                        if send_done:
+                            yield "data: [DONE]\n\n"
+                        return
+        except Exception as e:
+            logger.warning(f"[AI ROUTER] Ollama stream failed ({e}), attempting fallback...")
+
+    # Fallback to OpenRouter stream if allowed
+    from app.src.modules.legacy_rag.generator import generate_llm_stream_async
+    async for chunk in generate_llm_stream_async(
+        final_prompt=prompt,
+        temperature=temperature,
+        system_prompt=system_prompt,
+        history=history,
+        request_id=req_id,
+    ):
+        if not send_done and chunk == "data: [DONE]\n\n":
+            continue
+        yield chunk
+
+
 __all__ = [
     "call_ai",
+    "call_ai_stream",
     "preflight_ollama_check",
     "invalidate_ollama_tags_cache",
     "limit_context_budget",
@@ -338,4 +439,6 @@ __all__ = [
     "OLLAMA_TIMEOUT",
     "OLLAMA_KEEP_ALIVE",
     "OLLAMA_NUM_CTX",
+    "OLLAMA_NUM_THREADS",
+    "OLLAMA_NUM_PREDICT",
 ]

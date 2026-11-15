@@ -1,0 +1,8 @@
+{
+  "status": "VERIFIED",
+  "ttft_sec": 3.29,
+  "http_ttft_sec": 14.66,
+  "tokens_streamed": 512,
+  "terminal_done_received": true,
+  "client_cancellation_handled": true
+}

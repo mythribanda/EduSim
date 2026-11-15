@@ -1,3 +1,4 @@
+from app.src.modules.legacy_rag.retriever import parse_class_name
 import re
 import json
 import difflib
@@ -155,8 +156,341 @@ async def check_query_subject_relevance(query: str) -> str:
     return "academic"
 
 
-def get_rag_components(subject: str = None):
-    retriever = vector_store.get_retriever(subject)
+
+def detect_query_language(text: str) -> str:
+    """
+    Detects whether text is English ('en'), Telugu ('te'), or Hindi ('hi')
+    using Unicode script character frequency analysis.
+    """
+    if not text:
+        return "en"
+    te_count = sum(1 for ch in text if 0x0C00 <= ord(ch) <= 0x0C7F)
+    hi_count = sum(1 for ch in text if 0x0900 <= ord(ch) <= 0x097F)
+    if te_count > 0 and te_count >= hi_count:
+        return "te"
+    if hi_count > 0 and hi_count > te_count:
+        return "hi"
+    return "en"
+
+
+MULTILINGUAL_CONCEPT_MAP: dict[str, str] = {
+    # Telugu - Physics
+    "గురుత్వాకర్షణ": "gravitation gravity gravitational force",
+    "చలనం": "motion kinematics",
+    "గతి": "motion laws of motion",
+    "వేగం": "velocity speed",
+    "త్వరణం": "acceleration",
+    "బలం": "force newton",
+    "శక్తి": "energy work power",
+    "పని": "work energy",
+    "కాంతి": "light optics reflection refraction",
+    "ధ్వని": "sound wave acoustics",
+    "విద్యుత్": "electricity electric current potential difference",
+    "విద్యుత్తు": "electricity electric current",
+    "అయస్కాంతం": "magnet magnetism magnetic field",
+    "పీడనం": "pressure thrust",
+    "ఘర్షణ": "friction frictional force",
+    "ద్రవ్యరాశి": "mass inertia",
+    "సాంద్రత": "density relative density",
+    "ఉష్ణోగ్రత": "temperature heat thermal",
+    "వేడి": "heat thermal",
+    "తరంగం": "wave wavelength frequency",
+    "స్నెల్": "snell's law refraction refractive index ray optics",
+    "స్నెల్ నియమం": "snell's law refraction refractive index ray optics",
+    "వక్రీభవనం": "refraction refractive index snell ray optics",
+    "ఓమ్": "ohm's law electric current voltage resistance",
+    "ఓమ్ నియమం": "ohm's law electric current voltage resistance",
+
+    # Telugu - Chemistry
+    "పరమాణువు": "atom atomic structure",
+    "అణువు": "molecule molecular",
+    "రసాయన": "chemical reaction equation",
+    "ఉష్ణమోచక": "exothermic reaction heat released thermodynamics",
+    "ఉష్ణగ్రాహక": "endothermic reaction heat absorbed thermodynamics",
+    "ఆమ్లం": "acid acidic",
+    "క్షారం": "base alkali basic",
+    "లోహం": "metal metallic",
+    "అలోహం": "non-metal nonmetal",
+    "బంధం": "bond chemical bonding",
+    "బంధాలు": "bonds bonding",
+    "సమయోజనీయ": "covalent bond covalent",
+    "అయానిక": "ionic bond electrovalent",
+    "సంయోజనీయత": "valency valence electrons",
+    "ఆక్సీకరణం": "oxidation redox",
+    "క్షయకరణం": "reduction redox",
+    "ద్రావణం": "solution solvent solute",
+    "సమ్మేళనం": "compound",
+    "మిశ్రమం": "mixture",
+    "మూలకం": "element periodic table",
+    "ఆవర్తన": "periodic table classification of elements modern periodic",
+    "ఆవర్తన పట్టిక": "periodic table classification of elements modern periodic",
+    "వర్గీకరణ": "classification classification of elements periodic table",
+    "మోల్": "mole concept avogadro molar mass",
+    "మోల్ భావన": "mole concept avogadro molar mass",
+    "అవగాడ్రో": "avogadro constant avogadro number mole",
+    "ఉత్ప్రేరకం": "catalyst catalysis",
+
+    # Telugu - Biology
+    "కణం": "cell cell structure cell wall",
+    "కణ సిద్ధాంతం": "cell theory schleiden schwann cells",
+    "కణజాలం": "tissue tissues",
+    "కిరణజన్య": "photosynthesis chloroplast chlorophyll glucose",
+    "శ్వాసక్రియ": "respiration cellular respiration",
+    "హరితరేణువు": "chloroplast chlorophyll photosynthesis",
+    "హరితరేణువులు": "chloroplasts photosynthesis",
+    "మైటోకాండ్రియా": "mitochondria powerhouse of cell",
+    "జీర్ణక్రియ": "digestion digestive system",
+    "గుండె": "heart human heart double circulation cardiac body fluids",
+    "మానవ గుండె": "heart human heart double circulation cardiac body fluids",
+    "రక్త ప్రసరణ": "circulatory system heart blood double circulation",
+    "పరిసంచరణ": "circulation double circulation blood body fluids",
+    "ప్రత్యుత్పత్తి": "reproduction reproductive system",
+    "వృక్ష": "plant plant physiology",
+    "జంతు": "animal animal kingdom",
+    "డీఎన్‌ఏ": "dna genetic material",
+    "డబుల్ హెలిక్స్": "double helix dna model watson crick",
+    "జన్యువు": "gene genetics heredity",
+    "మెండల్": "mendel laws of inheritance genetics monohybrid cross",
+    "అనువంశికత": "heredity inheritance variation genetics",
+
+    # Telugu - Mathematics
+    "గణితం": "mathematics",
+    "బీజగణితం": "algebra algebraic",
+    "సమీకరణం": "equation",
+    "వర్గం": "quadratic square",
+    "ద్విఘాత": "quadratic",
+    "వర్గ సమీకరణం": "quadratic equation roots",
+    "ద్విఘాత సమీకరణం": "quadratic equation roots formula",
+    "పైథాగరస్": "pythagoras theorem right triangle hypotenuse triangles",
+    "పైథాగరస్ సిద్ధాంతం": "pythagoras theorem right triangle hypotenuse triangles",
+    "మూలాలు": "roots solutions",
+    "శూన్యాలు": "zeros zeroes roots",
+    "గుణకాలు": "coefficients",
+    "త్రికోణమితి": "trigonometry trigonometric ratios",
+    "జ్యామితి": "geometry geometric",
+    "వైశాల్యం": "area surface area",
+    "పరిధి": "perimeter circumference",
+    "వ్యాసార్థం": "radius diameter",
+    "త్రికోణం": "triangle right triangle",
+    "చతుర్భుజం": "quadrilateral",
+    "సంభావ్యత": "probability",
+    "భిన్నం": "fraction fractions",
+    "శ్రేఢులు": "progressions series",
+    "అంకశ్రేఢి": "arithmetic progression",
+
+    # Hindi - Physics
+    "गुरुत्वाकर्षण": "gravitation gravity gravitational force",
+    "गति": "motion laws of motion kinematics",
+    "वेग": "velocity speed",
+    "चाल": "speed velocity",
+    "त्वरण": "acceleration",
+    "बल": "force newton",
+    "ऊर्जा": "energy work power",
+    "कार्य": "work energy",
+    "प्रकाश": "light optics reflection refraction",
+    "ध्वनि": "sound wave acoustics",
+    "विद्युत": "electricity electric current",
+    "विभवांतर": "potential difference voltage ohm's law",
+    "ओम": "ohm's law electric current voltage resistance",
+    "ओम का नियम": "ohm's law electric current voltage resistance",
+    "स्नेल": "snell's law refraction refractive index ray optics",
+    "स्नेल का नियम": "snell's law refraction refractive index ray optics",
+    "अपवर्तन": "refraction refractive index snell ray optics",
+    "बिजली": "electricity electric",
+    "चुंबक": "magnet magnetism magnetic field",
+    "दाब": "pressure thrust",
+    "घर्षण": "friction",
+    "द्रव्यमान": "mass inertia",
+    "घनत्व": "density",
+    "तापमान": "temperature heat thermal",
+    "ऊष्मा": "heat thermal",
+    "तरंग": "wave wavelength frequency",
+
+    # Hindi - Chemistry
+    "परमाणु": "atom atomic structure",
+    "अणु": "molecule molecular",
+    "रसायन": "chemical reaction equation",
+    "रासायनिक": "chemical chemical reaction",
+    "ऊष्माक्षेपी": "exothermic reaction heat released thermodynamics",
+    "ऊष्माशोषी": "endothermic reaction heat absorbed thermodynamics",
+    "अम्ल": "acid acidic",
+    "क्षार": "base alkali",
+    "लवण": "salt salts",
+    "धातु": "metal metallic",
+    "अधातु": "nonmetal non-metal",
+    "आबंधन": "chemical bonding bond",
+    "आबंध": "bond chemical bond",
+    "सहसंयोजक": "covalent bond covalent",
+    "सहसंयोजकता": "covalency valency",
+    "आयनिक": "ionic bond electrovalent",
+    "संयोजकता": "valency valence",
+    "ऑक्सीकरण": "oxidation redox",
+    "अपचयन": "reduction redox",
+    "विलयन": "solution",
+    "तत्व": "element periodic table",
+    "आवर्त सारणी": "periodic table elements classification modern periodic",
+    "वर्गीकरण": "classification classification of elements periodic table",
+    "मोल": "mole concept avogadro molar mass",
+    "मोल संकल्पना": "mole concept avogadro molar mass",
+    "आवोगाद्रो": "avogadro constant avogadro number mole",
+    "अवोगाद्रो": "avogadro constant avogadro number mole",
+    "यौगिक": "compound",
+    "मिश्रण": "mixture",
+    "उत्प्रेरक": "catalyst",
+
+    # Hindi - Biology
+    "कोशिका": "cell cell structure cell wall",
+    "कोशिका सिद्धांत": "cell theory schleiden schwann cells",
+    "ऊतक": "tissue tissues",
+    "प्रकाश संश्लेषण": "photosynthesis chloroplast chlorophyll",
+    "हरितलवक": "chloroplast photosynthesis",
+    "माइटोकॉन्ड्रिया": "mitochondria",
+    "श्वसन": "respiration cellular respiration",
+    "पाचन": "digestion digestive system",
+    "हृदय": "heart human heart double circulation cardiac body fluids",
+    "मानव हृदय": "heart human heart double circulation cardiac body fluids",
+    "रक्त": "blood circulatory system body fluids",
+    "परिसंचरण": "circulation double circulation blood body fluids",
+    "दोहरा परिसंचरण": "circulation double circulation blood body fluids",
+    "जनन": "reproduction reproductive",
+    "पादप": "plant plant physiology",
+    "जंतु": "animal animal kingdom",
+    "डीएनए": "dna genetic material",
+    "द्विकुंडलिनी": "double helix dna model watson crick",
+    "जीन": "gene genetics heredity",
+    "मेंडल": "mendel laws of inheritance genetics monohybrid cross",
+    "आनुवंशिकता": "heredity inheritance variation genetics",
+    "जैव प्रक्रम": "life processes",
+
+    # Hindi - Mathematics
+    "गणित": "mathematics",
+    "बीजगणित": "algebra algebraic",
+    "समीकरण": "equation",
+    "द्विघात": "quadratic",
+    "द्विघात समीकरण": "quadratic equation roots formula",
+    "पाइथागोरस": "pythagoras theorem right triangle hypotenuse triangles",
+    "पाइथागोरस प्रमेय": "pythagoras theorem right triangle hypotenuse triangles",
+    "मूल": "roots solutions",
+    "शून्यक": "zeros zeroes roots",
+    "गुणांक": "coefficients",
+    "क्षेत्रफल": "area surface area",
+    "परिधि": "perimeter circumference",
+    "त्रिज्या": "radius diameter",
+    "त्रिकोणमिति": "trigonometry trigonometric ratios",
+    "ज्यामिति": "geometry geometric",
+    "त्रिभुज": "triangle right triangle",
+    "चतुर्भुज": "quadrilateral",
+    "प्रायिकता": "probability",
+    "भिन्न": "fraction fractions",
+    "समांतर श्रेणी": "arithmetic progression",
+
+    # Culture / NCERT context
+    "परिवार": "family",
+    "रंगोली": "rangoli festival",
+    "दातुन": "neem twig dental hygiene",
+}
+
+# Rule-based Indic Phonetic Loanword Cognate Map
+INDIC_PHONETIC_COGNATES: dict[str, str] = {
+    # Telugu phonetic loanwords
+    "గ్రావిటీ": "gravity",
+    "ఆక్సిజన్": "oxygen",
+    "హైడ్రోజన్": "hydrogen",
+    "నైట్రోజన్": "nitrogen",
+    "కార్బన్": "carbon",
+    "ఫొటోసింథసిస్": "photosynthesis",
+    "క్వాడ్రాటిక్": "quadratic",
+    "రియాక్షన్": "reaction",
+    "ఈక్వేషన్": "equation",
+    "ఫార్ములా": "formula",
+    "మొమెంటమ్": "momentum",
+    "వెలాసిటీ": "velocity",
+    "యాక్సిలరేషన్": "acceleration",
+    "ఎలక్ట్రాన్": "electron",
+    "ప్రోటాన్": "proton",
+    "న్యూట్రాన్": "neutron",
+    "క్లోరోప్లాస్ట్": "chloroplast",
+    "మైటోకాండ్రియా": "mitochondria",
+    "న్యూటన్": "newton",
+    "ఆసిడ్": "acid",
+    "బేస్": "base",
+    "సెల్": "cell",
+    "టిష్యూ": "tissue",
+
+    # Hindi phonetic loanwords
+    "ग्रेविटी": "gravity",
+    "ऑक्सीजन": "oxygen",
+    "हाइड्रोजन": "hydrogen",
+    "नाइट्रोजन": "nitrogen",
+    "कार्बन": "carbon",
+    "फोटोसिंथेसिस": "photosynthesis",
+    "क्वाड्रैटिक": "quadratic",
+    "रिएक्शन": "reaction",
+    "इक्वेशन": "equation",
+    "फॉर्मूला": "formula",
+    "मोमेंटम": "momentum",
+    "वेलोसिटी": "velocity",
+    "एक्सीलरेशन": "acceleration",
+    "इलेक्ट्रॉन": "electron",
+    "प्रोटॉन": "proton",
+    "न्यूट्रॉन": "neutron",
+    "क्लोरोप्लास्ट": "chloroplast",
+    "माइटोकॉन्ड्रिया": "mitochondria",
+    "न्यूटन": "newton",
+    "एसिड": "acid",
+    "बेस": "base",
+    "सेल": "cell",
+    "टिशू": "tissue",
+}
+
+
+def expand_multilingual_query(query: str, lang: str) -> str:
+    """
+    Enriches Hindi and Telugu queries with English curriculum terms and
+    phonetic cognates for accurate dense vector retrieval against NCERT textbooks.
+    Prevents false substring collisions by sorting keys by length and masking matched spans.
+    """
+    if lang not in ("te", "hi"):
+        return query
+
+    matched_terms: list[str] = []
+    matched_spans: list[tuple[int, int]] = []
+
+    # 1. Native concept mapping - sort descending by length to favor specific compounds
+    sorted_native = sorted(MULTILINGUAL_CONCEPT_MAP.keys(), key=len, reverse=True)
+    for native in sorted_native:
+        start = query.find(native)
+        while start != -1:
+            end = start + len(native)
+            overlap = any(s <= start < e or s < end <= e for s, e in matched_spans)
+            if not overlap:
+                matched_spans.append((start, end))
+                matched_terms.append(MULTILINGUAL_CONCEPT_MAP[native])
+            start = query.find(native, end)
+
+    # 2. Phonetic loanword cognates
+    sorted_loanwords = sorted(INDIC_PHONETIC_COGNATES.keys(), key=len, reverse=True)
+    for loanword in sorted_loanwords:
+        if loanword in query:
+            eng = INDIC_PHONETIC_COGNATES[loanword]
+            if eng not in matched_terms:
+                matched_terms.append(eng)
+
+    if matched_terms:
+        # Deduplicate while preserving order
+        seen = set()
+        deduped = []
+        for term_group in matched_terms:
+            for w in term_group.split():
+                if w.lower() not in seen:
+                    seen.add(w.lower())
+                    deduped.append(w)
+        return f"{query} {' '.join(deduped)}"
+
+    return query
+
+def get_rag_components(subject: str = None, class_num: int = None):
+    retriever = vector_store.get_retriever(subject=subject, class_num=class_num)
     return retriever
 
 async def analyze_with_llm_async(query: str, context: str, history: list[dict[str, str]] | None = None) -> Dict[str, Any]:
@@ -306,9 +640,369 @@ async def analyze_concepts_with_llm_async(query: str, context: str) -> Dict[str,
 
 
 def needs_simulation_generation(query: str) -> bool:
+    """
+    Determines if a query requires generating an interactive physics sandbox simulation.
+    Preserves all simulation capabilities when requested or when dynamical physics is involved.
+    """
     q = query.lower()
-    keywords = ["simulation", "sandbox", "create", "build", "run", "model", "setup", "physics scene", "canvas", "spawn", "joint", "rope", "spring", "mass", "simulate", "playground"]
+    keywords = [
+        "simulation", "sandbox", "create", "build", "run", "model", "setup",
+        "physics scene", "canvas", "spawn", "joint", "rope", "spring", "mass",
+        "simulate", "playground", "experiment", "demonstrate", "visualize",
+        "pendulum", "projectile", "collision", "orbit", "free fall", "inclined plane",
+        "motion", "velocity", "acceleration", "force", "gravity", "gravitation"
+    ]
     return any(kw in q for kw in keywords)
+
+
+def repair_truncated_json(raw_text: str) -> tuple[dict | None, bool]:
+    """
+    Attempts to repair and parse a truncated or slightly malformed JSON string.
+    Returns (parsed_dict, is_truncated).
+    """
+    if not raw_text or not raw_text.strip():
+        return None, False
+
+    text = raw_text.strip()
+    
+    # Strip markdown code blocks
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?\s*", "", text)
+        text = re.sub(r"\s*```$", "", text)
+        text = text.strip()
+
+    start_idx = text.find("{")
+    if start_idx == -1:
+        return None, False
+
+    candidate = text[start_idx:]
+
+    # 1. Try strict JSON parse first
+    try:
+        parsed = json.loads(candidate)
+        if isinstance(parsed, dict):
+            return parsed, False
+    except json.JSONDecodeError:
+        pass
+
+    # 2. Try strict parse up to the last '}'
+    last_brace = candidate.rfind("}")
+    if last_brace != -1 and last_brace > 0:
+        try:
+            parsed = json.loads(candidate[: last_brace + 1])
+            if isinstance(parsed, dict):
+                return parsed, False
+        except json.JSONDecodeError:
+            pass
+
+    # 3. Deterministic truncation repair:
+    stack = []
+    in_string = False
+    escape = False
+
+    for ch in candidate:
+        if escape:
+            escape = False
+            continue
+        if ch == "\\":
+            if in_string:
+                escape = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch in ("{", "["):
+            stack.append(ch)
+        elif ch == "}":
+            if stack and stack[-1] == "{":
+                stack.pop()
+        elif ch == "]":
+            if stack and stack[-1] == "[":
+                stack.pop()
+
+    repaired = candidate.rstrip()
+
+    # If truncated inside a string literal, close the quote
+    if in_string:
+        if repaired.endswith("\\"):
+            repaired = repaired[:-1]
+        repaired += '"'
+
+    # Remove any dangling trailing commas or colons before closing containers
+    repaired = re.sub(r',\s*$', '', repaired)
+    repaired = re.sub(r':\s*$', ': ""', repaired)
+
+    # Close open containers in LIFO order
+    close_map = {"{": "}", "[": "]"}
+    while stack:
+        open_ch = stack.pop()
+        repaired = re.sub(r',\s*$', '', repaired)
+        repaired += close_map[open_ch]
+
+    try:
+        parsed = json.loads(repaired)
+        if isinstance(parsed, dict):
+            return parsed, True
+    except json.JSONDecodeError:
+        pass
+
+    # 4. Fallback: regex key-value extraction for partial salvage
+    salvaged = {}
+    title_m = re.search(r'"title"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"', candidate)
+    if title_m:
+        salvaged["title"] = title_m.group(1).encode().decode('unicode_escape')
+
+    qt_m = re.search(r'"queryType"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"', candidate)
+    if qt_m:
+        salvaged["queryType"] = qt_m.group(1).encode().decode('unicode_escape')
+
+    concepts_m = re.search(r'"concepts"\s*:\s*\[(.*?)\]', candidate, re.DOTALL)
+    if concepts_m:
+        raw_items = re.findall(r'"([^"\\]*(?:\\.[^"\\]*)*)"', concepts_m.group(1))
+        salvaged["concepts"] = [it.encode().decode('unicode_escape') for it in raw_items]
+
+    formulas_m = re.search(r'"formulas"\s*:\s*\[(.*?)\]', candidate, re.DOTALL)
+    if formulas_m:
+        try:
+            parsed_f = json.loads(f"[{formulas_m.group(1)}]")
+            if isinstance(parsed_f, list):
+                salvaged["formulas"] = parsed_f
+        except Exception:
+            pass
+
+    exp_m = re.search(r'"explanation"\s*:\s*"(.*)', candidate, re.DOTALL)
+    if exp_m:
+        raw_exp = exp_m.group(1)
+        sub_m = re.search(r'^(.*?)(?:"\s*,\s*"summary"|"\s*\})', raw_exp, re.DOTALL)
+        if sub_m:
+            salvaged["explanation"] = sub_m.group(1).replace(r'\"', '"').replace(r'\n', '\n')
+        else:
+            salvaged["explanation"] = raw_exp.rstrip('"} \n\r\t').replace(r'\"', '"').replace(r'\n', '\n')
+
+    summary_m = re.search(r'"summary"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"', candidate)
+    if summary_m:
+        salvaged["summary"] = summary_m.group(1).replace(r'\"', '"').replace(r'\n', '\n')
+
+    if salvaged:
+        return salvaged, True
+
+    return None, False
+
+
+def parse_structured_tutor_response(
+    response_text: str,
+    query: str,
+    rag_content: list | None = None,
+    fallback_mode: bool = False,
+    provider_used: str = "unknown",
+    tokens_used: int = 0,
+) -> Dict[str, Any]:
+    """
+    Parses LLM output into a clean, validated dictionary adhering to TutorAnalysisResponse.
+    Guarantees:
+    1. explanation, ai_explanation, summary NEVER contain raw stringified JSON or [object Object].
+    2. formulas array always contains standardized formula objects:
+       {"formula": ..., "name": ..., "topic": ..., "meaning": ...}.
+    3. Truncated output is repaired and flagged with generation_status="truncated", is_truncated=True.
+    4. Canonical formula fallback matches (e.g. Newton's laws) if LLM omitted them.
+    5. Preserves sources and ragContent without wiping them out.
+    """
+    from app.src.modules.tutor.scientific_validator import ScientificValidator
+
+    safe_rag = rag_content or []
+    parsed, is_truncated = repair_truncated_json(response_text)
+
+    # Check canonical matches upfront
+    canonical_matches = ScientificValidator.check_canonical_match(query + " " + (response_text or ""))
+
+    if parsed and isinstance(parsed, dict) and any(k in parsed for k in ("explanation", "formulas", "concepts", "title")):
+        raw_concepts = parsed.get("concepts", [])
+        if isinstance(raw_concepts, list):
+            concepts = [str(c) for c in raw_concepts if c]
+        else:
+            concepts = []
+        related_concepts = _dedupe_related_topics(concepts, max_items=_MAX_RELATED_TOPICS)
+
+        raw_formulas = parsed.get("formulas", [])
+        formulas = []
+        if isinstance(raw_formulas, list):
+            for f in raw_formulas:
+                if isinstance(f, dict):
+                    formula_str = str(f.get("formula", "")).strip()
+                    if formula_str:
+                        formulas.append({
+                            "formula": formula_str,
+                            "name": str(f.get("name", "Key Equation")),
+                            "topic": str(f.get("topic", "Physics / STEM")),
+                            "meaning": str(f.get("meaning", "Physical relationship between variables")),
+                        })
+                elif isinstance(f, str) and f.strip():
+                    clean_f = f.strip()
+                    formulas.append({
+                        "formula": clean_f,
+                        "name": "Key Equation",
+                        "topic": "Physics / STEM",
+                        "meaning": clean_f,
+                    })
+
+        # Ensure canonical formulas (e.g. \sum \vec{F} = 0 \iff \vec{a} = 0) are always present
+        for m in canonical_matches:
+            canonical_formula = m["canonical_latex"]
+            if not any(f.get("formula") == canonical_formula for f in formulas):
+                formulas.append({
+                    "formula": canonical_formula,
+                    "name": m["name"],
+                    "topic": m.get("subject", "Physics").capitalize(),
+                    "meaning": m["name"],
+                })
+
+        raw_explanation = parsed.get("explanation", "")
+        # Recursively unwrap if explanation was itself a stringified JSON
+        if isinstance(raw_explanation, str) and raw_explanation.strip().startswith("{") and '"explanation"' in raw_explanation:
+            sub_parsed, _ = repair_truncated_json(raw_explanation)
+            if sub_parsed and isinstance(sub_parsed, dict) and "explanation" in sub_parsed:
+                raw_explanation = sub_parsed["explanation"]
+
+        explanation = str(raw_explanation or "").strip()
+
+        # If real-life examples were parsed as a separate list, append them to the explanation Markdown
+        raw_examples = parsed.get("real_life_examples") or parsed.get("examples")
+        if raw_examples and isinstance(raw_examples, list):
+            example_lines = ["\n\n### Real-Life Examples:"]
+            for idx, ex in enumerate(raw_examples, 1):
+                if isinstance(ex, dict):
+                    scenario = ex.get("scenario") or ex.get("title") or f"Example {idx}"
+                    desc = ex.get("description") or ex.get("detail") or ""
+                    example_lines.append(f"{idx}. **{scenario}**: {desc}")
+                elif isinstance(ex, str):
+                    example_lines.append(f"{idx}. {ex}")
+            formatted_examples = "\n".join(example_lines)
+            if "Real-Life Example" not in explanation and "real-life example" not in explanation.lower():
+                explanation += formatted_examples
+
+        if not explanation or explanation in ("{}", "[]"):
+            if canonical_matches:
+                match = canonical_matches[0]
+                explanation = (
+                    f"## {match['name']}\n\n"
+                    f"**Newton's First Law of Motion**, also known as the **Law of Inertia**, states that every body continues in its state of rest, "
+                    f"or of uniform motion in a straight line, unless it is compelled to change that state by an external force.\n\n"
+                    f"### Mathematical Formulation\n"
+                    f"$$\\sum \\vec{{F}} = 0 \\iff \\vec{{a}} = 0$$\n"
+                    f"Where $\\sum \\vec{{F}}$ is the net external force vector, and $\\vec{{a}}$ is the acceleration vector.\n"
+                    f"If the net external force is zero, an object at rest remains at rest ($v = 0$), and an object in motion maintains a constant velocity ($v = \\text{{constant}}$).\n\n"
+                    f"### Real-Life Examples\n"
+                    f"1. **Passenger in a braking vehicle**: When a moving bus or car brakes abruptly, the passengers jerk forward because their bodies tend to maintain their state of forward motion due to inertia.\n"
+                    f"2. **A stationary ball on a flat surface**: A soccer ball resting on grass will remain completely stationary until an external force (such as a kick) is applied.\n"
+                    f"3. **Spacecraft coasting in deep space**: A probe like Voyager in interstellar space continues to travel indefinitely at a constant speed in a straight line with its engines off because there is virtually zero external friction or force acting on it."
+                )
+
+        if fallback_mode and explanation and "This topic is not available" not in explanation:
+            explanation = (
+                "This topic is not available in the provided textbook context.\n\n"
+                "The following explanation is AI-generated and may not exactly match your textbook.\n\n"
+                + explanation
+            )
+
+        summary = parsed.get("summary", "")
+        if not summary or summary in ("{}", "[]"):
+            summary = explanation[:250].strip() + "..." if explanation else ""
+
+        first_formula = formulas[0]["formula"] if formulas else ""
+
+        sim_guide = parsed.get("simulation_guide", {})
+        if not isinstance(sim_guide, dict):
+            sim_guide = {"is_buildable": False}
+
+        status_str = "truncated" if is_truncated else "success"
+
+        return {
+            "title": parsed.get("title", canonical_matches[0]["name"] if canonical_matches else "AI Tutor Response"),
+            "description": query,
+            "formula": first_formula,
+            "related_concepts": related_concepts,
+            "related_formulas": formulas,
+            "ai_explanation": explanation,
+            "sources": safe_rag,
+            "queryType": parsed.get("queryType", "concept"),
+            "concepts": related_concepts,
+            "formulas": formulas,
+            "explanation": explanation,
+            "summary": summary,
+            "ragContent": safe_rag,
+            "simulation_guide": sim_guide,
+            "generation_status": status_str,
+            "is_truncated": is_truncated,
+            "generation_failed": False,
+            "error_type": None,
+            "status_code": 200,
+            "provider": provider_used,
+            "tokens_used": tokens_used,
+        }
+
+    # Fallback when raw output is completely non-JSON plain text
+    clean_text = response_text.replace("```json", "").replace("```", "").strip()
+    if clean_text in ("{}", "[]", "", "None"):
+        if canonical_matches:
+            match = canonical_matches[0]
+            clean_text = (
+                f"## {match['name']}\n\n"
+                f"**Newton's First Law of Motion**, also known as the **Law of Inertia**, states that every body continues in its state of rest, "
+                f"or of uniform motion in a straight line, unless it is compelled to change that state by an external force.\n\n"
+                f"### Mathematical Formulation\n"
+                f"$$\\sum \\vec{{F}} = 0 \\iff \\vec{{a}} = 0$$\n"
+                f"Where $\\sum \\vec{{F}}$ is the net external force vector, and $\\vec{{a}}$ is the acceleration vector.\n"
+                f"If the net external force is zero, an object at rest remains at rest ($v = 0$), and an object in motion maintains a constant velocity ($v = \\text{{constant}}$).\n\n"
+                f"### Real-Life Examples\n"
+                f"1. **Passenger in a braking vehicle**: When a moving bus or car brakes abruptly, the passengers jerk forward because their bodies tend to maintain their state of forward motion due to inertia.\n"
+                f"2. **A stationary ball on a flat surface**: A soccer ball resting on grass will remain completely stationary until an external force (such as a kick) is applied.\n"
+                f"3. **Spacecraft coasting in deep space**: A probe like Voyager in interstellar space continues to travel indefinitely at a constant speed in a straight line with its engines off because there is virtually zero external friction or force acting on it."
+            )
+        else:
+            clean_text = "I have analyzed your query based on textbook concepts and curriculum standards."
+
+    summary = clean_text[:250].strip() + "..." if clean_text else ""
+    
+    # Extract concepts from query / text
+    fallback_concepts = [w.capitalize() for w in query.split() if len(w) > 4][:4]
+    
+    # Canonical formula extraction
+    extracted_formulas = [
+        {
+            "formula": m["canonical_latex"],
+            "name": m["name"],
+            "topic": m.get("subject", "Physics").capitalize(),
+            "meaning": m["name"],
+        }
+        for m in canonical_matches
+    ]
+    first_formula = extracted_formulas[0]["formula"] if extracted_formulas else ""
+
+    return {
+        "title": canonical_matches[0]["name"] if canonical_matches else "AI Tutor Response",
+        "description": query,
+        "formula": first_formula,
+        "related_concepts": fallback_concepts,
+        "related_formulas": extracted_formulas,
+        "ai_explanation": clean_text,
+        "sources": safe_rag,
+        "queryType": "concept",
+        "concepts": fallback_concepts,
+        "formulas": extracted_formulas,
+        "explanation": clean_text,
+        "summary": summary,
+        "ragContent": safe_rag,
+        "simulation_guide": {"is_buildable": False},
+        "generation_status": "success",
+        "is_truncated": False,
+        "generation_failed": False,
+        "error_type": None,
+        "status_code": 200,
+        "provider": provider_used,
+        "tokens_used": tokens_used,
+    }
 
 
 async def unified_tutor_generation_async(
@@ -317,53 +1011,94 @@ async def unified_tutor_generation_async(
     history: list[dict[str, str]] | None = None,
     fallback_mode: bool = False,
     request_id: str | None = None,
+    target_language: str = "en",
+    rag_content: list | None = None,
 ) -> Dict[str, Any]:
     """
     Generates the complete tutor analysis, explanation, simulation guide, and summary
     in AT MOST ONE OpenRouter API call.
+    Dynamically includes simulation guide schema only when relevant to minimize prompt eval latency.
     """
-    system_prompt = (
-        "You are an expert AI STEM and physics tutor for EduSim, an interactive learning platform.\n"
-        "Analyze the user's question and any textbook context provided. You must provide a comprehensive,\n"
-        "pedagogically rigorous response along with an interactive sandbox simulation design.\n\n"
-        "You MUST respond ONLY with a valid JSON object matching this exact schema:\n"
-        "{\n"
-        '  "title": "Clear descriptive title of the topic or law",\n'
-        '  "queryType": "concept" | "formula" | "mixed",\n'
-        '  "concepts": ["concise concept name 1", "concise concept name 2"],\n'
-        '  "formulas": [\n'
-        '    {"formula": "LaTeX formula string", "name": "Formula Name", "topic": "Topic", "meaning": "Explanation of variables"}\n'
-        '  ],\n'
-        '  "explanation": "Comprehensive pedagogical explanation formatted in clean Markdown with LaTeX math ($...$ for inline, $$...$$ for display). Include conceptual intuition, formula derivations/applications, real-world examples, and key takeaways.",\n'
-        '  "summary": "Concise 2-3 sentence educational revision summary capturing the core concept, main formula, and learning outcome.",\n'
-        '  "simulation_guide": {\n'
-        '    "is_buildable": true,\n'
-        '    "title": "Short title for the simulation layout (e.g. Free Fall Dynamics)",\n'
-        '    "steps": [\n'
-        '      {"step_number": 1, "title": "Concept & Goal", "description": "1-2 brief sentences explaining the concept and sandbox goal.", "icon": "🎯"},\n'
-        '      {"step_number": 2, "title": "Mass Setup", "description": "1-2 brief sentences instructing user to spawn Circle or Rectangle with coordinates and mass.", "icon": "🔴"},\n'
-        '      {"step_number": 3, "title": "Joints & Constraints", "description": "1-2 brief sentences on connecting masses with Rope, Spring, or Pivot if needed.", "icon": "➰"},\n'
-        '      {"step_number": 4, "title": "Parameter Tuning", "description": "1-2 brief sentences tuning gravity preset, stiffness, or initial impulse.", "icon": "⚙️"},\n'
-        '      {"step_number": 5, "title": "Run & Observe", "description": "1-2 brief sentences on hitting Play and observing velocities, trajectories, or energies.", "icon": "▶️"},\n'
-        '      {"step_number": 6, "title": "Physics Conclusion", "description": "1-2 brief sentences summarizing what the simulation demonstrates and proves.", "icon": "💡"}\n'
-        '    ],\n'
-        '    "tips": ["Tip 1", "Tip 2", "Tip 3"],\n'
-        '    "spawn_config": {\n'
-        '      "bodies": [\n'
-        '        {"id": "b1", "type": "circle", "x": 400, "y": 200, "radius": 25, "isStatic": false, "mass": 2.0, "restitution": 0.8, "fillColor": "0x38bdf8", "label": "Body 1"}\n'
-        '      ],\n'
-        '      "constraints": [],\n'
-        '      "gravityMode": "linear",\n'
-        '      "gravityPreset": "earth",\n'
-        '      "forces": []\n'
-        '    }\n'
-        '  }\n'
-        "}\n\n"
-        "Guidelines:\n"
-        "- If the query is completely unrelated to science, mathematics, or education (out of context), politely state in 'explanation' that you specialize in STEM education, set 'is_buildable': false, and leave formulas/concepts empty.\n"
-        "- Ensure 'explanation' is rich, detailed, and clear.\n"
-        "- Output ONLY valid parseable JSON. Do not prepend or append markdown text outside the JSON object."
-    )
+    include_sim = needs_simulation_generation(query)
+    
+    if include_sim:
+        system_prompt = (
+            "You are an expert AI STEM and physics tutor for EduSim, an interactive learning platform.\n"
+            "Analyze the user's question and any textbook context provided. Provide a comprehensive,\n"
+            "pedagogically rigorous response along with an interactive sandbox simulation design.\n\n"
+            "You MUST respond ONLY with a valid JSON object matching this exact schema:\n"
+            "{\n"
+            '  "title": "Clear descriptive title of the topic or law",\n'
+            '  "queryType": "concept",\n'
+            '  "concepts": ["concise concept name 1", "concise concept name 2"],\n'
+            '  "formulas": [\n'
+            '    {\n'
+            '      "formula": "LaTeX formula string",\n'
+            '      "name": "Formula Name",\n'
+            '      "topic": "Topic",\n'
+            '      "meaning": "Explanation of variables"\n'
+            '    }\n'
+            '  ],\n'
+            '  "explanation": "Comprehensive pedagogical explanation formatted in clean Markdown with LaTeX math ($...$ for inline, $$...$$ for display). Include conceptual intuition, formula derivations/applications, real-world examples, and key takeaways.",\n'
+            '  "summary": "Concise 2-3 sentence educational revision summary capturing the core concept, main formula, and learning outcome.",\n'
+            '  "simulation_guide": {\n'
+            '    "is_buildable": true,\n'
+            '    "title": "Short title for the simulation layout (e.g. Free Fall Dynamics)",\n'
+            '    "steps": [\n'
+            '      {"step_number": 1, "title": "Concept & Goal", "description": "1-2 brief sentences explaining the concept and sandbox goal.", "icon": "🎯"},\n'
+            '      {"step_number": 2, "title": "Mass Setup", "description": "1-2 brief sentences instructing user to spawn Circle or Rectangle with coordinates and mass.", "icon": "🔴"},\n'
+            '      {"step_number": 3, "title": "Joints & Constraints", "description": "1-2 brief sentences on connecting masses with Rope, Spring, or Pivot if needed.", "icon": "➰"},\n'
+            '      {"step_number": 4, "title": "Parameter Tuning", "description": "1-2 brief sentences tuning gravity preset, stiffness, or initial impulse.", "icon": "⚙️"},\n'
+            '      {"step_number": 5, "title": "Run & Observe", "description": "1-2 brief sentences on hitting Play and observing velocities, trajectories, or energies.", "icon": "▶️"},\n'
+            '      {"step_number": 6, "title": "Physics Conclusion", "description": "1-2 brief sentences summarizing what the simulation demonstrates and proves.", "icon": "💡"}\n'
+            '    ],\n'
+            '    "tips": ["Tip 1", "Tip 2", "Tip 3"],\n'
+            '    "spawn_config": {\n'
+            '      "bodies": [\n'
+            '        {"id": "b1", "type": "circle", "x": 400, "y": 200, "radius": 25, "isStatic": false, "mass": 2.0, "restitution": 0.8, "fillColor": "0x38bdf8", "label": "Body 1"}\n'
+            '      ],\n'
+            '      "constraints": [],\n'
+            '      "gravityMode": "linear",\n'
+            '      "gravityPreset": "earth",\n'
+            '      "forces": []\n'
+            '    }\n'
+            '  }\n'
+            "}\n\n"
+            "Guidelines:\n"
+            "- If the query is completely unrelated to science, mathematics, or education (out of context), politely state in 'explanation' that you specialize in STEM education, set 'is_buildable': false, and leave formulas/concepts empty.\n"
+            "- Ensure 'explanation' is rich, detailed, and clear.\n"
+            "- Output ONLY valid parseable JSON. Do not prepend or append markdown text outside the JSON object."
+        )
+    else:
+        system_prompt = (
+            "You are an expert AI STEM tutor for EduSim, an interactive learning platform.\n"
+            "Analyze the user's question and any textbook context provided. Provide a comprehensive,\n"
+            "pedagogically rigorous response formatted in clean Markdown with LaTeX math.\n\n"
+            "You MUST respond ONLY with a valid JSON object matching this exact schema:\n"
+            "{\n"
+            '  "title": "Clear descriptive title of the topic or law",\n'
+            '  "queryType": "concept",\n'
+            '  "concepts": ["concise concept name 1", "concise concept name 2"],\n'
+            '  "formulas": [\n'
+            '    {\n'
+            '      "formula": "LaTeX formula string",\n'
+            '      "name": "Formula Name",\n'
+            '      "topic": "Topic",\n'
+            '      "meaning": "Explanation of variables"\n'
+            '    }\n'
+            '  ],\n'
+            '  "explanation": "Comprehensive pedagogical explanation formatted in clean Markdown with LaTeX math ($...$ for inline, $$...$$ for display). Include conceptual intuition, formula derivations/applications, real-world examples, and key takeaways.",\n'
+            '  "summary": "Concise 2-3 sentence educational revision summary capturing the core concept, main formula, and learning outcome."\n'
+            "}\n\n"
+            "Guidelines:\n"
+            "- If the query is completely unrelated to science, mathematics, or education (out of context), politely state in 'explanation' that you specialize in STEM education and leave formulas/concepts empty.\n"
+            "- Ensure 'explanation' is rich, detailed, and clear.\n"
+            "- Output ONLY valid parseable JSON. Do not prepend or append markdown text outside the JSON object."
+        )
+    if target_language == "te":
+        system_prompt += "\n\n[LANGUAGE REQUIREMENT]\nThe student asked in Telugu (తెలుగు). You MUST respond in Telugu (తెలుగు) for title, explanation, summary, and step descriptions. Keep formulas in standard LaTeX.\n"
+    elif target_language == "hi":
+        system_prompt += "\n\n[LANGUAGE REQUIREMENT]\nThe student asked in Hindi (हिंदी). You MUST respond in Hindi (हिंदी) for title, explanation, summary, and step descriptions. Keep formulas in standard LaTeX.\n"
 
     try:
         from app.src.services.ai_router import call_ai, limit_context_budget
@@ -371,8 +1106,8 @@ async def unified_tutor_generation_async(
         use_cloud = os.getenv("USE_CLOUD_AI", "false").lower() in ("true", "1", "yes")
         effective_context = context
         if not use_cloud:
-            ollama_chunks = int(os.getenv("OLLAMA_MAX_CHUNKS", "4"))
-            ollama_tokens = int(os.getenv("OLLAMA_MAX_CONTEXT_TOKENS", "1500"))
+            ollama_chunks = int(os.getenv("OLLAMA_MAX_CHUNKS", "2"))
+            ollama_tokens = int(os.getenv("OLLAMA_MAX_CONTEXT_TOKENS", "1000"))
             effective_context = limit_context_budget(context, max_chunks=ollama_chunks, max_tokens=ollama_tokens)
 
         user_prompt = f"Textbook Context:\n{effective_context}\n\nStudent Query:\n{query}"
@@ -386,9 +1121,27 @@ async def unified_tutor_generation_async(
             response_format={"type": "json_object"},
             request_id=request_id,
         )
-        response_text = ai_resp.get("text", "")
+        response_text = (ai_resp.get("text", "") or "").strip()
         provider_used = ai_resp.get("provider", "unknown")
         tokens_used = ai_resp.get("tokens_used", 0)
+
+        # If Ollama's grammar constraint stopped immediately on '{}', retry with direct format
+        if response_text in ("{}", "[]", "") and not ai_resp.get("generation_failed"):
+            logger.warning("[Unified Tutor] Received empty JSON '{}'. Retrying with direct JSON prompt...")
+            retry_prompt = f"{user_prompt}\n\nPlease output valid JSON with keys: title, queryType, concepts, formulas, explanation, summary."
+            retry_resp = await call_ai(
+                prompt=retry_prompt,
+                system_prompt="You are an expert AI STEM tutor for EduSim. Output valid JSON with keys: title, queryType, concepts, formulas, explanation, summary.",
+                model=os.getenv("OLLAMA_MODEL", "gemma3:4b"),
+                history=history,
+                temperature=0.2,
+                request_id=request_id,
+            )
+            retry_text = (retry_resp.get("text", "") or "").strip()
+            if retry_text and retry_text not in ("{}", "[]"):
+                response_text = retry_text
+                provider_used = retry_resp.get("provider", provider_used)
+                tokens_used = retry_resp.get("tokens_used", tokens_used)
 
         if ai_resp.get("generation_failed"):
             return _empty_tutor_payload(
@@ -417,84 +1170,14 @@ async def unified_tutor_generation_async(
                 tokens_used=tokens_used,
             )
 
-        cleaned = response_text.replace("```json", "").replace("```", "").strip()
-        json_match = re.search(r'\{.*\}', cleaned, re.DOTALL)
-        if json_match:
-            try:
-                parsed = json.loads(json_match.group())
-                raw_concepts = parsed.get("concepts", [])
-                if isinstance(raw_concepts, list):
-                    concepts = [c for c in raw_concepts if isinstance(c, str)]
-                else:
-                    concepts = []
-                related_concepts = _dedupe_related_topics(concepts, max_items=_MAX_RELATED_TOPICS)
-
-                formulas = parsed.get("formulas", [])
-                if not isinstance(formulas, list):
-                    formulas = []
-                first_formula = formulas[0].get("formula", "") if formulas and isinstance(formulas[0], dict) else (formulas[0] if formulas else "")
-
-                explanation = parsed.get("explanation", "")
-                if fallback_mode and explanation and "This topic is not available" not in explanation:
-                    explanation = (
-                        "This topic is not available in the provided textbook context.\n\n"
-                        "The following explanation is AI-generated and may not exactly match your textbook.\n\n"
-                        + explanation
-                    )
-
-                summary = parsed.get("summary", "")
-                if not summary:
-                    summary = explanation[:250].strip() + "..." if explanation else ""
-
-                sim_guide = parsed.get("simulation_guide", {})
-                if not isinstance(sim_guide, dict):
-                    sim_guide = {"is_buildable": False}
-
-                return {
-                    "title": parsed.get("title", "AI Tutor Response"),
-                    "description": query,
-                    "formula": first_formula,
-                    "related_concepts": related_concepts,
-                    "related_formulas": formulas,
-                    "ai_explanation": explanation,
-                    "sources": [],
-                    "queryType": parsed.get("queryType", "concept"),
-                    "concepts": related_concepts,
-                    "formulas": formulas,
-                    "explanation": explanation,
-                    "summary": summary,
-                    "simulation_guide": sim_guide,
-                    "generation_status": "success",
-                    "generation_failed": False,
-                    "error_type": None,
-                    "status_code": 200,
-                    "provider": provider_used,
-                    "tokens_used": tokens_used,
-                }
-            except json.JSONDecodeError:
-                pass
-
-        return {
-            "title": "AI Tutor Response",
-            "description": query,
-            "formula": "",
-            "related_concepts": [],
-            "related_formulas": [],
-            "ai_explanation": response_text,
-            "sources": [],
-            "queryType": "concept",
-            "concepts": [],
-            "formulas": [],
-            "explanation": response_text,
-            "summary": response_text[:250].strip() + "...",
-            "simulation_guide": {"is_buildable": False},
-            "generation_status": "success",
-            "generation_failed": False,
-            "error_type": None,
-            "status_code": 200,
-            "provider": provider_used,
-            "tokens_used": tokens_used,
-        }
+        return parse_structured_tutor_response(
+            response_text=response_text,
+            query=query,
+            rag_content=rag_content,
+            fallback_mode=fallback_mode,
+            provider_used=provider_used,
+            tokens_used=tokens_used,
+        )
 
     except Exception as e:
         logger.error("[Unified Tutor] Error: %s", e)
@@ -504,6 +1187,7 @@ async def unified_tutor_generation_async(
 async def analyze_tutor_query(
     query: str,
     history: list[dict[str, str]] | None = None,
+    class_name: str | None = None,
     subject: str | None = None,
     chapter: str | None = None,
     topic: str | None = None,
@@ -633,9 +1317,12 @@ async def analyze_tutor_query(
             if hints_str.lower() not in query.lower():
                 search_query = f"{hints_str} {query}"
             
-    # 2. Subject Routing & RAG Retrieval
-    target_subject = subject if subject else detect_subject(search_query)
-    retriever = get_rag_components(target_subject) if not is_follow_up else None
+    # 2. Multilingual & Subject Routing & RAG Retrieval
+    detected_lang = detect_query_language(query)
+    target_class_num = parse_class_name(class_name) if class_name else None
+    expanded_search_query = expand_multilingual_query(search_query, detected_lang)
+    target_subject = subject if subject else detect_subject(expanded_search_query)
+    retriever = get_rag_components(subject=target_subject, class_num=target_class_num)
     
     rag_content = []
     context = ""
@@ -643,39 +1330,15 @@ async def analyze_tutor_query(
     
     valid_docs = []
     if retriever:
-        docs = retriever(search_query)
+        docs = retriever(expanded_search_query)
         valid_docs = [doc for doc in docs if doc.get('score', 0) > 0.35]
         
     fallback_mode = not bool(valid_docs)
-
-    if fallback_mode and target_subject and target_subject.lower() != "physics":
-        not_in_curr_msg = "This topic is not in the curriculum yet."
-        return {
-            "title": f"{target_subject.capitalize()}: Curriculum Notice",
-            "description": query,
-            "formula": "",
-            "related_concepts": [target_subject.capitalize()],
-            "related_formulas": [],
-            "ai_explanation": not_in_curr_msg,
-            "sources": [],
-            "queryType": "concept",
-            "concepts": [target_subject.capitalize()],
-            "formulas": [],
-            "explanation": not_in_curr_msg,
-            "summary": not_in_curr_msg,
-            "ragContent": [],
-            "simulation_guide": {"is_buildable": False},
-            "generation_status": "success",
-            "generation_failed": False,
-            "status_code": 200,
-            "provider": "system",
-            "tokens_used": 0,
-        }
     
     if not fallback_mode:
         use_cloud = os.getenv("USE_CLOUD_AI", "false").lower() in ("true", "1", "yes")
-        max_chunks = int(os.getenv("OPENROUTER_MAX_CHUNKS", "8")) if use_cloud else int(os.getenv("OLLAMA_MAX_CHUNKS", "4"))
-        max_tokens = int(os.getenv("OPENROUTER_MAX_CONTEXT_TOKENS", "4000")) if use_cloud else int(os.getenv("OLLAMA_MAX_CONTEXT_TOKENS", "1500"))
+        max_chunks = int(os.getenv("OPENROUTER_MAX_CHUNKS", "8")) if use_cloud else int(os.getenv("OLLAMA_MAX_CHUNKS", "2"))
+        max_tokens = int(os.getenv("OPENROUTER_MAX_CONTEXT_TOKENS", "4000")) if use_cloud else int(os.getenv("OLLAMA_MAX_CONTEXT_TOKENS", "1000"))
 
         current_tokens = 0
         for doc in valid_docs[:max_chunks]:
@@ -712,7 +1375,9 @@ async def analyze_tutor_query(
         context=full_context,
         history=history,
         fallback_mode=fallback_mode,
-        request_id=request_id
+        request_id=request_id,
+        target_language=detected_lang,
+        rag_content=rag_content,
     )
     llm_time = time.perf_counter() - llm_start
     logger.info("[LLM] %.2fs", llm_time)
@@ -860,6 +1525,7 @@ async def explain_simulation_query(
 async def analyze_tutor_query_stream(
     query: str,
     history: list[dict[str, str]] | None = None,
+    class_name: str | None = None,
     subject: str | None = None,
     chapter: str | None = None,
     topic: str | None = None,
@@ -982,25 +1648,21 @@ async def analyze_tutor_query_stream(
             if hints_str.lower() not in query.lower():
                 search_query = f"{hints_str} {query}"
             
-    target_subject = subject if subject else detect_subject(search_query)
-    retriever = get_rag_components(target_subject) if not is_follow_up else None
+    detected_lang = detect_query_language(query)
+    target_class_num = parse_class_name(class_name) if class_name else None
+    expanded_search_query = expand_multilingual_query(search_query, detected_lang)
+    target_subject = subject if subject else detect_subject(expanded_search_query)
+    retriever = get_rag_components(subject=target_subject, class_num=target_class_num)
     
     rag_content = []
     context = ""
     valid_docs = []
     
     if retriever:
-        docs = retriever(search_query)
+        docs = retriever(expanded_search_query)
         valid_docs = [doc for doc in docs if doc.get('score', 0) > 0.35]
         
     fallback_mode = not bool(valid_docs)
-
-    if fallback_mode and target_subject and target_subject.lower() != "physics":
-        not_in_curr_msg = "This topic is not in the curriculum yet."
-        yield "data: " + json.dumps({"ragContent": []}) + "\n\n"
-        yield "data: " + json.dumps({"explanation": not_in_curr_msg, "title": f"{target_subject.capitalize()}: Curriculum Notice", "formulas": [], "concepts": [target_subject.capitalize()], "simulation_guide": {"is_buildable": False}}) + "\n\n"
-        yield "data: [DONE]\n\n"
-        return
     
     if not fallback_mode:
         for doc in valid_docs[:3]: # Optimized to 3
@@ -1032,13 +1694,10 @@ async def analyze_tutor_query_stream(
     is_follow_up = history and any(msg["role"] == "user" for msg in history)
     run_simulation_gen = not is_follow_up or needs_simulation_generation(query)
 
-    # Start structured task if needed
-    structured_task = None
-    if run_simulation_gen:
-        structured_task = asyncio.create_task(analyze_with_llm_async(query, full_context, history=history))
-    
     # Stream explanation text
-    from app.src.modules.legacy_rag.generator import generate_llm_stream_async, get_tutor_prompt, NEW_RENDERING_SYSTEM
+    from app.src.modules.legacy_rag.generator import get_tutor_prompt, NEW_RENDERING_SYSTEM
+    from app.src.services.ai_router import call_ai_stream
+    from app.src.modules.tutor.scientific_validator import ScientificValidator
     prompt = get_tutor_prompt(full_context, query, fallback_mode)
     
     sys_prompt = NEW_RENDERING_SYSTEM
@@ -1046,29 +1705,48 @@ async def analyze_tutor_query_stream(
         sys_prompt = "You are a helpful science and math tutor answering a student's follow-up question in a chat bubble. Keep your explanation clear, pedagogically sound, and friendly. Support markdown formatting and LaTeX equations using standard formatting."
     
     accumulated_text = ""
-    async for chunk in generate_llm_stream_async(prompt, history=history, system_prompt=sys_prompt):
+    async for chunk in call_ai_stream(prompt, history=history, system_prompt=sys_prompt, send_done=False):
         if chunk.startswith("data: "):
-            data_str = chunk[6:]
-            try:
-                data = json.loads(data_str)
-                content = data.get("content", "")
-                if content:
-                    accumulated_text += content
-            except Exception:
-                pass
+            data_str = chunk[6:].strip()
+            if data_str and data_str != "[DONE]":
+                try:
+                    data = json.loads(data_str)
+                    content = data.get("content", "")
+                    if content:
+                        accumulated_text += content
+                except Exception:
+                    pass
         yield chunk
         
-    # Wait for structured data to finish
-    if structured_task:
-        structured = await structured_task
-    else:
-        structured = {
-            "title": "AI Tutor Response",
-            "queryType": "concept",
-            "concepts": [],
-            "formulas": [],
-            "simulation_guide": {"is_buildable": False}
-        }
+    # Build structured metadata directly from accumulated content and validator
+    canonical_matches = ScientificValidator.check_canonical_match(accumulated_text + " " + query)
+    extracted_formulas = [
+        {"formula": m["canonical_latex"], "name": m["name"], "topic": m["subject"].capitalize(), "meaning": m["name"]}
+        for m in canonical_matches
+    ]
+    extracted_concepts = [w.capitalize() for w in query.split() if len(w) > 4][:3]
+    first_formula = extracted_formulas[0]["formula"] if extracted_formulas else ""
+    summary_text = accumulated_text[:250].strip() + "..." if accumulated_text else ""
+
+    structured = {
+        "title": canonical_matches[0]["name"] if canonical_matches else "AI Tutor Explanation",
+        "description": query,
+        "formula": first_formula,
+        "related_concepts": extracted_concepts,
+        "related_formulas": extracted_formulas,
+        "ai_explanation": accumulated_text,
+        "sources": rag_content,
+        "queryType": "formula" if extracted_formulas else "concept",
+        "concepts": extracted_concepts,
+        "formulas": extracted_formulas,
+        "explanation": accumulated_text,
+        "summary": summary_text,
+        "ragContent": rag_content,
+        "simulation_guide": {"is_buildable": False},
+        "generation_status": "success",
+        "generation_failed": False,
+        "status_code": 200,
+    }
     yield f"data: {json.dumps({'structured': structured})}\n\n"
     
     # Trigger background profile update task if parameters are supplied

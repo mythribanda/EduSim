@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { CurriculumService } from "@/services/curriculumService";
 import { fetchJsonWithRetry } from "@/services/apiClient";
 import { getApiUrl } from "@/config/api";
+import { GlobalSearch } from "@/components/layout/GlobalSearch";
 import { 
   Sparkles, 
   BookOpen, 
@@ -182,7 +183,7 @@ function Dashboard() {
               </motion.span>
             </motion.h1>
             <p className="text-muted-foreground max-w-xl text-base">
-              Dive back into your simulations or ask the AI Tutor to explain complex physics concepts in real-time.
+              Explore interactive STEM simulations across all subjects, test yourself with AI-generated quizzes, or ask your AI Tutor to guide you through topics in real-time.
             </p>
             <p className="mt-2 text-sm text-muted-foreground">
               Signed in as <span className="font-semibold text-foreground">{user?.email || "unknown"}</span>
@@ -191,58 +192,19 @@ function Dashboard() {
         </div>
       </section>
 
-      {/* Learning Progress & Next Recommended Activity */}
-      <section className="rounded-3xl border border-border bg-card p-6 mb-8 shadow-sm relative overflow-hidden">
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-primary bg-primary/10 border border-primary/20 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                <Target className="w-3.5 h-3.5" /> Next Pedagogical Activity
-              </span>
-            </div>
-            <h3 className="text-xl font-black text-foreground">
-              Continue with <span className="text-primary">{recommendedTopic}</span>
-            </h3>
-            <p className="text-xs text-muted-foreground max-w-lg">
-              Based on your concept mastery and quiz results, our AI tutor recommends exploring {recommendedTopic} through interactive simulation and formula modeling.
-            </p>
-          </div>
-
-          <div className="flex items-center flex-wrap gap-3">
-            <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 px-4 py-2.5 rounded-2xl">
-              <Flame className="w-5 h-5 text-amber-500 fill-amber-500" />
-              <div>
-                <div className="text-[10px] font-extrabold uppercase text-amber-600 dark:text-amber-400">Current Streak</div>
-                <div className="text-sm font-black text-foreground">{activeStreak} Days</div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 bg-violet-500/10 border border-violet-500/20 px-4 py-2.5 rounded-2xl">
-              <Trophy className="w-5 h-5 text-violet-500" />
-              <div>
-                <div className="text-[10px] font-extrabold uppercase text-violet-600 dark:text-violet-400">Mastered Topics</div>
-                <div className="text-sm font-black text-foreground">{masteredCount} Completed</div>
-              </div>
-            </div>
-
-            <Link
-              to="/simulation/$topic"
-              params={{ topic: recommendedTopic }}
-              className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-primary text-primary-foreground font-bold text-xs shadow-md shadow-primary/20 hover:brightness-110 active:scale-95 transition-all"
-            >
-              <Sparkles className="w-4 h-4 text-primary-foreground" />
-              <span>Launch Simulation</span>
-              <ArrowRight className="w-3.5 h-3.5 ml-1" />
-            </Link>
-          </div>
-        </div>
-      </section>
+      {/* Prominent Dashboard Search */}
+      <div className="mb-8 max-w-2xl mx-auto">
+        <GlobalSearch />
+      </div>
 
       <section className="glass rounded-3xl p-6 border border-border bg-card mb-8 shadow-sm">
         <h2 className="text-xl font-bold tracking-tight mb-5 text-foreground">Quick Access</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <Link to="/tutor" search={EMPTY_TUTOR_SEARCH} className="group rounded-2xl border border-border bg-card px-4 py-4 hover:border-primary hover:bg-secondary/40 transition-all shadow-sm">
             <div className="flex items-center gap-2 text-sm font-semibold text-foreground group-hover:text-primary transition-colors"><Brain className="w-4 h-4 text-primary" /> AI Tutor</div>
+          </Link>
+          <Link to="/tutor" search={{ prompt: "Give me an interactive practice quiz on science concepts" } as any} className="group rounded-2xl border border-border bg-card px-4 py-4 hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all shadow-sm">
+            <div className="flex items-center gap-2 text-sm font-semibold text-foreground group-hover:text-emerald-600 transition-colors"><Target className="w-4 h-4 text-emerald-500" /> AI Quiz</div>
           </Link>
           <Link to="/formula-lab/$topic" params={{ topic: "new" }} className="group rounded-2xl border border-border bg-card px-4 py-4 hover:border-primary hover:bg-secondary/40 transition-all shadow-sm">
             <div className="flex items-center gap-2 text-sm font-semibold text-foreground group-hover:text-primary transition-colors"><Atom className="w-4 h-4 text-primary" /> Formula Lab</div>
@@ -259,11 +221,11 @@ function Dashboard() {
       {/* Main Grid */}
       <div className="mb-10 space-y-8">
         <h2 className="text-xl font-bold tracking-tight text-foreground">Interactive Modules</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             
             {/* AI Tutor Card */}
             <Link to="/tutor" search={EMPTY_TUTOR_SEARCH}>
-              <div className="group h-full glass rounded-3xl p-6 border border-border bg-card hover:border-primary/45 hover:bg-secondary/20 transition-all duration-300 relative overflow-hidden flex flex-col justify-between shadow-sm">
+              <div className="group h-full min-h-[220px] glass rounded-3xl p-6 border border-border bg-card hover:border-primary/45 hover:bg-secondary/20 transition-all duration-300 relative overflow-hidden flex flex-col justify-between shadow-sm">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full blur-2xl group-hover:bg-primary/10 transition-all duration-500" />
                 <div>
                   <div className="w-12 h-12 rounded-2xl bg-secondary border border-border flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
@@ -273,8 +235,8 @@ function Dashboard() {
                     AI Tutor
                     <Sparkles className="w-4 h-4 text-primary animate-pulse" />
                   </h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Have questions about physics? Chat with our intelligent assistant to learn via interactive discussions.
+                  <p className="text-sm text-muted-foreground mb-4 line-clamp-3">
+                    Have questions about science or math? Chat with our intelligent assistant to learn via interactive discussions.
                   </p>
                 </div>
                 <div className="flex items-center gap-1.5 text-xs text-primary font-bold group-hover:translate-x-1.5 transition-transform">
@@ -283,17 +245,36 @@ function Dashboard() {
               </div>
             </Link>
 
+            {/* AI Quiz Card */}
+            <Link to="/tutor" search={{ prompt: "Give me an interactive practice quiz on science concepts" } as any}>
+              <div className="group h-full min-h-[220px] glass rounded-3xl p-6 border border-border bg-card hover:border-emerald-500/45 hover:bg-emerald-500/5 transition-all duration-300 relative overflow-hidden flex flex-col justify-between shadow-sm">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-bl-full blur-2xl group-hover:bg-emerald-500/10 transition-all duration-500" />
+                <div>
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <Target className="w-6 h-6 text-emerald-600" />
+                  </div>
+                  <h3 className="text-lg font-bold mb-2 text-foreground group-hover:text-emerald-600 transition-colors">AI Practice Quiz</h3>
+                  <p className="text-sm text-muted-foreground mb-4 line-clamp-3">
+                    Test your understanding with curriculum-aligned AI multiple-choice questions, instant grading, and streak tracking.
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-bold group-hover:translate-x-1.5 transition-transform">
+                  Start Quiz <ArrowRight className="w-3.5 h-3.5" />
+                </div>
+              </div>
+            </Link>
+
             {/* Formula Lab Card */}
             <Link to="/formula-lab/$topic" params={{ topic: "new" }}>
-              <div className="group h-full glass rounded-3xl p-6 border border-border bg-card hover:border-primary/45 hover:bg-secondary/20 transition-all duration-300 relative overflow-hidden flex flex-col justify-between shadow-sm">
+              <div className="group h-full min-h-[220px] glass rounded-3xl p-6 border border-border bg-card hover:border-primary/45 hover:bg-secondary/20 transition-all duration-300 relative overflow-hidden flex flex-col justify-between shadow-sm">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full blur-2xl group-hover:bg-primary/10 transition-all duration-500" />
                 <div>
                   <div className="w-12 h-12 rounded-2xl bg-secondary border border-border flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                     <Atom className="w-6 h-6 text-primary" />
                   </div>
                   <h3 className="text-lg font-bold mb-2 text-foreground group-hover:text-primary transition-colors">Formula Lab</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Experiment with physics variables and see how constants change parameters, plots, and motion equations instantly.
+                  <p className="text-sm text-muted-foreground mb-4 line-clamp-3">
+                    Experiment with formula variables and see how constants change parameters, plots, and equations instantly.
                   </p>
                 </div>
                 <div className="flex items-center gap-1.5 text-xs text-primary font-bold group-hover:translate-x-1.5 transition-transform">
@@ -302,19 +283,17 @@ function Dashboard() {
               </div>
             </Link>
 
-
-
             {/* AI Generator Card */}
             <Link to="/sandbox/$simulationId" params={{ simulationId: "new" }}>
-              <div className="group h-full glass rounded-3xl p-6 border border-border bg-card hover:border-primary/45 hover:bg-secondary/20 transition-all duration-300 relative overflow-hidden flex flex-col justify-between shadow-sm">
+              <div className="group h-full min-h-[220px] glass rounded-3xl p-6 border border-border bg-card hover:border-amber-500/45 hover:bg-amber-500/5 transition-all duration-300 relative overflow-hidden flex flex-col justify-between shadow-sm">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-bl-full blur-2xl group-hover:bg-amber-500/10 transition-all duration-500" />
                 <div>
                   <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                     <Compass className="w-6 h-6 text-amber-600" />
                   </div>
-                  <h3 className="text-lg font-bold mb-2 text-foreground group-hover:text-amber-600 transition-colors">AI Simulation Builder</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Describe a physics concept, and the Educational Intelligence synthesis engine will dynamically build a custom simulation.
+                  <h3 className="text-lg font-bold mb-2 text-foreground group-hover:text-amber-600 transition-colors">Simulation Builder</h3>
+                  <p className="text-sm text-muted-foreground mb-4 line-clamp-3">
+                    Describe a STEM concept or scientific system, and the simulation synthesis engine will dynamically build a custom simulation.
                   </p>
                 </div>
                 <div className="flex items-center gap-1.5 text-xs text-amber-600 font-bold group-hover:translate-x-1.5 transition-transform">
@@ -337,14 +316,18 @@ function Dashboard() {
             <button onClick={() => refetchClasses()} className="text-xs font-bold underline hover:text-foreground">Try again</button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {classes.map((c, i) => (
-              <Link key={c.id} to="/subjects/$classId" params={{ classId: String(c.id) }}>
-                <Card delay={i * 0.04} className="border border-border bg-card shadow-sm hover:border-primary/50">
-                  <div className="text-xs text-primary font-mono font-bold mb-2">CLASS</div>
-                  <div className="text-3xl font-extrabold text-foreground mb-2">{c.id}</div>
-                  <p className="text-xs text-muted-foreground line-clamp-2">{c.description}</p>
-                  <div className="mt-3 text-xs text-muted-foreground font-semibold">View Subjects</div>
+              <Link key={c.id} to="/subjects/$classId" params={{ classId: String(c.id) }} className="h-full">
+                <Card delay={i * 0.03} className="h-[130px] min-h-[130px] w-full flex flex-col justify-between border border-border bg-card shadow-sm hover:border-primary/50 p-5 rounded-2xl transition-all">
+                  <div>
+                    <div className="text-xs text-primary font-mono font-bold mb-1">CLASS</div>
+                    <div className="text-3xl font-extrabold text-foreground">{c.id}</div>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between text-xs text-primary font-semibold">
+                    <span>View Subjects</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </div>
                 </Card>
               </Link>
             ))}

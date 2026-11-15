@@ -10,6 +10,15 @@ logger = logging.getLogger("EduSim.RAGService")
 REFUSAL_MESSAGE = "I couldn't find this in the textbooks."
 NOT_IN_CURRICULUM_MESSAGE = "This topic is not in the curriculum yet."
 
+def _is_non_physics_curriculum(subject_name: Optional[str], query_text: str) -> bool:
+    """Helper to distinguish non-physics curriculum topics from off-topic queries."""
+    if subject_name:
+        return subject_name.lower() != "physics"
+    academic_keywords = {"photosynthesis", "chloroplast", "mitochondria", "dna", "rna", "respiration"}
+    from app.src.modules.tutor.subject_classifier import detect_subject
+    detected = detect_subject(query_text)
+    return (detected in {"biology", "chemistry"}) and any(k in query_text.lower() for k in academic_keywords)
+
 async def query_rag_service(
     query: str,
     subject: Optional[str] = None,
@@ -53,8 +62,7 @@ async def query_rag_service(
                 f"[RAG] Retrieval refused ({reason}) for query='{query[:50]}'. "
                 "Refusing immediately without calling LLM."
             )
-            from app.src.modules.tutor.subject_classifier import detect_subject
-            is_non_physics = (norm_subject and norm_subject != "physics") or (detect_subject(query) != "physics")
+            is_non_physics = _is_non_physics_curriculum(norm_subject, query)
             refusal_text = NOT_IN_CURRICULUM_MESSAGE if is_non_physics else REFUSAL_MESSAGE
             return {
                 "answer": refusal_text,
@@ -113,8 +121,7 @@ async def query_rag_service(
                 "subject_fallback": subject_fallback,
             }
         except Exception as e:
-            from app.src.modules.tutor.subject_classifier import detect_subject
-            is_non_physics = (norm_subject and norm_subject != "physics") or (detect_subject(query) != "physics")
+            is_non_physics = _is_non_physics_curriculum(norm_subject, query)
             if is_non_physics:
                 logger.warning(f"[RAG] LLM generation failed ({e}) for non-physics topic. Returning fallback response.")
                 return {
@@ -128,8 +135,7 @@ async def query_rag_service(
 
     except Exception as e:
         logger.error(f"Error in query_rag_service: {e}", exc_info=True)
-        from app.src.modules.tutor.subject_classifier import detect_subject
-        is_non_physics = (subject and str(subject).lower() != "physics") or (detect_subject(query) != "physics")
+        is_non_physics = _is_non_physics_curriculum(subject, query)
         if is_non_physics:
             return {
                 "answer": NOT_IN_CURRICULUM_MESSAGE,

@@ -1,0 +1,32 @@
+{
+  "all-MiniLM-L6-v2 (Production)": {
+    "load_time_s": 6.38,
+    "dim": 384,
+    "en_p1": "6/6 (100.0%)",
+    "te_p1": "2/6 (33.3%)",
+    "hi_p1": "2/6 (33.3%)",
+    "en_mean_sim": 0.7046,
+    "te_mean_sim": 0.0182,
+    "hi_mean_sim": 0.0842
+  },
+  "paraphrase-multilingual-MiniLM-L12-v2": {
+    "load_time_s": 10.23,
+    "dim": 384,
+    "en_p1": "6/6 (100.0%)",
+    "te_p1": "1/6 (16.7%)",
+    "hi_p1": "6/6 (100.0%)",
+    "en_mean_sim": 0.7189,
+    "te_mean_sim": 0.1885,
+    "hi_mean_sim": 0.5937
+  },
+  "multilingual-e5-small": {
+    "load_time_s": 10.25,
+    "dim": 384,
+    "en_p1": "6/6 (100.0%)",
+    "te_p1": "5/6 (83.3%)",
+    "hi_p1": "6/6 (100.0%)",
+    "en_mean_sim": 0.8947,
+    "te_mean_sim": 0.7788,
+    "hi_mean_sim": 0.8158
+  }
+}

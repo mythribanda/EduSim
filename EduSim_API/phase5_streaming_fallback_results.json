@@ -1,0 +1,26 @@
+{
+  "streaming": {
+    "ttft_sec": 11.016,
+    "chunk_count": 515,
+    "events_order": [
+      "ragContent",
+      "content",
+      "structured",
+      "[DONE]"
+    ],
+    "order_valid": true,
+    "cancellation_clean": true
+  },
+  "ollama_unavailable_no_fallback": {
+    "strict_refusal": true,
+    "detail": "Ollama generation failed (Ollama exception: Connection refused to Ollama on 127.0.0.1:11434). OpenRouter fallback is disabled."
+  },
+  "openrouter_live": {
+    "provider": "openrouter",
+    "elapsed_s": 2.09,
+    "generation_failed": false,
+    "status_code": null,
+    "error_type": null,
+    "response_text": "Velocity is the rate at which an object changes its position, including both its speed and direction of motion."
+  }
+}

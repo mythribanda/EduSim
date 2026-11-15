@@ -3,10 +3,16 @@ from typing import List, Optional, Union, Any
 
 
 class QuestionGenerateRequest(BaseModel):
-    topic: str = Field(..., description="Physics topic name, e.g. Newton's Laws")
+    topic: str = Field(default="", description="Topic name, e.g. Newton's Laws")
+    subject: Optional[str] = Field(default="Science", description="Subject name")
+    chapter: Optional[str] = Field(default=None, description="Chapter name")
+    class_level: Optional[Union[str, int]] = Field(default="10", description="Class / Grade level, e.g. 10 or 'Class 10'")
+    class_name: Optional[str] = Field(default=None, description="Class name")
+    formula: Optional[str] = Field(default="", description="Formula context")
     difficulty: str = Field(default="medium", description="Difficulty level: easy, medium, hard")
-    class_level: Union[str, int] = Field(default="10", description="Class / Grade level, e.g. 10 or 'Class 10'")
+    question_type: Optional[str] = Field(default="mixed", description="Question format")
     count: int = Field(default=3, ge=1, le=50, description="Number of questions to return")
+    exclude_questions: Optional[List[str]] = Field(default_factory=list)
 
 
 class QuestionItem(BaseModel):

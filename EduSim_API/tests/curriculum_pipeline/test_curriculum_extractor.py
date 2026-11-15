@@ -838,7 +838,7 @@ def test_tree_builder_case_insensitive_sibling_deduplication():
     from curriculum_pipeline.tree_builder import CurriculumTreeBuilder
     tb = CurriculumTreeBuilder("test_book")
     candidates = [
-        {"level": "topic", "official_number": "2.4", "official_title": "Kingdom Plantae", "normalized_title": "Kingdom Plantae", "page": 10},
+        {"level": "topic", "official_number": "2.4", "official_title": "Kingdom Plantae", "normalized_title": "Kingdom Plantae", "page": 19},
         {"level": "topic", "official_number": "2.4", "official_title": "KINGDOM PLANTAE", "normalized_title": "KINGDOM PLANTAE", "page": 19},
         {"level": "subtopic", "official_number": None, "official_title": "Storing water", "normalized_title": "Storing water", "page": 20},
         {"level": "subtopic", "official_number": None, "official_title": "Storing Water", "normalized_title": "Storing Water", "page": 20},

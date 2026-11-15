@@ -205,6 +205,34 @@ export function GlobalSearch() {
     setIsOpen(false);
     setQuery("");
 
+    const classMatch = (item.class_name || "").match(/\d+/);
+    const classId = classMatch ? classMatch[0] : "9";
+
+    if (item.type === "class") {
+      (router as any).navigate({
+        to: "/subjects/$classId",
+        params: { classId },
+      });
+      return;
+    }
+
+    if (item.type === "subject" && item.subject) {
+      (router as any).navigate({
+        to: "/chapters/$classId/$subject",
+        params: { classId, subject: item.subject.toLowerCase() },
+      });
+      return;
+    }
+
+    if (item.type === "chapter" && item.chapter) {
+      const subject = (item.subject || "science").toLowerCase();
+      (router as any).navigate({
+        to: "/topics/$classId/$subject/$chapter",
+        params: { classId, subject, chapter: item.chapter },
+      });
+      return;
+    }
+
     // Navigate to tutor page with selected topic
     const params: any = {};
     if (item.subject) params.subject = item.subject;

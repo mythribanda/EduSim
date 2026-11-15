@@ -26,10 +26,10 @@ class Embedder:
         logger.info(f"Initializing Embedder with model '{self.model_name}' (is_e5={self.is_e5})...")
         self.model = SentenceTransformer(self.model_name)
 
-        if hasattr(self.model, "get_sentence_embedding_dimension"):
-            self.dimension = self.model.get_sentence_embedding_dimension()
-        elif hasattr(self.model, "get_embedding_dimension"):
+        if hasattr(self.model, "get_embedding_dimension"):
             self.dimension = self.model.get_embedding_dimension()
+        elif hasattr(self.model, "get_sentence_embedding_dimension"):
+            self.dimension = self.model.get_sentence_embedding_dimension()
         else:
             self.dimension = 384
 

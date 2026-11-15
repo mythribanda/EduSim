@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { CurriculumService } from "@/services/curriculumService";
 import { PageWrapper } from "@/components/Card";
 import { Crumbs } from "@/components/Crumbs";
-import { Play, GraduationCap, Sparkles, BookOpen, ChevronRight, ClipboardList, AlertCircle, RefreshCw } from "lucide-react";
+import { Play, GraduationCap, Sparkles, BookOpen, ChevronRight, ClipboardList, AlertCircle, RefreshCw, Target } from "lucide-react";
 import * as Icons from "lucide-react";
 
 export const Route = createFileRoute("/topics/$classId/$subject/$chapter")({
@@ -239,6 +239,19 @@ function TopicsPage() {
     });
   };
 
+  const handleTakeQuiz = (topic: any) => {
+    navigate({
+      to: "/tutor",
+      search: {
+        subject: s.name,
+        class_name: c.name,
+        chapter: chapter.name,
+        topic: topic.name,
+        prompt: `Give me an interactive practice quiz on "${topic.name}" from ${chapter.name} in ${s.name} for ${c.name}.`,
+      } as any,
+    });
+  };
+
   return (
     <PageWrapper>
       <Crumbs
@@ -443,94 +456,84 @@ function TopicsPage() {
           No topics available yet. Let's head back home!
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {topics.map((topic, i) => {
             const isPremium = topic.has_simulation && topic.simulation_route;
             const indexColors = getIndexColors(i);
             return (
               <motion.div
                 key={topic.name}
-                initial={{ opacity: 0, y: 30 }}
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ type: "spring", stiffness: 100, damping: 15, delay: i * 0.05 }}
-                whileHover={{ scale: 1.01, y: -1 }}
-                className={`group relative overflow-hidden bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-[24px] p-5 md:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-5 transition-all shadow-sm hover:shadow-md ${theme.glow}`}
+                transition={{ type: "spring", stiffness: 100, damping: 15, delay: i * 0.03 }}
+                whileHover={{ y: -2 }}
+                className="h-[220px] min-h-[220px] w-full group relative overflow-hidden bg-card border border-border rounded-2xl p-5 flex flex-col justify-between transition-all shadow-sm hover:shadow-md hover:border-primary/50"
               >
-                {/* Decorative background glow on hover */}
-                <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-
-                <div className="flex items-center gap-4 relative z-10">
-                  {/* Glowing Index Badge matching design mockup colors */}
-                  <div className={`w-12 h-12 rounded-full ${indexColors.bg} flex items-center justify-center font-mono text-base ${indexColors.text} font-black border ${indexColors.border} transition-all shrink-0`}>
-                    {String(i + 1).padStart(2, "0")}
-                  </div>
-
-                  <div>
-                    <h3 className="font-extrabold text-base md:text-lg text-slate-800 dark:text-slate-100 group-hover:text-primary transition-colors">
-                      {topic.name}
-                    </h3>
-
-                    <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <div className={`w-8 h-8 rounded-xl ${indexColors.bg} flex items-center justify-center font-mono text-xs ${indexColors.text} font-black border ${indexColors.border} shrink-0`}>
+                      {String(i + 1).padStart(2, "0")}
+                    </div>
+                    <div className="flex items-center gap-1.5">
                       {isPremium ? (
-                        <span className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30">
-                          <Sparkles className="w-3 h-3 text-emerald-500 dark:text-emerald-400 fill-emerald-500/20" />
-                          Interactive Lab Ready
+                        <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30">
+                          <Sparkles className="w-3 h-3 text-emerald-500" /> Lab
                         </span>
-                      ) : (
-                        <span className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700/60">
-                          <BookOpen className="w-3 h-3" />
-                          Theory Quest
-                        </span>
-                      )}
-                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30">
-                        Class {classId}
-                      </span>
+                      ) : null}
+                      <button
+                        onClick={() =>
+                          navigate({
+                            to: `/formula-lab/${encodeURIComponent(topic.name)}`,
+                            search: {
+                              classId: classId,
+                              subject: s.name,
+                            } as any,
+                          })
+                        }
+                        className="w-7 h-7 rounded-lg border border-border hover:bg-secondary flex items-center justify-center text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                        title="Formula Lab"
+                      >
+                        <ClipboardList className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
+
+                  <h3 className="font-bold text-base text-foreground group-hover:text-primary transition-colors line-clamp-2 min-h-[2.75rem] leading-snug">
+                    {topic.name}
+                  </h3>
                 </div>
 
-                <div className="flex items-center gap-3 relative z-10 shrink-0 self-end sm:self-auto">
-                  {/* Clipboard icon for Formula Lab */}
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() =>
-                      navigate({
-                        to: `/formula-lab/${encodeURIComponent(topic.name)}`,
-                        search: {
-                          classId: classId,
-                          subject: s.name,
-                        } as any,
-                      })
-                    }
-                    className="w-10 h-10 rounded-full border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-center text-slate-400 dark:text-slate-500 hover:text-indigo-500 transition-all shrink-0"
+                <div className="flex items-center gap-2 pt-3 border-t border-border/60">
+                  <button
+                    onClick={() => handleAskTutor(topic)}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-primary text-white text-xs font-bold shadow-sm hover:brightness-110 active:scale-95 transition-all cursor-pointer"
                   >
-                    <ClipboardList className="w-5 h-5 text-indigo-500" />
-                  </motion.button>
+                    <GraduationCap className="w-3.5 h-3.5" />
+                    <span>Explain</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleTakeQuiz(topic)}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-secondary text-foreground hover:bg-emerald-500/10 hover:text-emerald-600 border border-border text-xs font-bold transition-all hover:scale-102 active:scale-95 cursor-pointer"
+                    title="Take AI Practice Quiz"
+                  >
+                    <Target className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>Quiz</span>
+                  </button>
 
                   {isPremium ? (
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
+                    <button
                       onClick={() =>
                         navigate({
                           to: topic.simulation_route || undefined,
                         })
                       }
-                      className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-500 hover:to-teal-600 text-white text-xs md:text-sm font-extrabold shadow-lg shadow-emerald-500/20 border border-emerald-400/30 hover:scale-105 active:scale-95 transition-all"
+                      className="flex items-center justify-center p-2 rounded-xl bg-emerald-500 text-white hover:bg-emerald-600 text-xs font-bold shadow-sm transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                      title="Launch Simulation Lab"
                     >
-                      <Play className="w-4 h-4 fill-white" /> Go to Lab
-                    </motion.button>
+                      <Play className="w-3.5 h-3.5 fill-white" />
+                    </button>
                   ) : null}
-
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => handleAskTutor(topic)}
-                    className={`flex items-center gap-2 px-5 py-3 rounded-full bg-gradient-to-r ${theme.btnGradient} text-white text-xs md:text-sm font-extrabold shadow-lg hover:scale-105 active:scale-95 transition-all`}
-                  >
-                    <GraduationCap className="w-4 h-4" /> Explain Topic <ChevronRight className="w-4 h-4 ml-0.5" />
-                  </motion.button>
                 </div>
               </motion.div>
             );

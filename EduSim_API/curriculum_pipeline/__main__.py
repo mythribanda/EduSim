@@ -4,7 +4,10 @@ Commands:
   extract [--pilot N] [--book CODE] [--all] [--resume] [--workers W] [--dry-run]
   validate
   report
-  retry-failed
+  qa
+  preflight
+  doctor
+  load
 """
 
 from __future__ import annotations
@@ -14,7 +17,7 @@ import csv
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
@@ -30,10 +33,11 @@ from curriculum_pipeline.catalog_builder import build_books_catalog
 from curriculum_pipeline.extractor_engine import CurriculumExtractorEngine
 from curriculum_pipeline.pipeline_config import (
     API_ROOT,
-    NCERT_PATTERN,
     PIPELINE_OUTPUT_ROOT,
     TEXTBOOKS_DIR,
+    get_ncert_book_code,
     get_ssc_book_code,
+    is_ncert_filename,
 )
 
 CURRICULUM_DIR = PIPELINE_OUTPUT_ROOT / "curriculum"
@@ -71,13 +75,12 @@ def cmd_extract(args: argparse.Namespace):
         inv_rows = list(csv.DictReader(f))
 
     # Group inventory files by book_code
-    files_by_book = {}
+    files_by_book: Dict[str, List[Dict[str, Any]]] = {}
     for r in inv_rows:
         fn = r["file"]
-        m = NCERT_PATTERN.match(fn)
-        if m:
-            c, lang, code, part, ch = m.groups()
-            bcode = f"{c.lower()}{lang.lower()}{code.lower()}{part}"
+        board = r.get("board", "").lower()
+        if board == "ncert" or is_ncert_filename(fn):
+            bcode = get_ncert_book_code(fn)
         else:
             bcode = get_ssc_book_code(fn)
         files_by_book.setdefault(bcode, []).append(r)
@@ -87,73 +90,89 @@ def cmd_extract(args: argparse.Namespace):
     extraction_reports: List[Dict[str, Any]] = []
     all_books_curriculum: List[Dict[str, Any]] = []
 
+    def resolve_code(code_str: str) -> Optional[str]:
+        c = code_str.strip().lower()
+        if c.endswith(".pdf"):
+            c = Path(c).stem
+        if c in catalog_by_code:
+            return c
+        if c.rstrip("1") in catalog_by_code:
+            return c.rstrip("1")
+        clean_ssc = get_ssc_book_code(c)
+        if clean_ssc in catalog_by_code:
+            return clean_ssc
+        return None
+
     # Determine books to process
     books_to_process = []
     if args.book:
-        if args.book in catalog_by_code:
-            books_to_process = [args.book]
+        resolved = resolve_code(args.book)
+        if resolved:
+            books_to_process = [resolved]
         else:
             print(f"[ERROR] Book code '{args.book}' not found in catalog.")
             sys.exit(1)
     elif getattr(args, "books", None):
         raw_codes = [c.strip() for c in args.books.split(",") if c.strip()]
         for c in raw_codes:
-            if c in catalog_by_code:
-                books_to_process.append(c)
+            resolved = resolve_code(c)
+            if resolved:
+                books_to_process.append(resolved)
             else:
                 print(f"[WARNING] Book code '{c}' not found in catalog, skipping.")
         if not books_to_process:
             print("[ERROR] No valid book codes found in --books.")
             sys.exit(1)
     elif args.pilot is not None:
-        # Pilot selection (Step 5 Pilot: ~25 NCERT books across classes 1-12 + 2 SSC books)
+        # Pilot selection across grades 1-12, languages, and boards
         target_codes = [
-            # Class 1
-            "aejm1",  # Maths
-            "aemr1",  # English
-            # Class 2
-            "bejm1",  # Maths
-            "bemr1",  # English
-            # Class 3
-            "cemm1",  # Maths
-            "ceev1",  # EVS
-            # Class 4
-            "demm1",  # Maths
-            "deev1",  # EVS
-            # Class 5
-            "eemm1",  # Maths
-            "eeev1",  # EVS
-            # Class 6
-            "fegp1",  # Maths
-            "fecu1",  # Science
-            # Class 7
-            "gees1",  # Social Science (Complete 12-chapter book assembled)
-            "gees2",  # Social Science Part 2
-            # Class 8
-            "hecu1",  # Science
-            "hepr1",  # English
-            # Class 9
-            "iemh1",  # Maths
-            "iesc1",  # Science
-            # Class 10
-            "jemh1",  # Maths
-            "jesc1",  # Science
-            "jewe2",  # English
-            # Class 11
-            "kech1",  # Chemistry
-            "kebo1",  # Biology
-            "kemh1",  # Maths
-            # Class 12
-            "leph1",  # Physics
-            "lebo1",  # Biology
-            # 2 SSC books for TOC-only extraction (needs_review)
+            # NCERT Primary (Classes 1-5)
+            "aejm",  # Class 1 Joyful Maths
+            "aemr",  # Class 1 English Mridang
+            "ahsr",  # Class 1 Hindi Sarangi
+            "bejm",  # Class 2 Maths
+            "bemr",  # Class 2 English
+            "cemm",  # Class 3 Maths
+            "ceev",  # Class 3 EVS
+            "chve",  # Class 3 Hindi Veena
+            "demm",  # Class 4 Maths
+            "deev",  # Class 4 EVS
+            "eemm",  # Class 5 Maths
+            "eeev",  # Class 5 EVS
+            # NCERT Middle (Classes 6-8)
+            "fegp",  # Class 6 Maths Ganita Prakash
+            "fecu",  # Class 6 Science Curiosity
+            "fhml",  # Class 6 Hindi Malhar
+            "gecu",  # Class 7 Science
+            "gegp",  # Class 7 Maths
+            "hecu",  # Class 8 Science
+            "hepr",  # Class 8 English Poorvi
+            # NCERT Secondary & Higher Secondary (Classes 9-12)
+            "iemh",  # Class 9 Maths
+            "iesc",  # Class 9 Science
+            "jemh",  # Class 10 Maths
+            "jesc",  # Class 10 Science
+            "kech",  # Class 11 Chemistry
+            "kebo",  # Class 11 Biology
+            "kemh",  # Class 11 Maths
+            "leph",  # Class 12 Physics
+            "lebo",  # Class 12 Biology
+            # Telangana State Board (SSC)
             "ssc_x_mathematics_em_2025_26_02_11_2024_",
-            "ssc_x_biology_em_2025_26",
+            "ssc_ix_biology_em_2025_26",
+            "ssc_iv_maths_em_2025_26_03_11_2024_",
+            "ssc_1st_class_english_2025_26",
         ]
-        # Filter available target codes
-        books_to_process = [c for c in target_codes if c in catalog_by_code]
+        resolved_targets = []
+        for tc in target_codes:
+            rc = resolve_code(tc)
+            if rc and rc not in resolved_targets:
+                resolved_targets.append(rc)
+
+        books_to_process = resolved_targets
         if args.pilot > 0 and len(books_to_process) > args.pilot:
             books_to_process = books_to_process[:args.pilot]
+
         print(f"  Pilot mode selected {len(books_to_process)} target books:")
         for idx, bcode in enumerate(books_to_process, 1):
             info = catalog_by_code[bcode]
@@ -175,29 +194,39 @@ def cmd_extract(args: argparse.Namespace):
         flist = files_by_book.get(bcode, [])
         print(f"  [{idx}/{len(books_to_process)}] Processing book {bcode} ({binfo['book_title']}) - {len(flist)} file(s)...")
 
-        if binfo["board"] == "ncert":
-            b_curriculum = engine.process_ncert_book(binfo, flist, review_queue)
-        else:
-            entry = flist[0] if flist else {"file": binfo["book_title"] + ".pdf"}
-            b_curriculum = engine.process_ssc_book(binfo, entry, review_queue)
+        try:
+            if binfo["board"] == "ncert":
+                b_curriculum = engine.process_ncert_book(binfo, flist, review_queue)
+            else:
+                entry = flist[0] if flist else {"file": binfo["book_title"] + ".pdf"}
+                b_curriculum = engine.process_ssc_book(binfo, entry, review_queue)
 
-        all_books_curriculum.append(b_curriculum)
+            all_books_curriculum.append(b_curriculum)
 
-        # Record file report
-        cov = b_curriculum.get("coverage_proof", {})
-        for fentry in flist:
-            extraction_reports.append({
-                "file": fentry["file"],
-                "book_code": bcode,
-                "board": binfo["board"],
-                "class": binfo["class"],
-                "subject": binfo["subject"],
-                "chapters_found": cov.get("chapters_found", 0),
-                "pages_total": cov.get("pages_total", 0),
-                "pages_with_text": cov.get("pages_with_text", 0),
-                "pages_unassigned": cov.get("pages_unassigned", 0),
-                "status": cov.get("status", "unknown"),
-                "status_reasons": "; ".join(cov.get("status_reasons", [])),
+            # Record file report
+            cov = b_curriculum.get("coverage_proof", {})
+            for fentry in flist:
+                extraction_reports.append({
+                    "file": fentry["file"],
+                    "book_code": bcode,
+                    "board": binfo["board"],
+                    "class": binfo["class"],
+                    "subject": binfo["subject"],
+                    "chapters_found": cov.get("chapters_found", 0),
+                    "pages_total": cov.get("pages_total", 0),
+                    "pages_with_text": cov.get("pages_with_text", 0),
+                    "pages_unassigned": cov.get("pages_unassigned", 0),
+                    "status": cov.get("status", "unknown"),
+                    "status_reasons": "; ".join(cov.get("status_reasons", [])),
+                })
+        except Exception as e:
+            print(f"  ❌ [ERROR] Failed processing book {bcode}: {e}")
+            review_queue.append({
+                "file": flist[0]["file"] if flist else bcode,
+                "page": 1,
+                "problem": "exception_during_extraction",
+                "found_text": str(e),
+                "suggested_action": "Check book format or reader dependencies",
             })
 
     # Step G: Write combined outputs
@@ -205,29 +234,72 @@ def cmd_extract(args: argparse.Namespace):
     CURRICULUM_DIR.mkdir(parents=True, exist_ok=True)
 
     # Load existing books from BOOKS_DIR to maintain complete catalog
-    existing_books = {}
+    existing_books: Dict[str, Dict[str, Any]] = {}
     if BOOKS_DIR.exists():
         for bpath in BOOKS_DIR.glob("*.json"):
             try:
                 with open(bpath, "r", encoding="utf-8") as bf:
                     bdata = json.load(bf)
-                    if "book_code" in bdata:
-                        existing_books[bdata["book_code"]] = bdata
+                    bcode = bdata.get("book_code")
+                    if bcode and bcode in catalog_by_code:
+                        cat_info = catalog_by_code[bcode]
+                        bdata["title"] = cat_info["book_title"]
+                        bdata["book_title"] = cat_info["book_title"]
+                        bdata["class"] = cat_info["class"]
+                        bdata["subject"] = cat_info["subject"]
+                        bdata["medium"] = cat_info["medium"]
+                        existing_books[bcode] = bdata
             except Exception:
                 pass
     for b in all_books_curriculum:
-        existing_books[b["book_code"]] = b
+        if b.get("book_code") in catalog_by_code:
+            existing_books[b["book_code"]] = b
 
     combined_list = list(existing_books.values())
+
+    # Build Class -> Subject -> Book hierarchy
+    classes_dict: Dict[Any, Dict[str, Any]] = {}
+    for b in combined_list:
+        try:
+            cls_val = int(b.get("class", 0))
+        except (ValueError, TypeError):
+            cls_val = 0
+        subj_val = str(b.get("subject", "general")).lower().strip()
+        if cls_val not in classes_dict:
+            classes_dict[cls_val] = {
+                "class": cls_val,
+                "subjects": {},
+            }
+        if subj_val not in classes_dict[cls_val]["subjects"]:
+            classes_dict[cls_val]["subjects"][subj_val] = {
+                "subject": subj_val,
+                "books": [],
+            }
+        classes_dict[cls_val]["subjects"][subj_val]["books"].append(b)
+
+    hierarchy = []
+    for cls_val in sorted(classes_dict.keys(), key=lambda x: int(x) if str(x).isdigit() else 99):
+        cls_obj = classes_dict[cls_val]
+        subj_list = []
+        for subj_val in sorted(cls_obj["subjects"].keys()):
+            subj_list.append(cls_obj["subjects"][subj_val])
+        hierarchy.append({
+            "class": cls_val,
+            "subjects": subj_list,
+        })
+
     with open(COMBINED_CURRICULUM_JSON, "w", encoding="utf-8") as f:
-        json.dump({"books": combined_list}, f, indent=2, ensure_ascii=False)
+        json.dump({
+            "hierarchy": hierarchy,
+            "books": combined_list,
+        }, f, indent=2, ensure_ascii=False)
     print(f"  [OK] Combined curriculum written -> {COMBINED_CURRICULUM_JSON} ({len(combined_list)} books)")
 
     # Write extraction report CSV
     report_cols = [
         "file", "book_code", "board", "class", "subject",
         "chapters_found", "pages_total", "pages_with_text", "pages_unassigned",
-        "status", "status_reasons"
+        "status", "status_reasons",
     ]
     existing_reports_map = {}
     if EXTRACTION_REPORT_CSV.exists():
@@ -261,7 +333,24 @@ def cmd_extract(args: argparse.Namespace):
     for r in review_queue:
         existing_rq_map[(r.get("file"), r.get("page"))] = r
 
-    merged_rq = list(existing_rq_map.values())
+    merged_rq = []
+    for r in existing_rq_map.values():
+        if r.get("problem") == "exception_during_extraction":
+            f_val = str(r.get("file") or r.get("\ufefffile") or "")
+            f_code = get_ssc_book_code(f_val) if not is_ncert_filename(f_val) else get_ncert_book_code(f_val)
+            b_json = BOOKS_DIR / f"{f_code}.json"
+            if b_json.exists():
+                try:
+                    with open(b_json, "r", encoding="utf-8") as bf:
+                        b_data = json.load(bf)
+                        if b_data.get("extraction_status") == "ok":
+                            continue
+                except Exception:
+                    pass
+            elif f_val in ("None", ""):
+                continue
+        merged_rq.append(r)
+
     with open(REVIEW_QUEUE_CSV, "w", encoding="utf-8-sig", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=rq_cols)
         writer.writeheader()
@@ -286,7 +375,7 @@ def cmd_extract(args: argparse.Namespace):
 
 
 def print_pilot_comparison(book_codes, books_curriculum, textbooks_dir, files_by_book):
-    """Prints per-chapter per-level node counts, full node tree recursively, and 10-book summary table."""
+    """Prints per-chapter per-level node counts, full node tree recursively, and summary table."""
     print("\n" + "=" * 90)
     print("                    PILOT VERIFICATION & CHAPTER BREAKDOWN                    ")
     print("=" * 90)
@@ -301,7 +390,7 @@ def print_pilot_comparison(book_codes, books_curriculum, textbooks_dir, files_by
         p2 = nd.get("page_end", "")
         method = nd.get("detection_method", "")
         skipped = " [LEVEL-SKIPPED]" if nd.get("level_skipped") else ""
-        preview = " | \"{nd.get('preview')}\"" if nd.get("preview") else ""
+        preview = f" | \"{nd.get('preview')}\"" if nd.get("preview") else ""
         indent = "    " * depth
         label = f"[{lvl.upper()}]{skipped}"
         print(f"{indent}• {label:<16} {num:<8} {otitle[:50]:<52} (pp.{p1}-{p2}) [{method}]{preview}")
@@ -371,7 +460,6 @@ def print_pilot_comparison(book_codes, books_curriculum, textbooks_dir, files_by
             for child in ch.get("nodes", []):
                 print_node_recursive(child, depth=1)
 
-    # Print Pilot Table summary
     print("\n" + "=" * 120)
     print("                                      PILOT BOOKS SUMMARY TABLE                                       ")
     print("=" * 120)
@@ -392,7 +480,6 @@ def cmd_doctor(args: argparse.Namespace):
     print("           EduSim Curriculum Pipeline — Doctor Preflight             ")
     print("=" * 70)
 
-    # 1. Check Tesseract binary
     tess_exe = shutil.which("tesseract")
     if not tess_exe:
         cand_path = Path(r"C:\Program Files\Tesseract-OCR\tesseract.exe")
@@ -410,7 +497,6 @@ def cmd_doctor(args: argparse.Namespace):
     else:
         print("[FAIL] Tesseract executable NOT found in PATH or standard directory.")
 
-    # 2. Check installed language packs
     installed_langs = []
     if tess_exe:
         try:
@@ -602,7 +688,7 @@ def cmd_load(args: argparse.Namespace):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="EduSim Curriculum Extractor CLI (Stage 2)",
+        description="EduSim Curriculum Extractor CLI",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     subparsers = parser.add_subparsers(dest="subcommand", required=True)
@@ -610,7 +696,7 @@ def main():
     # extract command
     p_extract = subparsers.add_parser("extract", help="Extract curriculum hierarchy from textbooks.")
     p_extract.add_argument("--pilot", type=int, nargs="?", const=10, default=None, help="Run pilot on N books (default 10).")
-    p_extract.add_argument("--book", type=str, help="Run on a specific book code (e.g. aejm1).")
+    p_extract.add_argument("--book", type=str, help="Run on a specific book code (e.g. aejm).")
     p_extract.add_argument("--books", type=str, help="Run on comma-separated book codes (e.g. b1,b2,b3).")
     p_extract.add_argument("--all", action="store_true", help="Run on all books in catalog.")
     p_extract.add_argument("--input", type=str, help="Override textbooks directory.")
@@ -623,13 +709,13 @@ def main():
 
     # validate command
     p_validate = subparsers.add_parser("validate", help="Validate output JSON files against schemas.")
-    p_validate.add_argument("--only", type=str, help="Validate only a specific file (e.g. aejm1.json or aejm101.pdf).")
+    p_validate.add_argument("--only", type=str, help="Validate only a specific file (e.g. aejm.json).")
     p_validate.add_argument("--input", type=str, help="Override books directory.")
     p_validate.set_defaults(func=cmd_validate)
 
     # load command
     p_load = subparsers.add_parser("load", help="Load validated curriculum JSON into the database.")
-    p_load.add_argument("--only", type=str, help="Load only a specific book code (e.g. aejm1).")
+    p_load.add_argument("--only", type=str, help="Load only a specific book code (e.g. aejm).")
     p_load.add_argument("--include-review", action="store_true", help="Include books marked as needs_review.")
     p_load.add_argument("--force", action="store_true", help="Force reload even if sha256 and version are unchanged.")
     p_load.add_argument("--dry-run", action="store_true", help="Simulate load without modifying database.")

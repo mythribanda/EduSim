@@ -25,18 +25,22 @@ async def generate_questions_endpoint(
     db: Session = Depends(get_db),
 ):
     """
-    Cached Physics Question Generator:
-    1. Checks the questions table in DB:
-       SELECT questions WHERE topic=? AND difficulty=? AND class_level=? LIMIT count
-    2. If enough cached questions exist, returns them (zero AI cost).
-    3. If not enough, calls Ollama to generate the shortfall only.
-    4. Validates and saves newly generated questions to the questions table for all future calls.
+    Cached Curriculum Question Generator:
+    1. Checks the questions table in DB for matching topic and difficulty.
+    2. If enough cached questions exist, returns them immediately.
+    3. If not enough, calls AI with fallback to generate questions for any subject/topic.
+    4. Caches newly generated questions to the questions table for instant future hits.
     """
+    effective_topic = req.topic or req.chapter or req.subject or "Science Concepts"
+    effective_class = req.class_name or req.class_level or "10"
     questions = await QuestionService.generate_cached_questions(
-        topic=req.topic,
+        topic=effective_topic,
+        subject=req.subject or "Science",
         difficulty=req.difficulty,
-        class_level=req.class_level,
+        class_level=effective_class,
         count=req.count,
+        formula=req.formula or "",
+        exclude_questions=req.exclude_questions or [],
         db=db,
     )
     return questions

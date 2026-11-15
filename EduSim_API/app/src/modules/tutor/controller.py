@@ -33,6 +33,7 @@ async def analyze_tutor_controller(
         data = await analyze_tutor_query(
             request.query,
             history=history_dicts,
+            class_name=request.class_name,
             subject=request.subject,
             chapter=request.chapter,
             topic=request.topic,

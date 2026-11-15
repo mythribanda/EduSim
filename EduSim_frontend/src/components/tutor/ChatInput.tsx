@@ -5,13 +5,16 @@ interface ChatInputProps {
   onSend: (text: string) => void;
   disabled?: boolean;
   focus?: boolean;
+  language?: "en" | "te" | "hi";
 }
 
-export function ChatInput({ onSend, disabled, focus = false }: ChatInputProps) {
+export function ChatInput({ onSend, disabled, focus = false, language = "en" }: ChatInputProps) {
   const [text, setText] = useState("");
   const [isDesktop, setIsDesktop] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const isSubmittingRef = useRef(false);
+  const recognitionRef = useRef<unknown>(null);
 
   // Release the submission lock whenever the disabled prop switches back to false
   useEffect(() => {
@@ -19,6 +22,67 @@ export function ChatInput({ onSend, disabled, focus = false }: ChatInputProps) {
       isSubmittingRef.current = false;
     }
   }, [disabled]);
+
+  const toggleVoiceInput = () => {
+    if (disabled) return;
+    const win = typeof window !== "undefined" ? (window as unknown as Record<string, unknown>) : null;
+    if (!win) return;
+    const SpeechRecognition =
+      (win.SpeechRecognition as new () => any) ||
+      (win.webkitSpeechRecognition as new () => any);
+
+    if (!SpeechRecognition) {
+      console.warn("[Voice STT] SpeechRecognition API not supported in this browser.");
+      return;
+    }
+
+    if (isListening && recognitionRef.current) {
+      try {
+        (recognitionRef.current as any).stop();
+      } catch {}
+      setIsListening(false);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+
+      const langMap: Record<string, string> = {
+        te: "te-IN",
+        hi: "hi-IN",
+        en: "en-IN",
+      };
+      recognition.lang = langMap[language] || "en-IN";
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event: any) => {
+        const transcript = Array.from(event.results)
+          .map((result: any) => result[0].transcript)
+          .join("");
+        setText(transcript);
+      };
+
+      recognition.onerror = (event: any) => {
+        console.warn("[Voice STT] Recognition error:", event?.error);
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch (err) {
+      console.error("[Voice STT] Failed to start speech recognition:", err);
+      setIsListening(false);
+    }
+  };
 
   useEffect(() => {
     const updateDesktop = () => setIsDesktop(window.innerWidth >= 1024);
@@ -82,13 +146,20 @@ export function ChatInput({ onSend, disabled, focus = false }: ChatInputProps) {
             />
 
             <div className="flex items-center gap-1.5 shrink-0">
-              {/* Mic Button */}
+              {/* Mic Button with Speech Recognition */}
               <button
                 type="button"
                 aria-label="Voice input"
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-all duration-200 hover:bg-secondary hover:text-foreground hover:scale-105 active:scale-95 cursor-pointer"
+                onClick={toggleVoiceInput}
+                disabled={disabled}
+                title={isListening ? "Listening... (click to stop)" : "Voice input (Speak in English, Telugu, or Hindi)"}
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all duration-200 cursor-pointer ${
+                  isListening
+                    ? "bg-red-500 text-white animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.5)]"
+                    : "text-muted-foreground hover:bg-secondary hover:text-foreground hover:scale-105 active:scale-95"
+                }`}
               >
-                <Mic className="h-5 w-5" />
+                <Mic className={`h-5 w-5 ${isListening ? "animate-bounce" : ""}`} />
               </button>
               
               {/* Send Button */}

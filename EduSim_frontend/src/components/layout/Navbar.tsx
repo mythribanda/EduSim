@@ -1,4 +1,4 @@
-import { User, Menu, Sun, Moon } from "lucide-react";
+import { User, Menu, Sun, Moon, Flame } from "lucide-react";
 import { GlobalSearch } from "./GlobalSearch";
 import { useSidebarStore } from "@/store/useSidebarStore";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -6,12 +6,35 @@ import { motion } from "framer-motion";
 import { useRouterState, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useTheme } from "@/hooks/useTheme";
+import { useQuery } from "@tanstack/react-query";
+import { fetchJsonWithRetry } from "@/services/apiClient";
+import { getApiUrl } from "@/config/api";
 
 export function Navbar() {
   const { setMobileOpen } = useSidebarStore();
   const [isDesktop, setIsDesktop] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const { user, token } = useAuthStore();
+
+  const { data: profile } = useQuery<{ current_streak_days?: number } | null>({
+    queryKey: ["studentProfile", user?.id],
+    queryFn: async () => {
+      if (!user?.id || !token) return null;
+      try {
+        return await fetchJsonWithRetry<{ current_streak_days?: number }>(
+          getApiUrl(`/api/students/${user.id}/profile`),
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      } catch {
+        return null;
+      }
+    },
+    enabled: Boolean(user?.id && token),
+    staleTime: 60_000,
+  });
+
+  const activeStreak = profile?.current_streak_days ?? 1;
 
   useEffect(() => {
     const updateDesktop = () => setIsDesktop(window.innerWidth >= 1024);
@@ -19,8 +42,6 @@ export function Navbar() {
     window.addEventListener("resize", updateDesktop);
     return () => window.removeEventListener("resize", updateDesktop);
   }, []);
-
-  const { user } = useAuthStore();
 
   if (pathname.startsWith("/sandbox") || pathname.startsWith("/tutor")) {
     return null;
@@ -66,6 +87,15 @@ export function Navbar() {
                 {user.role}
               </span>
             )}
+
+            {/* Streak symbol beside theme toggle */}
+            <div
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-600 dark:text-amber-400 font-extrabold text-xs shadow-sm"
+              title={`Current Learning Streak: ${activeStreak} days`}
+            >
+              <Flame className="w-4 h-4 fill-amber-500 text-amber-500 animate-pulse" />
+              <span>{activeStreak}</span>
+            </div>
 
             <button
               onClick={toggleTheme}
@@ -119,12 +149,15 @@ export function Navbar() {
           <GlobalSearch />
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
-          {user?.role && (
-            <span className="hidden xs:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-secondary border border-border text-primary capitalize">
-              {user.role}
-            </span>
-          )}
+        <div className="flex items-center gap-2.5 shrink-0">
+          {/* Streak symbol beside theme toggle (Mobile) */}
+          <div
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/25 text-amber-600 dark:text-amber-400 font-extrabold text-xs"
+            title={`Streak: ${activeStreak} days`}
+          >
+            <Flame className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+            <span>{activeStreak}</span>
+          </div>
 
           <button
             onClick={toggleTheme}

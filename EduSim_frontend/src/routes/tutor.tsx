@@ -13,6 +13,33 @@ import { useCurriculumTopic } from "@/hooks/useCurriculumTopic";
 import { toast } from "sonner";
 
 // Define search params for the route
+function extractCleanExplanation(data: any): string | null {
+  if (!data) return null;
+  const raw = data.explanation || data.ai_explanation;
+  if (!raw) return null;
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (trimmed.startsWith("{") && trimmed.includes('"explanation"')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed.explanation && typeof parsed.explanation === "string") {
+          return parsed.explanation;
+        }
+      } catch {
+        // keep as is
+      }
+    }
+    return raw;
+  }
+  if (typeof raw === "object") {
+    if (raw.explanation && typeof raw.explanation === "string") {
+      return raw.explanation;
+    }
+    return JSON.stringify(raw);
+  }
+  return String(raw);
+}
+
 export const Route = createFileRoute("/tutor")({
   component: TutorPage,
   validateSearch: (search: Record<string, unknown>) => ({
@@ -189,8 +216,8 @@ function TutorPage() {
       <div className="relative mx-auto flex h-full w-full max-w-[100rem] items-stretch">
         <div
           className={`
-          ${isHistoryOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
-          fixed lg:relative inset-y-0 left-0 z-[80] lg:z-30 transition-transform duration-300 lg:transition-none flex shrink-0
+          ${isHistoryOpen ? "translate-x-0 w-[280px]" : "-translate-x-full w-0 overflow-hidden lg:hidden"}
+          fixed lg:relative inset-y-0 left-0 z-[80] lg:z-30 transition-all duration-300 flex shrink-0
         `}
         >
           <ChatHistorySidebar
@@ -203,6 +230,7 @@ function TutorPage() {
               handleNewChat();
               setIsHistoryOpen(false);
             }}
+            onClose={() => setIsHistoryOpen(false)}
             refreshTrigger={refreshTrigger}
           />
         </div>
@@ -218,13 +246,7 @@ function TutorPage() {
         <div className="flex w-full items-stretch flex-1 min-w-0">
           <ChatWorkspace
             onSend={handleAnalyze}
-            aiResponse={
-              tutorData
-                ? ((tutorData as Record<string, unknown>).explanation as string) ||
-                  ((tutorData as Record<string, unknown>).ai_explanation as string) ||
-                  null
-                : null
-            }
+            aiResponse={extractCleanExplanation(tutorData)}
             error={error}
             onClearError={() => setError(null)}
             loading={isLoading || topicLoading}
@@ -238,6 +260,7 @@ function TutorPage() {
             messages={messages}
             onNewChat={handleNewChat}
             toggleHistory={() => setIsHistoryOpen((prev) => !prev)}
+            isHistoryOpen={isHistoryOpen}
           />
         </div>
       </div>

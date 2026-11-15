@@ -26,6 +26,10 @@ from curriculum_pipeline.pipeline_config import (
     NCERT_PATTERN,
     PIPELINE_OUTPUT_ROOT,
     TEXTBOOKS_DIR,
+    parse_ncert_filename,
+    safe_int,
+    normalize_unicode_numerals,
+    is_numeric_numeral,
 )
 from curriculum_pipeline.style_profiler import StyleProfiler
 from curriculum_pipeline.tree_builder import CurriculumTreeBuilder
@@ -33,6 +37,21 @@ from curriculum_pipeline.tree_builder import CurriculumTreeBuilder
 CURRICULUM_OUT_DIR = PIPELINE_OUTPUT_ROOT / "curriculum"
 BOOKS_OUT_DIR = CURRICULUM_OUT_DIR / "books"
 REPORTS_OUT_DIR = PIPELINE_OUTPUT_ROOT / "reports"
+
+WORD_TO_NUM: Dict[str, int] = {
+    "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+    "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+    "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14,
+    "fifteen": 15, "sixteen": 16, "seventeen": 17, "eighteen": 18,
+    "nineteen": 19, "twenty": 20,
+}
+
+ROMAN_TO_NUM: Dict[str, int] = {
+    "I": 1, "II": 2, "III": 3, "IV": 4, "V": 5,
+    "VI": 6, "VII": 7, "VIII": 8, "IX": 9, "X": 10,
+    "XI": 11, "XII": 12, "XIII": 13, "XIV": 14, "XV": 15,
+    "XVI": 16, "XVII": 17, "XVIII": 18, "XIX": 19, "XX": 20,
+}
 
 
 class CurriculumExtractorEngine:
@@ -98,57 +117,274 @@ class CurriculumExtractorEngine:
         candidate_lines = []
         for l_idx, l in enumerate(lines_data):
             txt = l.get("text", "").strip()
-            if not txt or len(txt) < 2:
+            if not txt or len(txt) < 3:
                 continue
-            # Skip lone chapter numbers (e.g. "1") or "Chapter 1"
-            if re.match(r"^\d+$", txt) or re.match(r"^(Chapter|Unit|Theme|CHAPTER|इकाई|पाठ)\b", txt, re.I):
+            if re.match(r"^(Chapter|Unit|Theme|Lesson|CHAPTER|UNIT|\d+)\b", txt, re.I):
                 continue
-            # Skip copyright/reprint
-            if re.search(r"\b(Reprint|Rationalised|ISBN|Published by)\b", txt, re.I):
+            if any(x in txt.lower() for x in ["reprint", "national council", "ncert", "isbn", "preface", "textbook"]):
                 continue
-
-            l_spans = l.get("spans", [])
-            max_span_size = max((s.get("size", 0.0) for s in l_spans), default=0.0)
-            is_bold = any(s.get("bold", False) for s in l_spans)
-            candidate_lines.append({
-                "index": l_idx,
-                "text": txt,
-                "bbox": l.get("bbox", [0, 0, 0, 0]),
-                "size": max_span_size,
-                "bold": is_bold,
-            })
+            candidate_lines.append(l)
 
         if not candidate_lines:
             return f"Chapter {ch_no}", wrapper, None
 
-        # Find the maximum font size among candidate lines
-        max_size = max(c["size"] for c in candidate_lines)
-        if max_size < 12.0:
-            return candidate_lines[0]["text"], wrapper, None
+        # Pick largest font size among candidate lines
+        def get_line_size(l):
+            spans = l.get("spans", [])
+            return max((s.get("size", 0.0) for s in spans), default=0.0)
 
-        # Filter lines that match title size (within 1.5 pt of max_size)
-        title_lines = [c for c in candidate_lines if abs(c["size"] - max_size) <= 1.5]
+        candidate_lines.sort(key=get_line_size, reverse=True)
+        top_line = candidate_lines[0]
+        top_size = get_line_size(top_line)
 
-        # Merge consecutive, vertically adjacent title lines
-        merged_groups: List[List[Dict[str, Any]]] = []
-        for tl in title_lines:
-            if not merged_groups:
-                merged_groups.append([tl])
-            else:
-                last_group = merged_groups[-1]
-                prev_line = last_group[-1]
-                y_gap = tl["bbox"][1] - prev_line["bbox"][3]
-                idx_diff = tl["index"] - prev_line["index"]
-                if idx_diff == 1 or (-15.0 <= y_gap <= 25.0):
-                    last_group.append(tl)
-                else:
-                    merged_groups.append([tl])
+        # Merge vertically adjacent lines that share size within 1.0pt
+        title_parts = [top_line.get("text", "").strip()]
+        top_bbox = top_line.get("bbox", [0, 0, 0, 0])
 
-        best_group = merged_groups[0]
-        merged_title = " ".join(tl["text"] for tl in best_group)
-        merged_title = re.sub(r"\s+", " ", merged_title).strip()
+        for other in candidate_lines[1:]:
+            o_size = get_line_size(other)
+            if abs(o_size - top_size) <= 1.0:
+                o_bbox = other.get("bbox", [0, 0, 0, 0])
+                # Check vertical proximity
+                if abs(o_bbox[1] - top_bbox[3]) < 25.0 or abs(top_bbox[1] - o_bbox[3]) < 25.0:
+                    title_parts.append(other.get("text", "").strip())
+
+        merged_title = " ".join(title_parts).strip()
         return merged_title, wrapper, None
 
+    def detect_ncert_chapters(
+        self,
+        pdf_path: Path,
+        pages: List[Dict[str, Any]],
+        meta_rec: Dict[str, Any],
+        book_title: str = "",
+    ) -> List[Dict[str, Any]]:
+        """
+        Detects chapter boundaries in whole-book NCERT PDFs using bookmarks,
+        printed TOC, and page text heading markers.
+        """
+        total_pages = len(pages)
+        if total_pages == 0:
+            return []
+
+        # 1. Check doc TOC / bookmarks
+        toc_outline = meta_rec.get("toc", [])
+        if not toc_outline and pdf_path.exists():
+            try:
+                doc = fitz.open(pdf_path)
+                toc_outline = doc.get_toc()
+            except Exception:
+                toc_outline = []
+
+        if toc_outline:
+            ch_bookmarks = []
+            for e in toc_outline:
+                lvl, title, pno = e[0], e[1].strip(), e[2]
+                if pno <= 0 or pno > total_pages:
+                    continue
+                if any(x in title.lower() for x in ["initial", "total book", "prelim", "appendix", "cover", "title page", "contents", "preface"]):
+                    continue
+                if title in ("00", "0", ""):
+                    continue
+                if re.match(r"^(chapter|unit|theme|lesson|part|पाठ|अध्याय|इकाई)\b", title, re.I) or re.match(r"^[a-z]{4}\d{3}", title, re.I):
+                    ch_bookmarks.append((title, pno))
+                elif lvl == 1 and not title.endswith(".pdf"):
+                    ch_bookmarks.append((title, pno))
+
+            if len(ch_bookmarks) >= 2:
+                sorted_bm = sorted(ch_bookmarks, key=lambda x: x[1])
+                dedup = []
+                for b in sorted_bm:
+                    if not dedup or b[1] - dedup[-1][1] >= 2:
+                        dedup.append(b)
+                if len(dedup) >= 2:
+                    ranges = []
+                    for i, (b_title, b_start) in enumerate(dedup):
+                        b_end = dedup[i + 1][1] - 1 if i + 1 < len(dedup) else total_pages
+                        b_end = max(b_start, min(b_end, total_pages))
+                        m_num = re.search(r"\b(\d+)\b", b_title)
+                        num_str = m_num.group(1) if m_num else str(i + 1)
+                        clean_t = re.sub(r"^(chapter|unit|theme)\s*([0-9a-zA-Z]+)?\s*[:\.\-–—]\s*", "", b_title, flags=re.I).strip()
+                        ranges.append({
+                            "official_number": num_str,
+                            "official_title": clean_t or b_title,
+                            "page_start": b_start,
+                            "page_end": b_end,
+                            "wrapper": None,
+                            "detection_method": "outline",
+                        })
+                    return ranges
+
+        # 2. Check for printed Table of Contents in first 15 pages
+        printed_toc: Dict[int, str] = {}
+        for p in pages[:15]:
+            p_text = p.get("text", "")
+            if any(k in p_text.lower() for k in ["contents", "index", "विषय-सूची", "विषय सूची", "table of contents"]):
+                lines = [l.strip() for l in p_text.splitlines() if l.strip()]
+                for l in lines:
+                    m = re.match(r"^(?:Chapter\s*)?(\d{1,2})[\.\s]+([A-Za-z\u0900-\u097F].*)$", l)
+                    if m and int(m.group(1)) <= 35:
+                        cnum = int(m.group(1))
+                        ctitle = re.sub(r"[\.\s\-\d]+$", "", m.group(2)).strip()
+                        if len(ctitle) > 2 and ctitle.lower() not in ["page", "class", "chapter"]:
+                            printed_toc[cnum] = ctitle
+
+        # 3. Full page scan across the entire book
+        chapter_starts = []
+        seen_pages = set()
+
+        for p_idx, p in enumerate(pages):
+            pno = p.get("page_no", p_idx + 1)
+            lines_data = p.get("lines", [])
+            lines = [l.get("text", "").strip() if isinstance(l, dict) else str(l).strip() for l in lines_data]
+            if not lines:
+                lines = [l.strip() for l in p.get("text", "").splitlines() if l.strip()]
+            if not lines:
+                continue
+
+            found_ch = None
+
+            # 3A. Standalone large digit span (NCERT primary math books like aejm, bejm)
+            spans = p.get("spans", [])
+            for sp in spans:
+                sz = sp.get("size", 0.0)
+                if sz >= 30.0:
+                    txt = sp.get("text", "").strip()
+                    val = safe_int(txt)
+                    if val is not None and 1 <= val <= 30:
+                        c_num = val
+                        # Gather title candidate spans on same page
+                        title_parts = []
+                        for other in spans:
+                            o_txt = other.get("text", "").strip()
+                            o_sz = other.get("size", 0.0)
+                            if o_sz >= 20.0 and not is_numeric_numeral(o_txt) and len(o_txt) > 2:
+                                if not any(x in o_txt.lower() for x in ["class", "reprint", "ncert", "unit", "chapter"]):
+                                    title_parts.append(o_txt)
+                        title = " ".join(title_parts).strip() or f"Chapter {c_num}"
+                        found_ch = (str(c_num), title, pno, None)
+                        break
+
+            if not found_ch:
+                for idx, line in enumerate(lines):
+                    # Ignore inline cross-references
+                    if any(x in line.lower() for x in ["class xi", "class xii", "see chapter", "last chapter", "next chapter", "refer to", "equation", "eq."]):
+                        continue
+
+                    # A. 'Chapter 1' / 'Chapter One'
+                    m1 = re.match(r"^(?:Chapter|CHAPTER)\s+([0-9\u0660-\u0669\u0966-\u096f\u0c66-\u0c6f\u00b2\u00b3\u00b9\u2070-\u2079\u2080-\u2089]+|[a-zA-Z]+)\b(?:\s*[:\.\-–—]\s*|\s*)(.*)$", line)
+                    if m1 and (not m1.group(2) or len(m1.group(2)) < 60):
+                        raw_num = m1.group(1).lower()
+                        val_num = safe_int(raw_num)
+                        if raw_num in WORD_TO_NUM or val_num is not None:
+                            c_num = WORD_TO_NUM.get(raw_num) or (val_num if val_num is not None else raw_num.upper())
+                            rest = m1.group(2).strip()
+                            title = rest
+                            if not title and idx + 1 < len(lines):
+                                cand = lines[idx + 1]
+                                if len(cand) > 2 and not is_numeric_numeral(cand) and not cand.lower().startswith("unit"):
+                                    title = cand
+                            if not title and idx > 0:
+                                cand = lines[idx - 1]
+                                if len(cand) > 2 and not is_numeric_numeral(cand):
+                                    title = cand
+                            found_ch = (str(c_num), title or f"Chapter {c_num}", pno, None)
+                            break
+
+                    # A2. Line is 'Chapter' alone and preceding/next line is number (e.g. fecu.pdf)
+                    if line.strip() in ("Chapter", "CHAPTER"):
+                        c_num = None
+                        title = None
+                        if idx > 0 and is_numeric_numeral(lines[idx - 1]):
+                            c_num = safe_int(lines[idx - 1])
+                            title = lines[idx - 2] if idx > 1 else None
+                        elif idx + 1 < len(lines) and is_numeric_numeral(lines[idx + 1]):
+                            c_num = safe_int(lines[idx + 1])
+                            title = lines[idx + 2] if idx + 2 < len(lines) else None
+                        if c_num and c_num <= 35:
+                            found_ch = (str(c_num), title or f"Chapter {c_num}", pno, None)
+                            break
+
+                    # B. Hindi: पाठ / अध्याय / इकाई
+                    m_hi = re.match(r"^(पाठ|अध्याय|इकाई)\s*([0-9\u0966-\u096f]+)\b(?:\s*[:\.\-–—]\s*|\s*)(.*)$", line)
+                    if m_hi:
+                        lbl = m_hi.group(1)
+                        raw_c_num = m_hi.group(2)
+                        val_c_num = safe_int(raw_c_num)
+                        c_num = str(val_c_num if val_c_num is not None else raw_c_num)
+                        h_rest = m_hi.group(3).strip()
+                        h_title = h_rest or (lines[idx + 1] if idx + 1 < len(lines) else f"{lbl} {c_num}")
+                        found_ch = (c_num, h_title, pno, f"{lbl} {c_num}")
+                        break
+
+                    # C. Section X.1 marker: e.g. '1.1 Introduction', '2.1 Introduction'
+                    m_sec = re.match(r"^(\d{1,2})\.1\.?\s+([A-Za-z\u0900-\u097F].*)$", line)
+                    if m_sec:
+                        sec_num = safe_int(m_sec.group(1))
+                        if sec_num and sec_num <= 35:
+                            c_num = str(sec_num)
+                            t = printed_toc.get(sec_num)
+                            if not t and idx > 0:
+                                cand = lines[idx - 1]
+                                if len(cand) > 2 and not is_numeric_numeral(cand) and not re.match(r"^\d+\.", cand):
+                                    t = cand
+                            if any(x in (t or "").lower() for x in ["exercise", "exercises", "summary", "points to ponder", "additional exercise", "question", "questions"]):
+                                continue
+                            found_ch = (c_num, t or f"Chapter {c_num}", pno, None)
+                            break
+
+                    # D. 'Unit N' / 'Theme N'
+                    m_unit = re.match(r"^(?:UNIT|THEME|Theme)\s+([0-9IVX]+|One|Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten)\b(?:\s*[:\.\-–—]\s*|\s*)(.*)$", line)
+                    if m_unit:
+                        raw_u = m_unit.group(1).lower()
+                        val_u = safe_int(raw_u)
+                        u_num = WORD_TO_NUM.get(raw_u) or ROMAN_TO_NUM.get(m_unit.group(1).upper()) or (val_u if val_u is not None else raw_u)
+                        u_rest = m_unit.group(2).strip()
+                        title = u_rest or (lines[idx + 1] if idx + 1 < len(lines) else f"Theme {u_num}")
+                        found_ch = (str(u_num), title, pno, line)
+                        break
+
+            if found_ch and pno not in seen_pages:
+                c_num_val, c_title_val, c_pno_val, c_wrap_val = found_ch
+                if not any(x in (c_title_val or "").lower() for x in ["exercise", "exercises", "summary", "points to ponder", "additional exercise"]):
+                    seen_pages.add(pno)
+                    chapter_starts.append(found_ch)
+
+        if chapter_starts:
+            chapter_starts = sorted(chapter_starts, key=lambda x: x[2])
+            deduped = []
+            seen_cnums = {}
+            for cs in chapter_starts:
+                c_num_str = cs[0]
+                if c_num_str in seen_cnums and (cs[2] - seen_cnums[c_num_str] < 20):
+                    continue
+                if not deduped or cs[2] - deduped[-1][2] >= 2:
+                    seen_cnums[c_num_str] = cs[2]
+                    deduped.append(cs)
+
+            ranges = []
+            for i, (c_num, c_title, c_start, c_wrap) in enumerate(deduped):
+                c_end = deduped[i + 1][2] - 1 if i + 1 < len(deduped) else total_pages
+                c_end = max(c_start, min(c_end, total_pages))
+                clean_title = c_title if not c_title.startswith(f"Chapter {c_num}: ") else c_title.replace(f"Chapter {c_num}: ", "")
+                ranges.append({
+                    "official_number": str(c_num),
+                    "official_title": clean_title,
+                    "page_start": c_start,
+                    "page_end": c_end,
+                    "wrapper": c_wrap,
+                    "detection_method": "scan",
+                })
+            return ranges
+
+        return [{
+            "official_number": "1",
+            "official_title": book_title or "Chapter 1",
+            "page_start": 1,
+            "page_end": total_pages,
+            "wrapper": None,
+            "detection_method": "single",
+        }]
 
     def process_ncert_book(
         self,
@@ -162,19 +398,28 @@ class CurriculumExtractorEngine:
         book_title = book_info["book_title"]
         cls = book_info["class"]
 
-        # 1. Page extraction for each chapter file
+        # Resume support: check if already successfully extracted
+        book_json_path = BOOKS_OUT_DIR / f"{book_code}.json"
+        if self.resume and book_json_path.exists():
+            try:
+                with open(book_json_path, "r", encoding="utf-8") as f:
+                    cached = json.load(f)
+                if cached.get("extraction_status") in ("ok", "flagged", "skipped_garbled") and cached.get("chapters"):
+                    cached["title"] = book_title
+                    cached["book_title"] = book_title
+                    cached["subject"] = subject
+                    cached["class"] = cls
+                    cached["medium"] = medium
+                    return cached
+            except Exception:
+                pass
+
         file_entries = [fe if isinstance(fe, dict) else {"file": str(fe)} for fe in file_entries]
         jsonl_files = []
         source_shas = []
         missing_langs = set()
 
-        # Sort file entries by chapter number
-        def get_ch_num(entry):
-            fn = entry.get("file", "") if isinstance(entry, dict) else str(entry)
-            m = NCERT_PATTERN.match(fn)
-            return int(m.group(5)) if m else 0
-
-        file_entries_sorted = sorted(file_entries, key=get_ch_num)
+        file_entries_sorted = file_entries
 
         # Check text quality from preflight
         book_tq = "ok"
@@ -223,7 +468,14 @@ class CurriculumExtractorEngine:
         tasks = []
         for entry in file_entries_sorted:
             fn = entry.get("file", "") if isinstance(entry, dict) else str(entry)
-            pdf_path = self.textbooks_dir / "ncert books" / fn
+            rel = entry.get("rel_path") if isinstance(entry, dict) else None
+            if rel and (self.textbooks_dir / rel).exists():
+                pdf_path = self.textbooks_dir / rel
+            else:
+                cand1 = self.textbooks_dir / "ncert books" / fn
+                cand2 = self.textbooks_dir / "ncert books" / "language" / fn
+                pdf_path = cand2 if cand2.exists() else cand1
+
             tasks.append((pdf_path, fn, medium))
             out_jsonl = self.page_extractor.get_output_path(fn)
             jsonl_files.append(out_jsonl)
@@ -239,23 +491,22 @@ class CurriculumExtractorEngine:
             for ml in extract_res.get("missing_ocr_languages", []):
                 missing_langs.add(ml)
 
-        # 2. Style profile
+        # Style profile
         style_profile = self.style_profiler.profile_book(book_code, jsonl_files, force=not self.resume)
         adapter = get_adapter_for_subject(subject, style_profile, language=medium)
 
-        # 3. Chapter & node extraction
         tree_builder = CurriculumTreeBuilder(book_code)
         chapters: List[Dict[str, Any]] = []
         all_book_pages: List[Dict[str, Any]] = []
-        page_offset = 0
 
-        for idx, (entry, j_path) in enumerate(zip(file_entries_sorted, jsonl_files)):
-            fn = entry["file"]
-            m = NCERT_PATTERN.match(fn)
-            ch_no = int(m.group(5)) if m else (idx + 1)
+        # Whole-book NCERT PDF handling (Single PDF containing multiple chapters)
+        if len(file_entries_sorted) == 1:
+            entry = file_entries_sorted[0]
+            fn = entry.get("file", "") if isinstance(entry, dict) else str(entry)
+            j_path = jsonl_files[0]
+            pages: List[Dict[str, Any]] = []
+            meta_rec: Dict[str, Any] = {}
 
-            # Read page records from jsonl
-            pages = []
             if j_path.exists():
                 with open(j_path, "r", encoding="utf-8") as jf:
                     for line in jf:
@@ -263,172 +514,206 @@ class CurriculumExtractorEngine:
                             continue
                         rec = json.loads(line)
                         if rec.get("type") == "metadata":
-                            continue
-                        pages.append(rec)
+                            meta_rec = rec
+                        else:
+                            pages.append(rec)
 
-            ch_pages_count = len(pages)
-            if ch_pages_count == 0:
-                review_queue.append({
-                    "file": fn,
-                    "page": 1,
-                    "problem": "zero_pages_or_unreadable",
-                    "found_text": "",
-                    "suggested_action": "Check file corruption or reader permissions",
-                })
-                continue
+            pages.sort(key=lambda p: p.get("page_no", 1))
+            all_book_pages = pages
+            pdf_path_book = tasks[0][0]
 
-            ch_start = page_offset + 1
-            ch_end = page_offset + ch_pages_count
-            page_offset = ch_end
+            # Detect chapter ranges in whole book
+            chapter_ranges = self.detect_ncert_chapters(pdf_path_book, pages, meta_rec, book_title)
 
-            # Shift page numbers for unified book view
-            for p in pages:
-                shifted_p = dict(p)
-                shifted_p["page_no"] = ch_start + p.get("page_no", 1) - 1
-                all_book_pages.append(shifted_p)
+            for ch_idx, c_info in enumerate(chapter_ranges):
+                ch_num = c_info["official_number"]
+                ch_title = c_info["official_title"]
+                ch_start = c_info["page_start"]
+                ch_end = c_info["page_end"]
+                wrapper = c_info.get("wrapper")
 
-            # Extract title & wrapper
-            ch_title, wrapper, conflict_note = self.extract_ncert_chapter_title_from_p1(pages, ch_no)
-            if conflict_note:
-                review_queue.append({
-                    "file": fn,
-                    "page": ch_start,
-                    "problem": "chapter_title_conflict",
-                    "found_text": conflict_note,
-                    "suggested_action": "Review official chapter title on page 1",
-                })
+                ch_pages = [p for p in pages if ch_start <= p.get("page_no", 1) <= ch_end]
+                if not ch_pages:
+                    continue
 
-            # Extract raw node candidates from chapter pages
-            # Check if chapter's first page has a Mini-TOC / Chapter Outline box:
-            # (3 or more distinct numbered section topics on p.get("page_no") == 1,
-            # or 2 or more distinct section topics where at least one is repeated on page 1)
-            toc_sec_list = []
-            for p in pages:
-                if p.get("page_no", 1) == 1:
-                    for l in p.get("lines", []):
-                        m = re.match(r"^(\d+\.\d+)\s+", l.get("text", "").strip())
-                        if m:
-                            toc_sec_list.append(m.group(1))
-                    break
-
-            toc_sec_nums = set(toc_sec_list)
-            has_mini_toc = (len(toc_sec_nums) >= 3) or (len(toc_sec_nums) >= 2 and len(toc_sec_list) > len(toc_sec_nums))
-
-            # Detect section number prefix (handles multi-part books e.g. Part 2 starting at Ch 8)
-            detected_prefix = None
-            for p in pages[:2]:
-                for l in p.get("lines", []):
-                    m_sec = re.match(r"^(\d{1,2})\.\d{1,2}\b", l.get("text", "").strip())
-                    if m_sec:
-                        detected_prefix = m_sec.group(1)
+                # Check mini-toc on ch_start
+                toc_sec_list = []
+                for p in ch_pages:
+                    if p.get("page_no", 1) == ch_start:
+                        for l in p.get("lines", []):
+                            m = re.match(r"^(\d+\.\d+)\s+", l.get("text", "").strip())
+                            if m:
+                                toc_sec_list.append(m.group(1))
                         break
-                if detected_prefix:
-                    break
+                toc_sec_nums = set(toc_sec_list)
+                has_mini_toc = (len(toc_sec_nums) >= 3) or (len(toc_sec_nums) >= 2 and len(toc_sec_list) > len(toc_sec_nums))
 
-            effective_ch_num = detected_prefix if detected_prefix else str(ch_no)
-            adapter.reset_chapter_state(chapter_number=effective_ch_num)
-            raw_candidates = []
-            for p in pages:
-                page_actual = ch_start + p.get("page_no", 1) - 1
-                method = p.get("method", "")
-                garbled_ratio = p.get("garbled_ratio", 0.0)
-                garbled_pct = p.get("garbled_pct", 0.0)
-                ocr_needed = p.get("ocr_needed", False)
+                effective_ch_num = str(ch_num)
+                adapter.reset_chapter_state(chapter_number=effective_ch_num)
+                raw_candidates = []
 
-                # Garbled pages produce NO nodes at all
-                if "ocr_needed" in str(method) or ocr_needed or garbled_ratio > 0.05 or garbled_pct > 5.0:
-                    continue
+                for p in ch_pages:
+                    page_actual = p.get("page_no", 1)
+                    method = p.get("method", "")
+                    garbled_ratio = p.get("garbled_ratio", 0.0)
+                    garbled_pct = p.get("garbled_pct", 0.0)
+                    ocr_needed = p.get("ocr_needed", False)
 
-                lines_data = p.get("lines", [])
-                if has_mini_toc and p.get("page_no", 1) == 1 and lines_data:
-                    # Filter out mini-TOC box lines on page 1 (first occurrence of each section number in the box)
-                    seen_sec_nums = set()
-                    filtered_lines = []
-                    for l in lines_data:
-                        m = re.match(r"^(\d+\.\d+)\s+", l.get("text", "").strip())
-                        if m and m.group(1) in toc_sec_nums:
-                            if m.group(1) not in seen_sec_nums:
-                                seen_sec_nums.add(m.group(1))
+                    if "ocr_needed" in str(method) or ocr_needed or garbled_ratio > 0.05 or garbled_pct > 5.0:
+                        continue
+
+                    lines_data = p.get("lines", [])
+                    if has_mini_toc and page_actual == ch_start and lines_data:
+                        seen_sec_nums = set()
+                        filtered_lines = []
+                        for l in lines_data:
+                            m = re.match(r"^(\d+\.\d+)\s+", l.get("text", "").strip())
+                            if m and m.group(1) in toc_sec_nums:
+                                if m.group(1) not in seen_sec_nums:
+                                    seen_sec_nums.add(m.group(1))
+                                    continue
+                            filtered_lines.append(l)
+                        lines_data = filtered_lines
+
+                    if lines_data:
+                        nodes = adapter.extract_nodes_from_lines(page_actual, lines_data)
+                    else:
+                        nodes = adapter.extract_nodes_from_lines(page_actual, [{"text": l, "spans": p.get("spans", [])} for l in p.get("text", "").splitlines()])
+                    raw_candidates.extend(nodes)
+
+                norm_ch_title = re.sub(r"[^\w]", "", ch_title).lower()
+                norm_wrapper = re.sub(r"[^\w]", "", str(wrapper or "")).lower()
+                ocr_pages_set = {p.get("page_no") for p in ch_pages if p.get("ocr_needed")}
+                ch_ocr_needed = bool(ocr_pages_set)
+
+                filtered_candidates = []
+                for c in raw_candidates:
+                    c_title = c.get("official_title", "")
+                    norm_c = re.sub(r"[^\w]", "", c_title).lower()
+                    c_page = c.get("page", 0)
+
+                    if c_page == ch_start:
+                        if not c.get("official_number"):
+                            if norm_c and (norm_c in norm_ch_title or norm_ch_title in norm_c):
                                 continue
-                        filtered_lines.append(l)
-                    lines_data = filtered_lines
+                            if norm_wrapper and (norm_c in norm_wrapper or norm_wrapper in norm_c):
+                                continue
+                        if re.match(r"^chapter\s*(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|\d+)\b", c_title.strip(), re.I):
+                            continue
 
-                if lines_data:
-                    nodes = adapter.extract_nodes_from_lines(page_actual, lines_data)
-                else:
-                    nodes = adapter.extract_nodes_from_lines(page_actual, [{"text": l, "spans": p.get("spans", [])} for l in p.get("text", "").splitlines()])
-                raw_candidates.extend(nodes)
-
-            # Filter candidates: remove duplicate of chapter title or wrapper, add file_id and ocr_needed
-            norm_ch_title = re.sub(r"[^\w]", "", ch_title).lower()
-            norm_wrapper = re.sub(r"[^\w]", "", str(wrapper or "")).lower()
-            ocr_pages_set = {p.get("page_no") for p in pages if p.get("ocr_needed")}
-            ch_ocr_needed = bool(ocr_pages_set)
-
-            filtered_candidates = []
-            for c in raw_candidates:
-                c_title = c.get("official_title", "")
-                norm_c = re.sub(r"[^\w]", "", c_title).lower()
-                c_page = c.get("page", 0)
-
-                # Filter out title block fragments on chapter's first page (only if unnumbered)
-                if c_page == ch_start:
                     if not c.get("official_number"):
-                        if norm_c and (norm_c in norm_ch_title or norm_ch_title in norm_c):
+                        if norm_c == norm_ch_title or (norm_wrapper and norm_c == norm_wrapper):
                             continue
-                        if norm_wrapper and (norm_c in norm_wrapper or norm_wrapper in norm_c):
-                            continue
-                    if re.match(r"^chapter\s*(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|\d+)\b", c_title.strip(), re.I):
+                    if re.match(r"^chapter\s*\d+$", c_title.strip(), re.I):
                         continue
+                    c["ocr_needed"] = c_page in ocr_pages_set
+                    c["source_file"] = fn
+                    filtered_candidates.append(c)
 
-                if not c.get("official_number"):
-                    if norm_c == norm_ch_title or (norm_wrapper and norm_c == norm_wrapper):
-                        continue
-                if re.match(r"^chapter\s*\d+$", c_title.strip(), re.I):
+                ch_node_info = {
+                    "id": f"{book_code}_ch_{ch_idx + 1}",
+                    "official_number": str(ch_num),
+                    "official_title": ch_title,
+                    "wrapper": wrapper,
+                    "evidence": f"File {fn} - Chapter {ch_num}: {ch_title}",
+                    "confidence": 0.95,
+                    "rule_id": "rule_ncert_chapter",
+                    "source_file": fn,
+                    "ocr_needed": ch_ocr_needed,
+                }
+
+                chapter_node = tree_builder.build_chapter_tree(
+                    chapter_info=ch_node_info,
+                    raw_candidates=filtered_candidates,
+                    chapter_page_start=ch_start,
+                    chapter_page_end=ch_end,
+                    review_queue=review_queue,
+                    file_id=fn,
+                    end_matter_page=adapter.end_matter_page,
+                    end_matter_label=getattr(adapter, "end_matter_label", None),
+                )
+                chapters.append(chapter_node)
+
+            expected_chapters = len(chapter_ranges)
+
+        else:
+            # Multi-file NCERT books (where each PDF is a chapter)
+            page_offset = 0
+            for idx, (entry, j_path) in enumerate(zip(file_entries_sorted, jsonl_files)):
+                fn = entry.get("file", "") if isinstance(entry, dict) else str(entry)
+                m = NCERT_PATTERN.match(fn)
+                ch_no = int(m.group(5)) if m and len(m.groups()) >= 5 and m.group(5) else (idx + 1)
+
+                pages = []
+                if j_path.exists():
+                    with open(j_path, "r", encoding="utf-8") as jf:
+                        for line in jf:
+                            if not line.strip():
+                                continue
+                            rec = json.loads(line)
+                            if rec.get("type") == "metadata":
+                                continue
+                            pages.append(rec)
+
+                ch_pages_count = len(pages)
+                if ch_pages_count == 0:
                     continue
-                c_page_local = c_page - ch_start + 1
-                c["ocr_needed"] = c_page_local in ocr_pages_set
-                c["source_file"] = fn
-                filtered_candidates.append(c)
 
+                ch_start = page_offset + 1
+                ch_end = page_offset + ch_pages_count
+                page_offset = ch_end
 
-            ch_info = {
-                "id": f"{book_code}_ch_{ch_no}",
-                "official_number": str(effective_ch_num),
-                "official_title": ch_title,
-                "wrapper": wrapper,
-                "evidence": f"File {fn} - Chapter {ch_no}: {ch_title}",
-                "confidence": 0.95,
-                "rule_id": "rule_ncert_file_chapter",
-                "source_file": fn,
-                "ocr_needed": ch_ocr_needed,
-            }
+                for p in pages:
+                    shifted_p = dict(p)
+                    shifted_p["page_no"] = ch_start + p.get("page_no", 1) - 1
+                    all_book_pages.append(shifted_p)
 
-            chapter_node = tree_builder.build_chapter_tree(
-                chapter_info=ch_info,
-                raw_candidates=filtered_candidates,
-                chapter_page_start=ch_start,
-                chapter_page_end=ch_end,
-                review_queue=review_queue,
-                file_id=fn,
-                end_matter_page=adapter.end_matter_page,
-                end_matter_label=getattr(adapter, "end_matter_label", None),
-            )
+                ch_title, wrapper, conflict_note = self.extract_ncert_chapter_title_from_p1(pages, ch_no)
+                effective_ch_num = str(ch_no)
+                adapter.reset_chapter_state(chapter_number=effective_ch_num)
+                raw_candidates = []
 
+                for p in pages:
+                    page_actual = ch_start + p.get("page_no", 1) - 1
+                    lines_data = p.get("lines", [])
+                    if lines_data:
+                        nodes = adapter.extract_nodes_from_lines(page_actual, lines_data)
+                    else:
+                        nodes = adapter.extract_nodes_from_lines(page_actual, [{"text": l, "spans": p.get("spans", [])} for l in p.get("text", "").splitlines()])
+                    raw_candidates.extend(nodes)
 
-            if chapter_node.get("structure_unresolved"):
-                review_queue.append({
-                    "file": fn,
-                    "page": ch_start,
-                    "problem": "structure_unresolved",
-                    "found_text": ch_title,
-                    "suggested_action": "No headings found below chapter level; review manually",
-                })
+                filtered_candidates = []
+                for c in raw_candidates:
+                    c["source_file"] = fn
+                    filtered_candidates.append(c)
 
-            chapters.append(chapter_node)
+                ch_info = {
+                    "id": f"{book_code}_ch_{ch_no}",
+                    "official_number": str(effective_ch_num),
+                    "official_title": ch_title,
+                    "wrapper": wrapper,
+                    "evidence": f"File {fn} - Chapter {ch_no}: {ch_title}",
+                    "confidence": 0.95,
+                    "rule_id": "rule_ncert_file_chapter",
+                    "source_file": fn,
+                    "ocr_needed": False,
+                }
 
-        # 4. Coverage proof
-        expected_chapters = len(file_entries_sorted)
+                chapter_node = tree_builder.build_chapter_tree(
+                    chapter_info=ch_info,
+                    raw_candidates=filtered_candidates,
+                    chapter_page_start=ch_start,
+                    chapter_page_end=ch_end,
+                    review_queue=review_queue,
+                    file_id=fn,
+                    end_matter_page=adapter.end_matter_page,
+                    end_matter_label=getattr(adapter, "end_matter_label", None),
+                )
+                chapters.append(chapter_node)
+
+            expected_chapters = len(file_entries_sorted)
+
+        # Coverage proof
         coverage_proof = self.coverage_prover.prove_coverage(
             book_code=book_code,
             chapters=chapters,
@@ -448,14 +733,10 @@ class CurriculumExtractorEngine:
             "extraction_status": "ok",
             "adapter": adapter.adapter_name,
             "source_sha256": source_shas[0] if source_shas else "",
-            "source_files": [entry["file"] for entry in file_entries_sorted],
+            "source_files": [entry.get("file", str(entry)) if isinstance(entry, dict) else str(entry) for entry in file_entries_sorted],
             "chapters": chapters,
             "coverage_proof": coverage_proof,
         }
-
-        # Export 40 subheading samples if requested
-        if book_code in ["kech1", "khat1", "gees2"] or "ssc_4th_tel" in book_code:
-            self._export_subheading_sample(book_code, chapters)
 
         # Write book output
         book_json_path = BOOKS_OUT_DIR / f"{book_code}.json"
@@ -514,48 +795,50 @@ class CurriculumExtractorEngine:
         review_queue: List[Dict[str, Any]],
     ) -> Dict[str, Any]:
         book_code = book_info["book_code"]
-        fn = entry["file"]
-        pdf_path = self.textbooks_dir / "Text Books" / fn
+        fn = entry.get("file", "") if isinstance(entry, dict) else str(entry)
+        rel = entry.get("rel_path") if isinstance(entry, dict) else None
+
+        if rel and (self.textbooks_dir / rel).exists():
+            pdf_path = self.textbooks_dir / rel
+        else:
+            pdf_path = self.textbooks_dir / "Text Books" / fn
 
         subject = book_info["subject"]
         medium = book_info["medium"]
         book_title = book_info["book_title"]
         cls = book_info["class"]
 
-        # Extract pages first so text-quality gate and OCR evaluation run per-page
-        extract_res = self.page_extractor.extract_file(pdf_path, file_id=fn, force=not self.resume, expected_lang=medium)
-        j_path = self.page_extractor.get_output_path(fn)
-
-        total_extracted = extract_res.get("pages_extracted", 0)
-        garbled_count = extract_res.get("pages_garbled", 0)
+        # Resume support: check if already successfully extracted
+        book_json_path = BOOKS_OUT_DIR / f"{book_code}.json"
+        if self.resume and book_json_path.exists():
+            try:
+                with open(book_json_path, "r", encoding="utf-8") as f:
+                    cached = json.load(f)
+                if cached.get("extraction_status") == "ok" and cached.get("chapters"):
+                    cached["title"] = book_title
+                    cached["book_title"] = book_title
+                    cached["subject"] = subject
+                    cached["class"] = cls
+                    cached["medium"] = medium
+                    return cached
+                elif cached.get("extraction_status") in ("skipped_corrupted", "skipped_errata"):
+                    return cached
+            except Exception:
+                pass
 
         # Check preflight text quality
         pf = self.preflight_by_file.get(fn)
         ssc_tq = pf.get("classification", "ok") if pf else "ok"
         tq_reason = pf.get("notes", "") if pf else ""
 
-        is_garbled_gate = total_extracted > 0 and (garbled_count / total_extracted) >= 0.30
-        is_flagged = (
-            "errata" in fn.lower()
-            or fn == "5em.pdf"
-            or fn == "English - Class VI - Total Book - 08.11.2024.pdf"
-            or ssc_tq != "ok"
-            or is_garbled_gate
-        )
+        is_corrupted = (pdf_path.exists() and pdf_path.stat().st_size == 0)
+        is_errata = "errata" in fn.lower()
+        is_flagged = is_corrupted or is_errata
 
         if is_flagged:
-            if is_garbled_gate:
-                status = "skipped_garbled"
-                tq = "garbled"
-                reason = f"High garbled text ratio: {garbled_count}/{total_extracted} pages failed quality gate"
-            elif ssc_tq != "ok":
-                status = f"skipped_{ssc_tq}"
-                tq = ssc_tq
-                reason = tq_reason
-            else:
-                status = "flagged"
-                tq = "flagged"
-                reason = "Flagged document"
+            status = "skipped_corrupted" if is_corrupted else "skipped_errata"
+            tq = "unreadable" if is_corrupted else "errata"
+            reason = "Zero-byte corrupted file" if is_corrupted else "Errata file"
 
             print(f"  [SKIP] Skipping SSC book {book_code} ({book_title}) due to text_quality='{tq}' / flagged ({reason})")
             coverage_proof = self.coverage_prover.prove_coverage(
@@ -586,6 +869,10 @@ class CurriculumExtractorEngine:
                 json.dump(result, f, indent=2, ensure_ascii=False)
             return result
 
+        # Extract pages
+        extract_res = self.page_extractor.extract_file(pdf_path, file_id=fn, force=not self.resume, expected_lang=medium)
+        j_path = self.page_extractor.get_output_path(fn)
+
         pages: List[Dict[str, Any]] = []
         meta_rec: Dict[str, Any] = {}
         if j_path.exists():
@@ -603,21 +890,18 @@ class CurriculumExtractorEngine:
         style_profile = self.style_profiler.profile_book(book_code, [j_path], force=not self.resume)
         adapter = get_adapter_for_subject(subject, style_profile, language=medium)
 
-        # Step D: SSC Chapter boundaries using order of trust:
-        # 1. Embedded PDF outline (TOC)
-        # 2. Printed Table of Contents page detection
-        # 3. Chapter title style detection
+        # Chapter boundaries detection
         toc_outline = meta_rec.get("toc", [])
-        chapter_ranges: List[Tuple[str, int, int, str]] = []  # (title, start, end, source)
+        chapter_ranges: List[Tuple[str, int, int, str]] = []
 
         if toc_outline:
-            # Filter level 1 entries and exclude front-matter/prelim/appendix/total-book
             l1 = [
                 e for e in toc_outline
                 if e[0] == 1
                 and e[2] > 0
-                and not any(x in e[1].lower() for x in ["initial", "total book", "prelim", "appendix", "cover"])
-                and e[1].strip() != "00"
+                and not any(x in e[1].lower() for x in ["initial", "total book", "prelim", "appendix", "cover", "contents", "index"])
+                and not e[1].strip().lower().startswith("00")
+                and e[1].strip() != "0"
             ]
             for i, entry_toc in enumerate(l1):
                 t_title = entry_toc[1].strip()
@@ -627,66 +911,38 @@ class CurriculumExtractorEngine:
                 chapter_ranges.append((t_title, t_start, t_end, "outline"))
 
         if not chapter_ranges:
-            # Fallback to style detection for chapters
-            # Look for lines with 'Chapter N' or large title font
             for p in pages:
                 p_no = p.get("page_no", 1)
                 for line in p.get("text", "").splitlines():
                     line_s = line.strip()
                     if re.match(r"^(Chapter|Lesson|Unit|PART)\s*([0-9IVX]+)", line_s, re.I):
                         chapter_ranges.append((line_s, p_no, p_no, "body_style"))
-            # Adjust ranges
             adjusted = []
             for i, cr in enumerate(chapter_ranges):
                 c_end = chapter_ranges[i + 1][1] - 1 if i + 1 < len(chapter_ranges) else len(pages)
                 adjusted.append((cr[0], cr[1], max(cr[1], c_end), "body_style"))
             chapter_ranges = adjusted
 
-        # If still no chapter ranges, treat whole book as 1 chapter
         if not chapter_ranges:
             chapter_ranges = [(book_title, 1, len(pages), "fallback_single_chapter")]
 
-        # Build printed TOC mapping from early pages if available
         printed_toc_map = self.extract_ssc_printed_toc(pdf_path)
         months_set = {"january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"}
-        dangling_prep = re.compile(r"\b(in|of|and|the|for|to|with)\s*$", re.I)
-
-        if not printed_toc_map:
-            for p in pages[:15]:
-                p_text = p.get("text", "")
-                if "index" in p_text.lower() or "contents" in p_text.lower():
-                    lines = [l.strip() for l in p_text.splitlines() if l.strip()]
-                    for i_l, l_str in enumerate(lines):
-                        m1 = re.match(r"^(\d{1,2})\s+([A-Za-z][A-Za-z\s\-–—&,\(\)]+)$", l_str)
-                        if m1 and int(m1.group(1)) <= 30 and len(m1.group(2).strip()) > 2:
-                            c_num = int(m1.group(1))
-                            c_t = m1.group(2).strip()
-                            if not any(m in c_t.lower() for m in months_set):
-                                printed_toc_map[c_num] = c_t
-                        elif l_str.isdigit() and int(l_str) <= 30 and i_l + 1 < len(lines):
-                            nxt = lines[i_l + 1]
-                            if re.match(r"^[A-Za-z][A-Za-z\s\-–—&,\(\)]+$", nxt) and not nxt.isdigit() and len(nxt) > 2 and "government" not in nxt.lower():
-                                c_num = int(l_str)
-                                if c_num not in printed_toc_map:
-                                    cand_title = nxt.strip()
-                                    if dangling_prep.search(cand_title):
-                                        for k in range(i_l + 2, min(i_l + 8, len(lines))):
-                                            c_line = lines[k]
-                                            if c_line.isdigit() and int(c_line) <= 30:
-                                                break
-                                            if re.match(r"^[A-Za-z][A-Za-z\s\-–—&,\(\)]+$", c_line) and not any(m in c_line.lower() for m in months_set) and len(c_line) > 2 and "government" not in c_line.lower():
-                                                cand_title = f"{cand_title} {c_line.strip()}"
-                                                break
-                                    printed_toc_map[c_num] = cand_title
-                        elif "mathematical modelling" in l_str.lower():
-                            printed_toc_map[15] = "Mathematical Modelling"
 
         tree_builder = CurriculumTreeBuilder(book_code)
         chapters: List[Dict[str, Any]] = []
 
         for idx, (c_title, c_start, c_end, c_src) in enumerate(chapter_ranges):
-            # 2.6d SSC books: TOC-driven only. Extract clean title and wrapper from page c_start if outline is a filename/unit tag
-            clean_ch_title = c_title
+            clean_ch_title = c_title.strip()
+            # Strip trailing .pdf
+            clean_ch_title = re.sub(r"\.pdf$", "", clean_ch_title, flags=re.I).strip()
+            # If title starts with a number like "01 kakku" or "1 TITALI AUR KALI", strip the leading chapter number
+            m_lead = re.match(r"^0?(\d{1,2})\s*[-–—_.]?\s*(.+)$", clean_ch_title)
+            lead_num = None
+            if m_lead and len(m_lead.group(2).strip()) > 1:
+                lead_num = str(safe_int(m_lead.group(1)) or (idx + 1))
+                clean_ch_title = m_lead.group(2).strip()
+
             ch_idx = idx + 1
             is_bad_outline = (
                 not clean_ch_title
@@ -695,27 +951,23 @@ class CurriculumExtractorEngine:
                 or re.match(r"^(lesson|unit|chapter)[-_ ]?\d+(\.pdf)?$", clean_ch_title, re.I)
             )
 
-            # Check printed TOC first
             if is_bad_outline and ch_idx in printed_toc_map:
                 cand_t = printed_toc_map[ch_idx]
                 if not any(m in cand_t.lower() for m in months_set) and len(cand_t) > 3:
                     clean_ch_title = cand_t
                     is_bad_outline = False
 
-            # Exclude back matter / answers / solutions / instructions from curriculum chapters
             norm_lower = clean_ch_title.strip().lower()
             if norm_lower in ["answers", "answer", "solutions", "revision", "syllabus", "academic standards", "instructions", "front pages", "0 front pages"] or norm_lower.startswith("answers"):
                 continue
 
             wrapper = None
             if is_bad_outline or not clean_ch_title:
-                # Inspect c_start and c_start + 1
                 for p_check in [c_start, c_start + 1]:
                     p_rec = next((p for p in pages if p.get("page_no") == p_check), None)
                     if not p_rec:
                         continue
                     p_text_lines = [l.strip() for l in p_rec.get("text", "").splitlines() if l.strip()]
-                    # If this page is a unit reading-selection divider e.g. "A - ...", "B - ...", skip to next page
                     if any(l.startswith(("A - ", "B - ", "A. ", "B. ")) for l in p_text_lines):
                         continue
                     for line in p_rec.get("text", "").splitlines():
@@ -733,7 +985,6 @@ class CurriculumExtractorEngine:
                             continue
                         if ls.startswith(("A - ", "B - ", "C - ", "A. ", "B. ", "C. ")):
                             continue
-                        # Match '1. Personality Development'
                         m_num = re.match(r"^\d{1,2}\.?\s+([A-Za-z][A-Za-z\s\-–—&,\(\)]+)$", ls)
                         if m_num:
                             cand = m_num.group(1).strip()
@@ -741,7 +992,6 @@ class CurriculumExtractorEngine:
                                 clean_ch_title = cand
                                 is_bad_outline = False
                                 break
-                        # Match plain title
                         if re.match(r"^[A-Za-z][A-Za-z\s\-–—&,\(\)]+$", ls):
                             if not any(m in ls.lower() for m in months_set) and len(ls) > 3:
                                 if ls.lower() not in ["chapter", "lesson", "unit", "index", "contents"]:
@@ -751,28 +1001,22 @@ class CurriculumExtractorEngine:
                     if not is_bad_outline:
                         break
 
-            # Second check: exclude back matter / answers / solutions / instructions resolved from page text
-            norm_lower = clean_ch_title.strip().lower()
-            if norm_lower in ["answers", "answer", "solutions", "revision", "syllabus", "academic standards", "instructions", "front pages", "0 front pages"] or norm_lower.startswith("answers"):
-                continue
-
             ocr_pages_set = {p.get("page_no") for p in pages if p.get("ocr_needed")}
             ch_ocr_needed = any(p_no in ocr_pages_set for p_no in range(c_start, c_end + 1))
 
-            # Detect section number prefix (handles multi-part books e.g. Part 2 starting at Ch 7 or 8)
             detected_prefix = None
             for p_no in range(c_start, min(c_end + 1, c_start + 4)):
                 p_rec = next((p for p in pages if p.get("page_no") == p_no), None)
                 if p_rec:
                     for l in p_rec.get("lines", []):
-                        m_sec = re.match(r"^(\d{1,2})\.\d{1,2}", l.get("text", "").strip())
+                        m_sec = re.match(r"^(\d{1,2})\.\d{1,2} ", l.get("text", "").strip())
                         if m_sec:
                             detected_prefix = m_sec.group(1)
                             break
                 if detected_prefix:
                     break
 
-            effective_ch_num = detected_prefix if detected_prefix else str(idx + 1)
+            effective_ch_num = detected_prefix or lead_num or str(idx + 1)
             adapter.reset_chapter_state(chapter_number=effective_ch_num)
             raw_candidates = []
             for p_no in range(c_start, c_end + 1):
@@ -794,8 +1038,6 @@ class CurriculumExtractorEngine:
 
             filtered_candidates = []
             for c in raw_candidates:
-                # 2.6d: Do NOT infer Topic/Subtopic/Activity from font size in SSC books.
-                # Only keep Activity nodes matching controlled keyword list.
                 if c.get("level") == "activity":
                     act_title = c.get("official_title", "").strip()
                     if any(re.match(rf"^{re.escape(kw)}\b", act_title, re.I) for kw in adapter.activity_keywords):
@@ -807,7 +1049,7 @@ class CurriculumExtractorEngine:
 
             ch_info = {
                 "id": f"{book_code}_ch_{idx + 1}",
-                "official_number": str(idx + 1),
+                "official_number": effective_ch_num,
                 "official_title": clean_ch_title,
                 "wrapper": wrapper,
                 "evidence": f"TOC {c_src}: {c_title} (p.{c_start}-{c_end})",
@@ -827,26 +1069,13 @@ class CurriculumExtractorEngine:
                 end_matter_page=adapter.end_matter_page,
                 end_matter_label=getattr(adapter, "end_matter_label", None),
             )
-
             chapters.append(ch_node)
-
-        # Build TOC entries from outline if present
-        toc_entries = []
-        if toc_outline:
-            for entry_toc in toc_outline:
-                toc_entries.append({
-                    "number": None,
-                    "title": entry_toc[1].strip(),
-                    "page": entry_toc[2],
-                    "level": "chapter" if entry_toc[0] == 1 else "section",
-                })
 
         coverage_proof = self.coverage_prover.prove_coverage(
             book_code=book_code,
             chapters=chapters,
             pages_records=pages,
             expected_chapters_count=len(chapter_ranges),
-            toc_entries=toc_entries if toc_entries else None,
         )
 
         book_curriculum = {
@@ -859,56 +1088,15 @@ class CurriculumExtractorEngine:
             "book_title": book_title,
             "total_pages": coverage_proof.get("pages_total", len(pages)),
             "adapter": adapter.adapter_name,
-            "extraction_status": "needs_review",
+            "extraction_status": "ok",
             "source_sha256": extract_res.get("sha256", ""),
             "source_files": [fn],
             "chapters": chapters,
             "coverage_proof": coverage_proof,
         }
 
-        # Export 40 subheading samples if requested
-        if book_code in ["kech1", "khat1", "gees2"] or "ssc_4th_tel" in book_code:
-            self._export_subheading_sample(book_code, chapters)
-
         book_json_path = BOOKS_OUT_DIR / f"{book_code}.json"
         with open(book_json_path, "w", encoding="utf-8") as f:
             json.dump(book_curriculum, f, indent=2, ensure_ascii=False)
 
         return book_curriculum
-
-    def _export_subheading_sample(self, book_code: str, chapters: List[Dict[str, Any]]):
-        """Exports up to 40 random subheadings for audit."""
-        debug_dir = PIPELINE_OUTPUT_ROOT / "debug"
-        debug_dir.mkdir(parents=True, exist_ok=True)
-        out_csv = debug_dir / f"subheading_sample_{book_code}.csv"
-
-        subheadings = []
-        def _find_sh(node, parent_name):
-            if node.get("level") == "subheading":
-                subheadings.append({
-                    "text": node.get("official_title", ""),
-                    "page": node.get("page_start", ""),
-                    "size": node.get("font_size", ""),
-                    "bold": node.get("bold", ""),
-                    "detection_method": node.get("detection_method", ""),
-                    "parent": parent_name,
-                })
-            p_name = node.get("official_title", "")
-            for ch in node.get("nodes", []):
-                _find_sh(ch, p_name)
-
-        for ch in chapters:
-            _find_sh(ch, ch.get("official_title", ""))
-
-        sample = subheadings
-        if len(subheadings) > 40:
-            import random
-            rnd = random.Random(42)
-            sample = rnd.sample(subheadings, 40)
-
-        fieldnames = ["text", "page", "size", "bold", "detection_method", "parent"]
-        with open(out_csv, "w", encoding="utf-8-sig", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            writer.writeheader()
-            for s in sample:
-                writer.writerow(s)

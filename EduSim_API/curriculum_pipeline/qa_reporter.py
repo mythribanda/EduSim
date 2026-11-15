@@ -82,6 +82,18 @@ def generate_qa_report(
 
     # 3. Scan book files
     book_files = sorted(list(b_dir.glob("*.json"))) if b_dir.exists() else []
+    cat_file = PIPELINE_OUTPUT_ROOT / "catalog" / "books_catalog.csv"
+    if cat_file.exists() and b_dir == DEFAULT_BOOKS_DIR:
+        valid_stems = set()
+        try:
+            with open(cat_file, "r", encoding="utf-8-sig") as cf:
+                for r in csv.DictReader(cf):
+                    if "book_code" in r:
+                        valid_stems.add(r["book_code"])
+        except Exception:
+            pass
+        if valid_stems:
+            book_files = [bf for bf in book_files if bf.stem in valid_stems]
 
     book_reports: List[Dict[str, Any]] = []
     zero_chapter_books: List[Dict[str, Any]] = []

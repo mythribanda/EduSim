@@ -1,0 +1,23 @@
+{
+  "benchmark_mode": {
+    "wall_clock_sec": 20.77,
+    "model_load_sec": 0.01,
+    "prompt_tokens": 77,
+    "prompt_eval_sec": 2.07,
+    "prompt_eval_tok_per_sec": 37.2,
+    "ttft_sec": 2.07,
+    "generation_tokens": 177,
+    "generation_sec": 17.81,
+    "generation_tok_per_sec": 9.9
+  },
+  "full_tutor_mode": {
+    "wall_clock_sec": 99.87,
+    "provider": "ollama",
+    "sources_count": 2
+  },
+  "streaming_mode": {
+    "wall_clock_sec": 10.77,
+    "ttft_sec": 2.01,
+    "tokens_streamed": 86
+  }
+}

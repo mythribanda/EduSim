@@ -86,10 +86,15 @@ def calculate_mastery_score(correct_streak: int, total_correct: int, total_attem
     return round(min(100.0, max(0.0, float(mastery_score))), 2)
 
 
-def _normalize_uuid(val: Union[str, uuid.UUID]) -> uuid.UUID:
-    """Safely convert a string or UUID into a uuid.UUID."""
+def _normalize_uuid(val: Union[str, uuid.UUID, int]) -> uuid.UUID:
+    """Safely convert a string, int, or UUID into a uuid.UUID."""
     if isinstance(val, uuid.UUID):
         return val
+    if isinstance(val, int):
+        try:
+            return uuid.UUID(int=val)
+        except Exception:
+            return uuid.uuid5(uuid.NAMESPACE_DNS, str(val))
     try:
         return uuid.UUID(str(val))
     except (ValueError, TypeError):

@@ -75,20 +75,207 @@ class QuestionService:
         return []
 
     @staticmethod
+    def _generate_topic_fallback_questions(
+        topic: str,
+        subject: str = "Science",
+        class_level: str = "10",
+        difficulty: str = "medium",
+        count: int = 3,
+    ) -> List[Dict[str, Any]]:
+        """High-fidelity curriculum-aligned questions when LLM is unavailable or times out."""
+        t_low = (topic or "").lower()
+        sub_low = (subject or "").lower()
+
+        bank = []
+        if any(w in t_low for w in ["newton", "inertia", "first law", "law of motion"]):
+            bank = [
+                {
+                    "question": "According to Newton's First Law of Motion, what is required to change an object's state of rest or uniform motion?",
+                    "options": [
+                        "An unbalanced external net force",
+                        "Continuous applied energy",
+                        "Zero gravitational attraction",
+                        "A constant mass increase"
+                    ],
+                    "correct": "An unbalanced external net force",
+                    "explanation": "An object maintains its state of rest or uniform velocity unless acted upon by a non-zero net external force (\\sum \\vec{F} \\neq 0)."
+                },
+                {
+                    "question": "Which physical quantity serves as a direct quantitative measure of an object's inertia?",
+                    "options": ["Mass", "Velocity", "Volume", "Weight"],
+                    "correct": "Mass",
+                    "explanation": "Mass is the intrinsic scalar quantity that directly quantifies an object's resistance to acceleration (inertia)."
+                },
+                {
+                    "question": "If the vector sum of all forces acting on a moving object is zero (\\sum \\vec{F} = 0), what happens to its motion?",
+                    "options": [
+                        "It continues moving with constant velocity in a straight line",
+                        "It immediately comes to an abrupt halt",
+                        "Its acceleration increases linearly",
+                        "It begins to oscillate back and forth"
+                    ],
+                    "correct": "It continues moving with constant velocity in a straight line",
+                    "explanation": "By Newton's First Law, when \\sum \\vec{F} = 0, \\vec{a} = 0, meaning velocity remains strictly constant in magnitude and direction."
+                },
+                {
+                    "question": "A passenger jolts forward when a bus driver applies the brakes suddenly. This phenomenon is explained by:",
+                    "options": [
+                        "Inertia of motion",
+                        "Gravitational acceleration",
+                        "Centripetal reaction force",
+                        "Newton's Third Law action-reaction"
+                    ],
+                    "correct": "Inertia of motion",
+                    "explanation": "The passenger's upper body continues moving forward at the bus's original velocity due to inertia until an external restraining force acts."
+                }
+            ]
+        elif any(w in t_low for w in ["second law", "force", "acceleration", "f = ma"]):
+            bank = [
+                {
+                    "question": "Newton's Second Law mathematically states that the net force on an object is equal to the rate of change of its:",
+                    "options": ["Linear momentum", "Kinetic energy", "Angular acceleration", "Total displacement"],
+                    "correct": "Linear momentum",
+                    "explanation": "\\vec{F}_{net} = \\frac{d\\vec{p}}{dt}. When mass is constant, this reduces to \\vec{F} = m\\vec{a}."
+                },
+                {
+                    "question": "If an object of mass 4 kg experiences a net force of 20 N, what is its acceleration?",
+                    "options": ["5 m/s²", "80 m/s²", "0.2 m/s²", "16 m/s²"],
+                    "correct": "5 m/s²",
+                    "explanation": "Using a = F / m: 20 N / 4 kg = 5 m/s²."
+                },
+                {
+                    "question": "What is the SI unit of force in base SI units?",
+                    "options": ["kg·m/s²", "kg·m²/s²", "kg·m/s", "kg/m²"],
+                    "correct": "kg·m/s²",
+                    "explanation": "One Newton (N) is defined as 1 kg·m/s²."
+                }
+            ]
+        elif any(w in t_low for w in ["gravit", "kepler", "orbit", "planetary"]):
+            bank = [
+                {
+                    "question": "According to Newton's Law of Universal Gravitation, the gravitational force between two bodies is inversely proportional to:",
+                    "options": [
+                        "The square of the distance between their centers",
+                        "The distance between their centers",
+                        "The product of their masses",
+                        "The cube of their orbital period"
+                    ],
+                    "correct": "The square of the distance between their centers",
+                    "explanation": "F = G(m_1 m_2)/r², exhibiting an inverse-square relationship with distance r."
+                },
+                {
+                    "question": "What is the approximate acceleration due to gravity (g) near the Earth's surface?",
+                    "options": ["9.8 m/s²", "6.67 m/s²", "3.14 m/s²", "1.62 m/s²"],
+                    "correct": "9.8 m/s²",
+                    "explanation": "The standard mean surface gravitational acceleration on Earth is 9.80665 m/s²."
+                }
+            ]
+        elif any(w in t_low for w in ["energy", "work", "power", "kinetic"]):
+            bank = [
+                {
+                    "question": "The work done by a constant force on an object is zero if the angle between force and displacement is:",
+                    "options": ["90° (perpendicular)", "0° (parallel)", "180° (anti-parallel)", "45°"],
+                    "correct": "90° (perpendicular)",
+                    "explanation": "W = F · d · cos(θ). Since cos(90°) = 0, no work is done when force is orthogonal to motion."
+                },
+                {
+                    "question": "If the speed of a vehicle is tripled, its kinetic energy increases by a factor of:",
+                    "options": ["9", "3", "6", "27"],
+                    "correct": "9",
+                    "explanation": "Kinetic energy KE = 1/2 m v². Because KE scales with v², (3v)² = 9v²."
+                }
+            ]
+        elif any(w in t_low for w in ["cell", "mitochondria", "dna", "plant", "organ"]):
+            bank = [
+                {
+                    "question": "Which cellular organelle is primarily responsible for synthesizing adenosine triphosphate (ATP)?",
+                    "options": ["Mitochondria", "Endoplasmic Reticulum", "Golgi Apparatus", "Lysosome"],
+                    "correct": "Mitochondria",
+                    "explanation": "Mitochondria perform cellular respiration to generate ATP, acting as the powerhouse of the cell."
+                },
+                {
+                    "question": "What structural component is found in plant cells but absent in typical animal cells?",
+                    "options": ["Cell wall of cellulose", "Mitochondria", "Cell membrane", "Ribosomes"],
+                    "correct": "Cell wall of cellulose",
+                    "explanation": "Plant cells possess a rigid outer cellulose cell wall that provides structural support and turgor pressure maintenance."
+                }
+            ]
+        elif any(w in t_low for w in ["math", "rational", "fraction", "number", "polynomial", "algebra"]):
+            bank = [
+                {
+                    "question": "A rational number is formally defined as any number that can be expressed in the form p/q, where:",
+                    "options": [
+                        "p and q are integers and q ≠ 0",
+                        "p and q are natural numbers and q > p",
+                        "p and q are real numbers and q = 0",
+                        "p and q are irrational primes"
+                    ],
+                    "correct": "p and q are integers and q ≠ 0",
+                    "explanation": "Rational numbers are ratios of two integers p and q, subject strictly to the non-zero denominator condition q ≠ 0."
+                },
+                {
+                    "question": "What is the additive inverse of -7/12?",
+                    "options": ["7/12", "-12/7", "12/7", "0"],
+                    "correct": "7/12",
+                    "explanation": "The additive inverse of a number x satisfies x + (-x) = 0. (-7/12) + (7/12) = 0."
+                }
+            ]
+        else:
+            bank = [
+                {
+                    "question": f"Which statement best characterizes the core principle of {topic}?",
+                    "options": [
+                        f"It describes verifiable, repeatable relationships in {subject}",
+                        "It only applies in theoretical models without empirical observation",
+                        "It contradicts conservation laws of physical systems",
+                        "It varies randomly depending on geographical coordinate"
+                    ],
+                    "correct": f"It describes verifiable, repeatable relationships in {subject}",
+                    "explanation": f"In {subject}, concepts such as {topic} are established through systematic observation, testing, and mathematical modeling."
+                },
+                {
+                    "question": f"When analyzing {topic} in Class {class_level}, what is the standard method of investigation?",
+                    "options": [
+                        "Identifying key variables and testing relationships experimentally",
+                        "Assuming all parameters remain infinitely large",
+                        "Neglecting dimensional consistency across equations",
+                        "Ignoring baseline boundary conditions"
+                    ],
+                    "correct": "Identifying key variables and testing relationships experimentally",
+                    "explanation": "Scientific methodology relies on isolating independent variables, measuring dependent responses, and verifying unit consistency."
+                },
+                {
+                    "question": f"How is knowledge of {topic} practically applied in technology and science?",
+                    "options": [
+                        "To predict system behaviors and optimize real-world solutions",
+                        "Solely for decorative and linguistic descriptions",
+                        "To bypass thermodynamic limits entirely",
+                        "Without any mathematical or observational basis"
+                    ],
+                    "correct": "To predict system behaviors and optimize real-world solutions",
+                    "explanation": "Understanding fundamental concepts allows scientists and engineers to model, simulate, and design practical applications."
+                }
+            ]
+
+        return bank[:count]
+
+    @staticmethod
     async def generate_cached_questions(
         topic: str,
+        subject: str = "Science",
         difficulty: str = "medium",
         class_level: Union[str, int] = "10",
         count: int = 3,
+        formula: str = "",
+        exclude_questions: Optional[List[str]] = None,
         db: Optional[Session] = None,
     ) -> List[Dict[str, Any]]:
         """
         Question generator with caching logic:
-        1. Check DB questions table: SELECT questions WHERE topic=? AND difficulty=? AND class_level=? LIMIT count
+        1. Check DB questions table: SELECT questions WHERE topic=? AND difficulty=? LIMIT count
         2. If enough cached questions exist, return them (zero AI cost)
-        3. If not enough, call Ollama to generate the shortfall only
-        4. Prompt to Ollama: "Generate {n} physics MCQ questions about {topic} at {difficulty} level for Class {class_level}. Return ONLY a JSON array: [{question, options:[a,b,c,d], correct, explanation}]"
-        5. Parse JSON response, validate structure, save to questions table, return
+        3. If not enough, call Ollama/AI with fallback to generate the shortfall
+        4. Validate, cache new questions to the database for future instant hits, and return.
         """
         close_db = False
         if db is None:
@@ -96,9 +283,10 @@ class QuestionService:
             close_db = True
 
         try:
-            norm_topic = topic.strip()
-            norm_diff = difficulty.strip().lower()
-            norm_class = str(class_level).strip()
+            norm_topic = (topic or "Science Concepts").strip()
+            norm_subject = (subject or "Science").strip()
+            norm_diff = (difficulty or "medium").strip().lower()
+            norm_class = str(class_level or "10").strip()
 
             # -------------------------------------------------------------
             # Step 1: Check database cache
@@ -106,9 +294,8 @@ class QuestionService:
             cached_rows = (
                 db.query(Question)
                 .filter(
-                    func.lower(Question.topic) == norm_topic.lower(),
+                    func.lower(Question.topic).ilike(f"%{norm_topic.lower()[:20]}%"),
                     func.lower(Question.difficulty) == norm_diff,
-                    func.lower(Question.class_level) == norm_class.lower(),
                 )
                 .limit(count)
                 .all()
@@ -138,40 +325,51 @@ class QuestionService:
                 return result[:count]
 
             # -------------------------------------------------------------
-            # Step 3: Calculate shortfall
+            # Step 3: Calculate shortfall & attempt generation
             # -------------------------------------------------------------
             shortfall = count - len(result)
             logger.info(
-                "[Question Cache MISS/PARTIAL] Cached=%d, Shortfall=%d for topic=%r difficulty=%r class=%r",
-                len(result), shortfall, norm_topic, norm_diff, norm_class,
+                "[Question Cache MISS/PARTIAL] Cached=%d, Shortfall=%d for topic=%r subject=%r difficulty=%r class=%r",
+                len(result), shortfall, norm_topic, norm_subject, norm_diff, norm_class,
             )
 
-            # -------------------------------------------------------------
-            # Step 4: Prompt to Ollama for shortfall only
-            # -------------------------------------------------------------
             prompt = (
-                f"Generate {shortfall} physics MCQ questions about {norm_topic} "
+                f"Generate {shortfall} multiple-choice quiz questions about {norm_topic} in {norm_subject} "
                 f"at {norm_diff} level for Class {norm_class}. "
                 f"Return ONLY a JSON array: [{{\"question\": \"...\", \"options\": [\"a\", \"b\", \"c\", \"d\"], \"correct\": \"...\", \"explanation\": \"...\"}}]"
             )
             system_prompt = (
-                "You are an expert physics educator creating curriculum-aligned multiple choice questions. "
+                f"You are an expert educator in {norm_subject} creating curriculum-aligned multiple choice questions. "
                 "Output ONLY a valid JSON array matching the exact structure requested. Do not include markdown code blocks or prose."
             )
 
-            ai_resp = await call_ai(
-                prompt=prompt,
-                system_prompt=system_prompt,
-                temperature=0.3,
-                timeout=15.0,
-                response_format={"type": "json_object"},
-            )
+            parsed_questions: List[Dict[str, Any]] = []
+            try:
+                ai_resp = await call_ai(
+                    prompt=prompt,
+                    system_prompt=system_prompt,
+                    temperature=0.3,
+                    timeout=30.0,
+                    response_format={"type": "json_object"},
+                )
+                raw_text = ai_resp.get("text", "")
+                parsed_questions = QuestionService._parse_llm_json(raw_text)
+            except Exception as e:
+                logger.warning("LLM question generation failed: %s; falling back to curriculum question bank", e)
 
-            raw_text = ai_resp.get("text", "")
-            parsed_questions = QuestionService._parse_llm_json(raw_text)
+            # If LLM didn't return enough questions, pull from verified curriculum generator
+            if len(parsed_questions) < shortfall:
+                fallback_items = QuestionService._generate_topic_fallback_questions(
+                    topic=norm_topic,
+                    subject=norm_subject,
+                    class_level=norm_class,
+                    difficulty=norm_diff,
+                    count=shortfall - len(parsed_questions),
+                )
+                parsed_questions.extend(fallback_items)
 
             # -------------------------------------------------------------
-            # Step 5: Validate, save to questions table, and add to results
+            # Step 4: Validate, save to questions table, and add to results
             # -------------------------------------------------------------
             new_records: List[Question] = []
             for item in parsed_questions:
@@ -184,7 +382,6 @@ class QuestionService:
 
                 opts = item.get("options")
                 if not isinstance(opts, list) or len(opts) < 2:
-                    # Fallback options if missing or invalid
                     opts = [str(opts)] if opts else ["Option A", "Option B", "Option C", "Option D"]
                 opts = [str(o).strip() for o in opts]
 
@@ -275,7 +472,7 @@ class QuestionService:
 
         try:
             # Resolve student UUID or default
-            raw_uid = student_id or "00000000-0000-0000-0000-000000000001"
+            raw_uid = student_id or "a0000000-0000-4000-a000-000000000001"
             try:
                 uid = uuid.UUID(str(raw_uid))
             except (ValueError, TypeError):

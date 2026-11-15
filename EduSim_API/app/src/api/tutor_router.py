@@ -106,6 +106,7 @@ async def analyze_query_stream(
         analyze_tutor_query_stream(
             request.query,
             history=history_dicts,
+            class_name=request.class_name,
             subject=request.subject,
             chapter=request.chapter,
             topic=request.topic,

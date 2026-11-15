@@ -12,7 +12,7 @@ from collections import Counter
 import yaml
 from typing import Any, Dict, List, Optional, Tuple
 
-from curriculum_pipeline.pipeline_config import API_ROOT
+from curriculum_pipeline.pipeline_config import API_ROOT, safe_int
 
 KEYWORDS_FILE = API_ROOT / "curriculum_pipeline" / "config" / "activity_keywords.yaml"
 
@@ -249,7 +249,7 @@ class BaseSubjectAdapter:
         if dots == 1:
             level = "topic"
             try:
-                parts = tuple(int(x) for x in num.split("."))
+                parts = tuple(safe_int(x, 0) for x in num.split("."))
                 # Allow minor backward step within 2 (handles 2-column layout reading order like 1.8 & 1.9)
                 if self.last_topic_tuple is not None and (self.last_topic_tuple[1] - parts[1]) > 2:
                     return None  # Large backward jump (exercise question numbers)

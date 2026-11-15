@@ -388,7 +388,7 @@ function ProfilePage() {
                 </div>
                 <div>
                   <h3 className="text-2xl font-black text-foreground">{stats?.simulations_run || 0}</h3>
-                  <p className="text-xs text-muted-foreground font-medium">Physics Simulations Run</p>
+                  <p className="text-xs text-muted-foreground font-medium">Interactive Simulations Run</p>
                 </div>
               </div>
 

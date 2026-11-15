@@ -81,6 +81,15 @@ class CurriculumTreeBuilder:
         if end_matter_page is not None:
             effective_candidates = [c for c in raw_candidates if c.get("page", 0) <= end_matter_page]
 
+        # Sort candidates strictly by page and vertical position
+        effective_candidates = sorted(
+            effective_candidates,
+            key=lambda c: (
+                c.get("page", 0),
+                c.get("bbox", [0, 0, 0, 0])[1] if isinstance(c.get("bbox"), (list, tuple)) and len(c.get("bbox", [])) > 1 else 0
+            )
+        )
+
         # Suppress any candidates that duplicate chapter title or wrapper
         norm_ch_title = re.sub(r"[^\w]", "", official_title).lower()
         norm_wrapper = re.sub(r"[^\w]", "", str(chapter_info.get("wrapper") or "")).lower()
@@ -111,6 +120,13 @@ class CurriculumTreeBuilder:
                 if cand_norm == norm_ch_title or (norm_wrapper and cand_norm == norm_wrapper):
                     # Never fabricate/duplicate the unnumbered chapter title as a topic or subtopic!
                     continue
+                # Suppress subject names and common textbook running headers (e.g. "Physics", "Chemistry")
+                if cand_norm in {
+                    "physics", "chemistry", "mathematics", "biology", "science",
+                    "socialscience", "english", "hindi", "telugu", "environmentalstudies",
+                    "generalscience", "socialstudies"
+                }:
+                    continue
 
             # On chapter start page, suppress candidates that are fragments of chapter title or wrapper or chapter labels
             if page == chapter_page_start:
@@ -124,32 +140,19 @@ class CurriculumTreeBuilder:
 
 
             if level == "topic":
-                # Check if this topic already exists under this chapter (multi-page continuation, repeated banner, or matching official_number)
-                norm_lower = norm_t.strip().lower()
+                norm_tit_cand = re.sub(r"\s+", " ", re.sub(r"[^\w\s]", "", title.lower())).strip()
                 existing_topic = next(
                     (
                         n for n in chapter_node["nodes"]
                         if n.get("level") == "topic"
                         and (
                             (num and n.get("official_number") and n.get("official_number") == num)
-                            or (not num and not n.get("official_number") and n.get("normalized_title", "").strip().lower() == norm_lower)
+                            or (re.sub(r"\s+", " ", re.sub(r"[^\w\s]", "", n.get("official_title", "").lower())).strip() == norm_tit_cand)
                         )
                     ),
                     None
                 )
                 if existing_topic:
-                    # If existing topic was a TOC-box entry on chapter start page and this is the full section heading on page > chapter_page_start:
-                    if (
-                        existing_topic.get("page_start") == chapter_page_start
-                        and page > chapter_page_start
-                        and existing_topic.get("normalized_title", "").strip().lower() == norm_t.strip().lower()
-                    ):
-                        existing_topic["page_start"] = page
-                        existing_topic["official_title"] = title
-                        existing_topic["normalized_title"] = norm_t
-                        existing_topic["evidence"] = evidence
-                        existing_topic["confidence"] = conf
-                        existing_topic["rule_id"] = rule
                     existing_topic["page_end"] = max(existing_topic["page_end"], page)
                     current_topic = existing_topic
                     current_subtopic = None
@@ -199,28 +202,19 @@ class CurriculumTreeBuilder:
                     target_parent = chapter_node
                     level_skipped = True
 
-                # Check if this subtopic already exists under target_parent
-                norm_lower = norm_t.strip().lower()
+                norm_tit_cand = re.sub(r"\s+", " ", re.sub(r"[^\w\s]", "", title.lower())).strip()
                 existing_subtopic = next(
                     (
                         n for n in target_parent["nodes"]
                         if n.get("level") == "subtopic"
                         and (
                             (num and n.get("official_number") and n.get("official_number") == num)
-                            or (not num and not n.get("official_number") and n.get("normalized_title", "").strip().lower() == norm_lower)
+                            or (re.sub(r"\s+", " ", re.sub(r"[^\w\s]", "", n.get("official_title", "").lower())).strip() == norm_tit_cand)
                         )
                     ),
                     None
                 )
                 if existing_subtopic:
-                    if (
-                        existing_subtopic.get("page_start") == chapter_page_start
-                        and page > chapter_page_start
-                        and existing_subtopic.get("normalized_title", "").strip().lower() == norm_t.strip().lower()
-                    ):
-                        existing_subtopic["page_start"] = page
-                        existing_subtopic["official_title"] = title
-                        existing_subtopic["normalized_title"] = norm_t
                     existing_subtopic["page_end"] = max(existing_subtopic["page_end"], page)
                     current_subtopic = existing_subtopic
                     continue
@@ -326,6 +320,32 @@ class CurriculumTreeBuilder:
                     "nodes": [],
                 }
                 target_parent["nodes"].append(node)
+
+        # Sort siblings by page_start and deduplicate exact duplicate titles at topic/subtopic level
+        def _sort_and_dedup_siblings(parent: Dict[str, Any]):
+            children = parent.get("nodes", [])
+            if not children:
+                return
+            deduped = []
+            seen_titles = set()
+            for c in children:
+                c_lvl = c.get("level")
+                if c_lvl in ("topic", "subtopic"):
+                    c_norm = re.sub(r"\s+", " ", re.sub(r"[^\w\s]", "", c.get("official_title", "").lower())).strip()
+                    if c_norm in seen_titles:
+                        prev = next(x for x in deduped if re.sub(r"\s+", " ", re.sub(r"[^\w\s]", "", x.get("official_title", "").lower())).strip() == c_norm)
+                        prev["page_end"] = max(prev["page_end"], c["page_end"])
+                        prev["nodes"].extend(c.get("nodes", []))
+                        continue
+                    seen_titles.add(c_norm)
+                deduped.append(c)
+
+            deduped.sort(key=lambda x: x.get("page_start", 0))
+            parent["nodes"] = deduped
+            for child in parent["nodes"]:
+                _sort_and_dedup_siblings(child)
+
+        _sort_and_dedup_siblings(chapter_node)
 
         # Fix end pages across nodes sequentially
         self._adjust_page_ends(chapter_node, chapter_page_end)

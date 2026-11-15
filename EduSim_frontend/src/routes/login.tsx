@@ -15,7 +15,8 @@ import {
   Loader2,
   Sparkles,
   ArrowLeft,
-  ArrowRight
+  ArrowRight,
+  Smartphone
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -41,8 +42,18 @@ function Login() {
     forgotPassword, 
     resetPassword, 
     verifyEmail,
+    sendOtp,
+    verifyOtp,
     isLoading 
   } = (useAuthStore as any)();
+
+  // Mode: email password vs mobile OTP
+  const [authMode, setAuthMode] = useState<"password" | "otp">("password");
+  const [countryCode, setCountryCode] = useState("+91");
+  const [mobileNumber, setMobileNumber] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
 
   // Role selection state (defaults to "student")
   const [selectedRole, setSelectedRole] = useState<"student" | "teacher">("student");
@@ -199,6 +210,34 @@ function Login() {
     }
   };
 
+  const handleSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (mobileNumber.trim().length < 8) {
+      toast.error("Please enter a valid mobile number");
+      return;
+    }
+    setIsSendingOtp(true);
+    const ok = await sendOtp(countryCode, mobileNumber.trim());
+    setIsSendingOtp(false);
+    if (ok) {
+      setOtpSent(true);
+      toast.success(`OTP sent to ${countryCode} ${mobileNumber}`);
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (otpCode.trim().length !== 6) {
+      toast.error("Please enter the 6-digit OTP code");
+      return;
+    }
+    const ok = await verifyOtp(mobileNumber.trim(), otpCode.trim());
+    if (ok) {
+      toast.success("Login successful via OTP!");
+      navigate({ to: "/dashboard" });
+    }
+  };
+
   return (
     <div className="relative min-h-[100svh] overflow-hidden bg-background text-foreground font-sans">
       {/* Soft Ambient Background Gradient */}
@@ -235,7 +274,7 @@ function Login() {
           <div className="space-y-4">
             {[
               { label: "AI-Powered Tutor", desc: "Get instant answers and explanations", icon: Brain, color: "#70B5FF" },
-              { label: "Interactive Simulations", desc: "High-fidelity physics engine", icon: Play, color: "#70B5FF" },
+              { label: "Interactive Simulations", desc: "High-fidelity interactive science simulations", icon: Play, color: "#70B5FF" },
               { label: "Formula Lab Explorer", desc: "Track variables and master formulas", icon: Atom, color: "#70B5FF" },
               { label: "Progress Tracking", desc: "Detailed mastery dashboards", icon: TrendingUp, color: "#70B5FF" },
             ].map((f, idx) => {
@@ -366,37 +405,130 @@ function Login() {
                   </button>
                 </div>
 
-                <form onSubmit={handleEmailLogin} className="space-y-4">
-                  <div>
-                    <div className="relative">
-                      <Mail className="absolute left-3.5 top-3.5 w-4 h-4 text-muted-foreground" />
-                      <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} onBlur={() => setTouched(t => ({...t, loginEmail: true}))} className={`w-full pl-10 pr-4 py-3 rounded-2xl bg-background border text-sm text-foreground focus:border-primary outline-none placeholder:text-muted-foreground/60 ${((touched.loginEmail || submittedLogin) && (email.trim().length === 0 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))) ? "border-red-500" : "border-border"}`} />
+                {/* Auth Mode Picker: Password vs OTP */}
+                <div className="flex border-b border-border/60 text-xs font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => setAuthMode("password")}
+                    className={`flex-1 pb-2 border-b-2 transition-all ${
+                      authMode === "password"
+                        ? "border-primary text-primary font-bold"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Email & Password
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAuthMode("otp")}
+                    className={`flex-1 pb-2 border-b-2 transition-all ${
+                      authMode === "otp"
+                        ? "border-primary text-primary font-bold"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Mobile OTP
+                  </button>
+                </div>
+
+                {authMode === "password" ? (
+                  <form onSubmit={handleEmailLogin} className="space-y-4">
+                    <div>
+                      <div className="relative">
+                        <Mail className="absolute left-3.5 top-3.5 w-4 h-4 text-muted-foreground" />
+                        <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} onBlur={() => setTouched(t => ({...t, loginEmail: true}))} className={`w-full pl-10 pr-4 py-3 rounded-2xl bg-background border text-sm text-foreground focus:border-primary outline-none placeholder:text-muted-foreground/60 ${((touched.loginEmail || submittedLogin) && (email.trim().length === 0 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))) ? "border-red-500" : "border-border"}`} />
+                      </div>
+                      {((touched.loginEmail || submittedLogin) && email.trim().length === 0) ? (
+                        <p className="text-xs text-red-400 mt-1">Email is required</p>
+                      ) : ((touched.loginEmail || submittedLogin) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) ? (
+                        <p className="text-xs text-red-400 mt-1">Please enter a valid email</p>
+                      ) : null}
                     </div>
-                    {((touched.loginEmail || submittedLogin) && email.trim().length === 0) ? (
-                      <p className="text-xs text-red-400 mt-1">Email is required</p>
-                    ) : ((touched.loginEmail || submittedLogin) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) ? (
-                      <p className="text-xs text-red-400 mt-1">Please enter a valid email</p>
-                    ) : null}
-                  </div>
-                  <div>
-                    <div className="relative">
-                      <Lock className="absolute left-3.5 top-3.5 w-4 h-4 text-muted-foreground" />
-                      <input type={showPassword ? "text" : "password"} placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} onBlur={() => setTouched(t => ({...t, loginPassword: true}))} className={`w-full pl-10 pr-10 py-3 rounded-2xl bg-background border text-sm text-foreground focus:border-primary outline-none placeholder:text-muted-foreground/60 ${((touched.loginPassword || submittedLogin) && password.length === 0) ? "border-red-500" : "border-border"}`} />
-                      <button type="button" onClick={() => { setShowPassword(!showPassword); }} className="absolute right-3.5 top-3.5 text-muted-foreground hover:text-foreground">{showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
+                    <div>
+                      <div className="relative">
+                        <Lock className="absolute left-3.5 top-3.5 w-4 h-4 text-muted-foreground" />
+                        <input type={showPassword ? "text" : "password"} placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} onBlur={() => setTouched(t => ({...t, loginPassword: true}))} className={`w-full pl-10 pr-10 py-3 rounded-2xl bg-background border text-sm text-foreground focus:border-primary outline-none placeholder:text-muted-foreground/60 ${((touched.loginPassword || submittedLogin) && password.length === 0) ? "border-red-500" : "border-border"}`} />
+                        <button type="button" onClick={() => { setShowPassword(!showPassword); }} className="absolute right-3.5 top-3.5 text-muted-foreground hover:text-foreground">{showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
+                      </div>
+                      {((touched.loginPassword || submittedLogin) && password.length === 0) && (
+                        <p className="text-xs text-red-400 mt-1">Password is required</p>
+                      )}
                     </div>
-                    {((touched.loginPassword || submittedLogin) && password.length === 0) && (
-                      <p className="text-xs text-red-400 mt-1">Password is required</p>
+                    <div className="flex items-center justify-between gap-3 text-xs">
+                      <label className="flex items-center gap-2 text-muted-foreground select-none cursor-pointer">
+                        <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="h-4 w-4 rounded border-border bg-background text-primary focus:ring-primary" />
+                        Remember me
+                      </label>
+                      <button type="button" onClick={() => { setShowForgotForm(true); toast.success("Redirected to Forgot Password page"); }} className="text-primary hover:underline transition-colors font-medium">Forgot password?</button>
+                    </div>
+                    <button type="submit" disabled={isLoading} className="w-full py-3.5 rounded-2xl bg-primary text-white font-bold text-sm shadow-sm transition-all hover:scale-105 active:scale-95 duration-200">{isLoading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Sign In"}</button>
+                  </form>
+                ) : (
+                  <form onSubmit={otpSent ? handleVerifyOtp : handleSendOtp} className="space-y-4">
+                    <div>
+                      <label className="text-[10px] font-bold text-muted-foreground font-mono">MOBILE NUMBER</label>
+                      <div className="flex gap-2 mt-1">
+                        <input
+                          type="text"
+                          value={countryCode}
+                          onChange={(e) => setCountryCode(e.target.value)}
+                          className="w-16 px-2.5 py-3 rounded-2xl bg-background border border-border text-center text-sm font-mono text-foreground focus:border-primary outline-none"
+                        />
+                        <div className="relative flex-1">
+                          <Smartphone className="absolute left-3.5 top-3.5 w-4 h-4 text-muted-foreground" />
+                          <input
+                            type="tel"
+                            placeholder="e.g. 9876543210"
+                            value={mobileNumber}
+                            onChange={(e) => setMobileNumber(e.target.value)}
+                            disabled={otpSent}
+                            className="w-full pl-10 pr-4 py-3 rounded-2xl bg-background border border-border text-sm text-foreground focus:border-primary outline-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {otpSent && (
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-muted-foreground font-mono">6-DIGIT OTP</label>
+                        <input
+                          type="text"
+                          placeholder="Enter 6-digit OTP"
+                          maxLength={6}
+                          value={otpCode}
+                          onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                          className="w-full px-4 py-3 rounded-2xl bg-background border border-border text-center font-mono tracking-widest text-lg font-bold text-foreground focus:border-primary outline-none"
+                        />
+                      </div>
                     )}
-                  </div>
-                  <div className="flex items-center justify-between gap-3 text-xs">
-                    <label className="flex items-center gap-2 text-muted-foreground select-none cursor-pointer">
-                      <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="h-4 w-4 rounded border-border bg-background text-primary focus:ring-primary" />
-                      Remember me
-                    </label>
-                    <button type="button" onClick={() => { setShowForgotForm(true); toast.success("Redirected to Forgot Password page"); }} className="text-primary hover:underline transition-colors font-medium">Forgot password?</button>
-                  </div>
-                  <button type="submit" disabled={isLoading} className="w-full py-3.5 rounded-2xl bg-primary text-white font-bold text-sm shadow-sm transition-all hover:scale-105 active:scale-95 duration-200">{isLoading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Sign In"}</button>
-                </form>
+
+                    <button
+                      type="submit"
+                      disabled={isLoading || isSendingOtp}
+                      className="w-full py-3.5 rounded-2xl bg-primary text-white font-bold text-sm shadow-sm transition-all hover:scale-105 active:scale-95 duration-200 cursor-pointer"
+                    >
+                      {isLoading || isSendingOtp ? (
+                        <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+                      ) : otpSent ? (
+                        "Verify & Sign In"
+                      ) : (
+                        "Send OTP Code"
+                      )}
+                    </button>
+
+                    {otpSent && (
+                      <div className="text-center">
+                        <button
+                          type="button"
+                          onClick={() => setOtpSent(false)}
+                          className="text-xs text-primary hover:underline"
+                        >
+                          Change mobile number / Resend
+                        </button>
+                      </div>
+                    )}
+                  </form>
+                )}
 
                 <div className="relative flex items-center justify-center my-4">
                   <div className="absolute inset-0 flex items-center">

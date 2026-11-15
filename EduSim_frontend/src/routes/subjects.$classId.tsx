@@ -88,16 +88,15 @@ function SubjectsPage() {
   return (
     <PageWrapper>
       <Crumbs items={[{ label: "Home", to: "/" }, { label: c.name }]} />
-      <h1 className="text-3xl font-bold mb-2">
+      <h1 className="text-3xl font-bold mb-6">
         {c.name} <span className="text-muted-foreground text-lg font-normal">— Subjects</span>
       </h1>
-      <p className="text-muted-foreground mb-8">{c.description}</p>
       {subjects.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground bg-card border border-dashed border-border rounded-2xl">
           No subjects available for {c.name}.
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
           {subjects.map((s, i) => {
             const Icon = (Icons as any)[s.icon || "BookOpen"] ?? Icons.BookOpen;
             return (
@@ -105,15 +104,18 @@ function SubjectsPage() {
                 key={s.id}
                 to="/chapters/$classId/$subject"
                 params={{ classId: String(c.id), subject: s.id }}
+                className="h-full"
               >
-                <Card delay={i * 0.05}>
-                  <div className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center mb-4 transition-all">
-                    <Icon className="w-7 h-7 text-primary" />
+                <Card delay={i * 0.04} className="h-[170px] min-h-[170px] w-full flex flex-col justify-between p-6 border border-border bg-card shadow-sm hover:border-primary/50 rounded-2xl transition-all">
+                  <div>
+                    <div className="w-12 h-12 rounded-2xl bg-secondary flex items-center justify-center mb-3 transition-all">
+                      <Icon className="w-6 h-6 text-primary" />
+                    </div>
+                    <h3 className="text-lg font-bold mb-1 text-foreground line-clamp-1">{s.name}</h3>
                   </div>
-                  <h3 className="text-xl font-bold mb-1">{s.name}</h3>
-                  <p className="text-sm text-muted-foreground mb-4">{s.description}</p>
-                  <div className="text-xs font-mono font-bold text-primary">
-                    VIEW CHAPTERS
+                  <div className="mt-3 text-xs font-mono font-bold text-primary flex items-center justify-between">
+                    <span>VIEW CHAPTERS</span>
+                    <span>→</span>
                   </div>
                 </Card>
               </Link>

@@ -747,7 +747,24 @@ def run_validation(
                 matched = [p]
         target_files = matched
     else:
-        target_files = all_files
+        from curriculum_pipeline.pipeline_config import PIPELINE_OUTPUT_ROOT
+        cat_file = PIPELINE_OUTPUT_ROOT / "catalog" / "books_catalog.csv"
+        if cat_file.exists():
+            import csv
+            valid_stems = set()
+            try:
+                with open(cat_file, "r", encoding="utf-8-sig") as cf:
+                    for r in csv.DictReader(cf):
+                        if "book_code" in r:
+                            valid_stems.add(r["book_code"])
+            except Exception:
+                pass
+            if valid_stems:
+                target_files = [f for f in all_files if f.stem in valid_stems]
+            else:
+                target_files = all_files
+        else:
+            target_files = all_files
 
     report: Dict[str, Any] = {
         "total_files_checked": len(target_files),

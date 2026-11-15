@@ -98,7 +98,8 @@ def identify_topic_from_text(
         close_db = True
 
     try:
-        # TODO: [Curriculum V2 Migration] Migrate topic identification from legacy Topic to CurriculumNode(level='topic')
+        # TODO: [Curriculum V2 Migration] Migrate topic identification from legacy Topic to CurriculumNode(level='topic')
+
         # 1. Check Topic table names in database
         try:
             db_topics = db.query(Topic.name).all()
@@ -270,6 +271,13 @@ def build_tutor_prompt(
                 system_lines.append(f"--- [Exceprt {i}] ---")
                 system_lines.append(chunk)
 
+        from app.src.modules.tutor.service import detect_query_language
+        q_lang = detect_query_language(question)
+        if q_lang == "te":
+            system_lines.append("- Language: The student asked in Telugu (తెలుగు). Respond in clear, encouraging Telugu (తెలుగు), keeping formulas in LaTeX.")
+        elif q_lang == "hi":
+            system_lines.append("- Language: The student asked in Hindi (हिंदी). Respond in clear, encouraging Hindi (हिंदी), keeping formulas in LaTeX.")
+
         system_lines.extend([
             "",
             "### Response Guidelines:",
@@ -293,6 +301,7 @@ async def ask_tutor_service(
     session_id: Optional[Union[str, uuid.UUID]] = None,
     db: Optional[Session] = None,
     model: str = "gemma3:4b",
+    timeout: Optional[float] = None,
 ) -> Dict[str, Any]:
     """
     Full end-to-end tutor service:
@@ -320,7 +329,7 @@ async def ask_tutor_service(
             prompt=user_query,
             system_prompt=system_prompt,
             model=model,
-            timeout=12.0,
+            timeout=timeout,
         )
         ai_response_text = ai_result.get("text", "").strip()
 

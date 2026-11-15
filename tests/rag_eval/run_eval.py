@@ -32,7 +32,13 @@ if sys.stdout and hasattr(sys.stdout, "reconfigure"):
 # Ensure EduSim_API is in sys.path
 CURR_DIR = Path(__file__).resolve().parent
 for p in [CURR_DIR, *CURR_DIR.parents]:
-    if (p / "app").is_dir():
+    if (p / "EduSim_API" / "app").is_dir():
+        api_path = str(p / "EduSim_API")
+        if api_path not in sys.path:
+            sys.path.insert(0, api_path)
+        API_DIR = p / "EduSim_API"
+        break
+    elif (p / "app").is_dir():
         if str(p) not in sys.path:
             sys.path.insert(0, str(p))
         API_DIR = p

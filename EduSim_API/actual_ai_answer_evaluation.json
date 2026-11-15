@@ -1,0 +1,344 @@
+{
+  "benchmark_dataset_total_questions": 120,
+  "questions_per_subject": {
+    "physics": 30,
+    "chemistry": 30,
+    "biology": 30,
+    "mathematics": 30
+  },
+  "live_evaluated_sample_size": 16,
+  "total_eval_duration_s": 719.87,
+  "mean_generation_latency_s": 44.99,
+  "rubric_averages": {
+    "factual_correctness": 0.794,
+    "textbook_grounding": 0.906,
+    "mathematical_correctness": 1.0,
+    "scientific_correctness": 0.794,
+    "language_consistency": 0.625,
+    "question_relevance": 0.925,
+    "freedom_from_hallucination": 1.0,
+    "overall_academic_quality_score": 0.863
+  },
+  "per_question_results": [
+    {
+      "sample_id": 1,
+      "subject": "physics",
+      "language": "en",
+      "query": "State Newton's second law of motion and write formula F=ma.",
+      "latency_s": 118.18,
+      "provider": "ollama",
+      "sources_count": 2,
+      "scores": {
+        "factual_correctness": 1.0,
+        "textbook_grounding": 1.0,
+        "mathematical_correctness": 1.0,
+        "scientific_correctness": 1.0,
+        "language_consistency": 1.0,
+        "question_relevance": 1.0,
+        "hallucination_freedom": 1.0,
+        "aggregate_quality_score": 1.0
+      },
+      "response_length_chars": 2173
+    },
+    {
+      "sample_id": 2,
+      "subject": "physics",
+      "language": "te",
+      "query": "సార్వత్రిక గురుత్వాకర్షణ నియమం మరియు స్థిరాంకం G అంటే ఏమిటి?",
+      "latency_s": 35.11,
+      "provider": "ollama",
+      "sources_count": 2,
+      "scores": {
+        "factual_correctness": 0.7,
+        "textbook_grounding": 1.0,
+        "mathematical_correctness": 1.0,
+        "scientific_correctness": 0.7,
+        "language_consistency": 0.0,
+        "question_relevance": 1.0,
+        "hallucination_freedom": 1.0,
+        "aggregate_quality_score": 0.771
+      },
+      "response_length_chars": 0
+    },
+    {
+      "sample_id": 3,
+      "subject": "physics",
+      "language": "hi",
+      "query": "ओम का नियम और विभवांतर तथा विद्युत धारा में संबंध क्या है?",
+      "latency_s": 33.3,
+      "provider": "ollama",
+      "sources_count": 2,
+      "scores": {
+        "factual_correctness": 0.7,
+        "textbook_grounding": 1.0,
+        "mathematical_correctness": 1.0,
+        "scientific_correctness": 0.7,
+        "language_consistency": 0.0,
+        "question_relevance": 1.0,
+        "hallucination_freedom": 1.0,
+        "aggregate_quality_score": 0.771
+      },
+      "response_length_chars": 0
+    },
+    {
+      "sample_id": 4,
+      "subject": "physics",
+      "language": "mixed",
+      "query": "What is simple harmonic motion and time period formula for a pendulum T = 2*pi*sqrt(L/g)?",
+      "latency_s": 80.77,
+      "provider": "ollama",
+      "sources_count": 2,
+      "scores": {
+        "factual_correctness": 1.0,
+        "textbook_grounding": 1.0,
+        "mathematical_correctness": 1.0,
+        "scientific_correctness": 1.0,
+        "language_consistency": 1.0,
+        "question_relevance": 1.0,
+        "hallucination_freedom": 1.0,
+        "aggregate_quality_score": 1.0
+      },
+      "response_length_chars": 1400
+    },
+    {
+      "sample_id": 5,
+      "subject": "chemistry",
+      "language": "en",
+      "query": "Differentiate between exothermic and endothermic reactions with examples.",
+      "latency_s": 10.34,
+      "provider": "ollama",
+      "sources_count": 0,
+      "scores": {
+        "factual_correctness": 0.7,
+        "textbook_grounding": 0.5,
+        "mathematical_correctness": 1.0,
+        "scientific_correctness": 0.7,
+        "language_consistency": 1.0,
+        "question_relevance": 0.8,
+        "hallucination_freedom": 1.0,
+        "aggregate_quality_score": 0.814
+      },
+      "response_length_chars": 0
+    },
+    {
+      "sample_id": 6,
+      "subject": "chemistry",
+      "language": "te",
+      "query": "ఆవర్తన పట్టిక మరియు మూలకాల వర్గీకరణ వివరించండి.",
+      "latency_s": 28.02,
+      "provider": "ollama",
+      "sources_count": 2,
+      "scores": {
+        "factual_correctness": 0.7,
+        "textbook_grounding": 1.0,
+        "mathematical_correctness": 1.0,
+        "scientific_correctness": 0.7,
+        "language_consistency": 0.0,
+        "question_relevance": 1.0,
+        "hallucination_freedom": 1.0,
+        "aggregate_quality_score": 0.771
+      },
+      "response_length_chars": 0
+    },
+    {
+      "sample_id": 7,
+      "subject": "chemistry",
+      "language": "hi",
+      "query": "रासायनिक अभिक्रिया क्या है और रासायनिक समीकरण कैसे संतुलित करते हैं?",
+      "latency_s": 11.47,
+      "provider": "ollama",
+      "sources_count": 0,
+      "scores": {
+        "factual_correctness": 0.7,
+        "textbook_grounding": 0.5,
+        "mathematical_correctness": 1.0,
+        "scientific_correctness": 0.7,
+        "language_consistency": 0.0,
+        "question_relevance": 1.0,
+        "hallucination_freedom": 1.0,
+        "aggregate_quality_score": 0.7
+      },
+      "response_length_chars": 0
+    },
+    {
+      "sample_id": 8,
+      "subject": "chemistry",
+      "language": "mixed",
+      "query": "Why is water synthesis 2H2 + O2 -> 2H2O considered an exothermic combination reaction?",
+      "latency_s": 19.76,
+      "provider": "ollama",
+      "sources_count": 1,
+      "scores": {
+        "factual_correctness": 0.7,
+        "textbook_grounding": 1.0,
+        "mathematical_correctness": 1.0,
+        "scientific_correctness": 0.7,
+        "language_consistency": 1.0,
+        "question_relevance": 0.8,
+        "hallucination_freedom": 1.0,
+        "aggregate_quality_score": 0.886
+      },
+      "response_length_chars": 0
+    },
+    {
+      "sample_id": 9,
+      "subject": "biology",
+      "language": "en",
+      "query": "What is the cell theory and who proposed it?",
+      "latency_s": 13.83,
+      "provider": "ollama",
+      "sources_count": 1,
+      "scores": {
+        "factual_correctness": 0.7,
+        "textbook_grounding": 1.0,
+        "mathematical_correctness": 1.0,
+        "scientific_correctness": 0.7,
+        "language_consistency": 1.0,
+        "question_relevance": 0.8,
+        "hallucination_freedom": 1.0,
+        "aggregate_quality_score": 0.886
+      },
+      "response_length_chars": 0
+    },
+    {
+      "sample_id": 10,
+      "subject": "biology",
+      "language": "te",
+      "query": "కిరణజన్య సంయోగక్రియ మరియు హరితరేణువు పాత్ర ఏమిటి?",
+      "latency_s": 26.96,
+      "provider": "ollama",
+      "sources_count": 2,
+      "scores": {
+        "factual_correctness": 0.7,
+        "textbook_grounding": 1.0,
+        "mathematical_correctness": 1.0,
+        "scientific_correctness": 0.7,
+        "language_consistency": 0.0,
+        "question_relevance": 0.8,
+        "hallucination_freedom": 1.0,
+        "aggregate_quality_score": 0.743
+      },
+      "response_length_chars": 0
+    },
+    {
+      "sample_id": 11,
+      "subject": "biology",
+      "language": "hi",
+      "query": "मानव हृदय की संरचना और दोहरा परिसंचरण समझाइए।",
+      "latency_s": 11.75,
+      "provider": "ollama",
+      "sources_count": 0,
+      "scores": {
+        "factual_correctness": 0.7,
+        "textbook_grounding": 0.5,
+        "mathematical_correctness": 1.0,
+        "scientific_correctness": 0.7,
+        "language_consistency": 0.0,
+        "question_relevance": 1.0,
+        "hallucination_freedom": 1.0,
+        "aggregate_quality_score": 0.7
+      },
+      "response_length_chars": 0
+    },
+    {
+      "sample_id": 12,
+      "subject": "biology",
+      "language": "mixed",
+      "query": "What happens during cellular respiration in mitochondria to generate ATP?",
+      "latency_s": 26.34,
+      "provider": "ollama",
+      "sources_count": 2,
+      "scores": {
+        "factual_correctness": 0.7,
+        "textbook_grounding": 1.0,
+        "mathematical_correctness": 1.0,
+        "scientific_correctness": 0.7,
+        "language_consistency": 1.0,
+        "question_relevance": 0.8,
+        "hallucination_freedom": 1.0,
+        "aggregate_quality_score": 0.886
+      },
+      "response_length_chars": 0
+    },
+    {
+      "sample_id": 13,
+      "subject": "mathematics",
+      "language": "en",
+      "query": "What is the quadratic formula to find roots of ax^2 + bx + c = 0?",
+      "latency_s": 34.24,
+      "provider": "ollama",
+      "sources_count": 2,
+      "scores": {
+        "factual_correctness": 0.7,
+        "textbook_grounding": 1.0,
+        "mathematical_correctness": 1.0,
+        "scientific_correctness": 0.7,
+        "language_consistency": 1.0,
+        "question_relevance": 0.8,
+        "hallucination_freedom": 1.0,
+        "aggregate_quality_score": 0.886
+      },
+      "response_length_chars": 0
+    },
+    {
+      "sample_id": 14,
+      "subject": "mathematics",
+      "language": "te",
+      "query": "అంకశ్రేఢి మరియు nవ పదం సూత్రం ఏమిటి?",
+      "latency_s": 88.6,
+      "provider": "ollama",
+      "sources_count": 2,
+      "scores": {
+        "factual_correctness": 1.0,
+        "textbook_grounding": 1.0,
+        "mathematical_correctness": 1.0,
+        "scientific_correctness": 1.0,
+        "language_consistency": 1.0,
+        "question_relevance": 1.0,
+        "hallucination_freedom": 1.0,
+        "aggregate_quality_score": 1.0
+      },
+      "response_length_chars": 1167
+    },
+    {
+      "sample_id": 15,
+      "subject": "mathematics",
+      "language": "hi",
+      "query": "पाइथागोरस प्रमेय का कथन और सत्यापन लिखिए।",
+      "latency_s": 93.38,
+      "provider": "ollama",
+      "sources_count": 2,
+      "scores": {
+        "factual_correctness": 1.0,
+        "textbook_grounding": 1.0,
+        "mathematical_correctness": 1.0,
+        "scientific_correctness": 1.0,
+        "language_consistency": 1.0,
+        "question_relevance": 1.0,
+        "hallucination_freedom": 1.0,
+        "aggregate_quality_score": 1.0
+      },
+      "response_length_chars": 1476
+    },
+    {
+      "sample_id": 16,
+      "subject": "mathematics",
+      "language": "mixed",
+      "query": "In a right triangle with base 3 and height 4, hypotenuse length find cheyandi using Pythagoras.",
+      "latency_s": 87.82,
+      "provider": "ollama",
+      "sources_count": 2,
+      "scores": {
+        "factual_correctness": 1.0,
+        "textbook_grounding": 1.0,
+        "mathematical_correctness": 1.0,
+        "scientific_correctness": 1.0,
+        "language_consistency": 1.0,
+        "question_relevance": 1.0,
+        "hallucination_freedom": 1.0,
+        "aggregate_quality_score": 1.0
+      },
+      "response_length_chars": 1824
+    }
+  ]
+}

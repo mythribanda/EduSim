@@ -710,7 +710,7 @@ function SettingsPage() {
                   <div className="flex items-center justify-between p-4 rounded-2xl bg-secondary/50 border border-border">
                     <div>
                       <p className="text-sm font-semibold text-foreground">Email Notifications</p>
-                      <p className="text-xs text-muted-foreground">Receive progress reports, study summaries, and new physics simulation releases.</p>
+                      <p className="text-xs text-muted-foreground">Receive progress reports, study summaries, and new interactive simulation releases.</p>
                     </div>
                     <Switch 
                       checked={emailNotifications} 
@@ -722,7 +722,7 @@ function SettingsPage() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl bg-secondary/50 border border-border gap-4">
                     <div>
                       <p className="text-sm font-semibold text-foreground">Tutor Hint Frequency</p>
-                      <p className="text-xs text-muted-foreground">Adjust how frequently the AI Tutor prompts you with physics hints or calculation tips during chat session.</p>
+                      <p className="text-xs text-muted-foreground">Adjust how frequently the AI Tutor prompts you with helpful hints or calculation tips during chat session.</p>
                     </div>
                     <select
                       value={hintFrequency}

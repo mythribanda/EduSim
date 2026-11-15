@@ -18,7 +18,7 @@ type QuestionType = "multiple-choice" | "fill-blanks" | "concept";
 
 interface QuizQuestion {
   id: string;
-  backendId?: number;
+  backendId?: string | number;
   type: QuestionType;
   question: string;
   options?: string[];
@@ -109,13 +109,20 @@ export default function QASection({ topic, chapter, subject, formulas }: QASecti
     if (!rawList || rawList.length === 0) return [];
     return rawList.map((q: any) => {
       const hasOptions = Array.isArray(q.options) && q.options.length > 0;
+      let normCorrect = q.correct || q.answer || "";
+      if (typeof normCorrect === "string" && normCorrect.trim().length === 1 && hasOptions) {
+        const letterIdx = normCorrect.toLowerCase().charCodeAt(0) - 97;
+        if (letterIdx >= 0 && letterIdx < q.options.length) {
+          normCorrect = q.options[letterIdx];
+        }
+      }
       return {
         id: q.id ? `q-${q.id}` : `q-${Math.random().toString(36).substring(2, 9)}`,
-        backendId: typeof q.id === "number" ? q.id : undefined,
+        backendId: q.id ? String(q.id) : undefined,
         type: hasOptions ? "multiple-choice" : "fill-blanks",
         question: q.question,
         options: hasOptions ? q.options : undefined,
-        correctAnswer: q.correct || q.answer || "",
+        correctAnswer: normCorrect,
         explanation: q.explanation || ""
       };
     });
@@ -219,9 +226,9 @@ export default function QASection({ topic, chapter, subject, formulas }: QASecti
 
   if (loading) {
     return (
-      <div className="rounded-3xl border border-slate-100 bg-white/85 p-16 text-center text-slate-400 font-medium shadow-[0_8px_30px_rgb(0,0,0,0.02)] flex flex-col items-center justify-center gap-3">
-        <Loader2 className="w-8 h-8 text-violet-600 animate-spin" />
-        <span className="text-sm text-slate-500 font-bold tracking-wider animate-pulse">Generating dynamic quiz questions...</span>
+      <div className="rounded-3xl border border-border bg-card/85 p-12 text-center text-muted-foreground font-medium shadow-sm flex flex-col items-center justify-center gap-3">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+        <span className="text-sm text-foreground font-bold tracking-wider animate-pulse">Generating dynamic AI quiz questions...</span>
       </div>
     );
   }
@@ -298,25 +305,25 @@ export default function QASection({ topic, chapter, subject, formulas }: QASecti
 
   return (
     <div className="w-full space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-violet-50 flex items-center justify-center border border-violet-150 shadow-sm">
-            <BookOpen className="w-5 h-5 text-violet-600" />
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 shadow-sm">
+            <BookOpen className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h2 className="text-2xl font-black tracking-tight text-slate-800">Practice Q&A</h2>
-            <p className="text-xs font-semibold text-slate-400">Question {currentIndex + 1} of {questions.length}</p>
+            <h2 className="text-xl sm:text-2xl font-black tracking-tight text-foreground">Practice Quiz</h2>
+            <p className="text-xs font-semibold text-muted-foreground">Question {currentIndex + 1} of {questions.length}</p>
           </div>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
           {latestMastery && (
-            <div className="hidden sm:flex items-center gap-3 bg-secondary/60 border border-border px-3.5 py-1.5 rounded-2xl">
+            <div className="flex items-center gap-3 bg-secondary/80 border border-border px-3.5 py-1.5 rounded-2xl">
               <div className="flex items-center gap-1 text-xs font-bold text-amber-500">
-                <Flame className="w-4 h-4" />
+                <Flame className="w-4 h-4 fill-amber-500 text-amber-500" />
                 <span>{latestMastery.streak} Streak</span>
               </div>
               <div className="h-3 w-[1px] bg-border" />
-              <div className="flex items-center gap-1 text-xs font-bold text-violet-500">
+              <div className="flex items-center gap-1 text-xs font-bold text-primary">
                 <Trophy className="w-4 h-4" />
                 <span>{latestMastery.score.toFixed(0)}% Mastery</span>
               </div>
@@ -325,26 +332,26 @@ export default function QASection({ topic, chapter, subject, formulas }: QASecti
           <button
             onClick={generateMoreQuestions}
             disabled={loadingMore}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-750 text-xs font-bold border border-violet-150 shadow-sm transition-all disabled:opacity-50 cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-secondary hover:bg-secondary/80 text-foreground text-xs font-bold border border-border shadow-sm transition-all disabled:opacity-50 cursor-pointer"
           >
             {loadingMore ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
             ) : (
-              <Sparkles className="w-3.5 h-3.5 text-violet-600 animate-pulse" />
+              <Sparkles className="w-3.5 h-3.5 text-primary animate-pulse" />
             )}
-            <span>{loadingMore ? "Generating..." : "Get More Questions"}</span>
+            <span>{loadingMore ? "Generating..." : "More Questions"}</span>
           </button>
           <div className="text-right">
-            <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Score</p>
-            <p className="text-xl font-black text-violet-600">{score}/{questions.length}</p>
+            <p className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-widest">Score</p>
+            <p className="text-lg sm:text-xl font-black text-primary">{score}/{questions.length}</p>
           </div>
         </div>
       </div>
 
       {/* Progress Bar */}
-      <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+      <div className="w-full h-2 bg-secondary rounded-full overflow-hidden shadow-inner">
         <div 
-          className="h-full bg-gradient-to-r from-violet-500 to-indigo-500 transition-all duration-500" 
+          className="h-full bg-gradient-to-r from-primary to-blue-500 transition-all duration-500" 
           style={{ width: `${progressPercent}%` }} 
         />
       </div>
@@ -355,34 +362,34 @@ export default function QASection({ topic, chapter, subject, formulas }: QASecti
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
-          className={`rounded-3xl border p-8 transition-all duration-300 ${
+          className={`rounded-3xl border p-6 sm:p-8 transition-all duration-300 ${
             isSubmitted 
               ? (isCorrect 
-                  ? 'border-green-200 bg-green-50/20 shadow-[0_8px_30px_rgba(34,197,94,0.04)]' 
-                  : 'border-red-200 bg-red-50/20 shadow-[0_8px_30px_rgba(239,68,68,0.04)]') 
-              : 'border-slate-100 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.02)]'
+                  ? 'border-emerald-500/40 bg-emerald-500/10' 
+                  : 'border-destructive/40 bg-destructive/10') 
+              : 'border-border bg-card shadow-sm'
           }`}
         >
-          <h3 className="text-lg font-bold leading-relaxed text-slate-800 whitespace-pre-wrap">
+          <h3 className="text-base sm:text-lg font-bold leading-relaxed text-foreground whitespace-pre-wrap">
             {currentQ.question}
           </h3>
 
-          <div className="mt-8">
+          <div className="mt-6">
             {(currentQ.type === "multiple-choice" || currentQ.type === "concept") && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 {currentQ.options?.map((opt) => (
                   <button
                     key={opt}
                     onClick={() => handleSelectOption(opt)}
                     disabled={isSubmitted}
-                    className={`p-4 rounded-xl border text-left font-semibold text-sm transition-all duration-200 ${
+                    className={`p-4 rounded-2xl border text-left font-semibold text-sm transition-all duration-200 cursor-pointer ${
                       answers[currentQ.id] === opt
-                        ? 'border-violet-500 bg-violet-50 text-violet-700 shadow-sm'
-                        : 'border-slate-100 bg-slate-50/40 text-slate-600 hover:bg-slate-100/50 hover:text-slate-800'
-                    } ${isSubmitted ? 'cursor-not-allowed opacity-80' : ''} ${
-                      isSubmitted && opt === currentQ.correctAnswer ? 'border-green-500 bg-green-50 text-green-700 shadow-[0_0_15px_rgba(34,197,94,0.1)]' : ''
+                        ? 'border-primary bg-primary/10 text-primary shadow-sm'
+                        : 'border-border bg-secondary/40 text-foreground hover:bg-secondary hover:border-primary/40'
+                    } ${isSubmitted ? 'cursor-not-allowed opacity-85' : ''} ${
+                      isSubmitted && opt === currentQ.correctAnswer ? 'border-emerald-500 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold' : ''
                     } ${
-                      isSubmitted && answers[currentQ.id] === opt && opt !== currentQ.correctAnswer ? 'border-red-500 bg-red-50 text-red-700 shadow-[0_0_15px_rgba(239,68,68,0.1)]' : ''
+                      isSubmitted && answers[currentQ.id] === opt && opt !== currentQ.correctAnswer ? 'border-destructive bg-destructive/15 text-destructive font-bold' : ''
                     }`}
                   >
                     {opt}
@@ -399,7 +406,7 @@ export default function QASection({ topic, chapter, subject, formulas }: QASecti
                   onChange={(e) => handleTextChange(e.target.value)}
                   disabled={isSubmitted}
                   placeholder="Type your answer..."
-                  className="w-full sm:max-w-md bg-slate-50 border border-slate-200 rounded-xl px-5 py-4 focus:outline-none focus:bg-white focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 disabled:opacity-50 text-slate-850 text-lg"
+                  className="w-full sm:max-w-md bg-secondary border border-border rounded-2xl px-5 py-3.5 focus:outline-none focus:border-primary text-foreground text-base"
                 />
               </div>
             )}
@@ -408,7 +415,7 @@ export default function QASection({ topic, chapter, subject, formulas }: QASecti
               <button
                 onClick={handleSubmit}
                 disabled={!answers[currentQ.id]}
-                className="mt-8 rounded-xl bg-violet-600 hover:bg-violet-500 px-8 py-3 font-bold text-white shadow-md shadow-violet-600/15 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
+                className="mt-6 rounded-2xl bg-primary hover:bg-primary/90 px-8 py-3 font-bold text-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95 cursor-pointer"
               >
                 Submit Answer
               </button>
@@ -416,22 +423,22 @@ export default function QASection({ topic, chapter, subject, formulas }: QASecti
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mt-8 space-y-6"
+                className="mt-6 space-y-6"
               >
-                <div className={`p-5 rounded-2xl border ${
-                  isCorrect ? 'bg-green-50 border-green-150 text-green-800' : 'bg-red-50 border-red-150 text-red-800'
+                <div className={`p-4 sm:p-5 rounded-2xl border ${
+                  isCorrect ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400' : 'bg-destructive/10 border-destructive/30 text-destructive'
                 }`}>
-                  <div className="flex items-start gap-4">
+                  <div className="flex items-start gap-3">
                     {isCorrect ? (
-                      <CheckCircle2 className="w-6 h-6 text-green-500 mt-0.5 shrink-0" />
+                      <CheckCircle2 className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
                     ) : (
-                      <XCircle className="w-6 h-6 text-red-500 mt-0.5 shrink-0" />
+                      <XCircle className="w-5 h-5 text-destructive mt-0.5 shrink-0" />
                     )}
                     <div>
-                      <p className={`text-lg font-bold ${isCorrect ? 'text-green-700' : 'text-red-700'}`}>
+                      <p className="text-base font-bold">
                         {isCorrect ? 'Correct!' : 'Incorrect'}
                       </p>
-                      <p className="mt-2 text-slate-700 font-normal leading-relaxed text-sm">
+                      <p className="mt-1 text-foreground font-normal leading-relaxed text-sm">
                         {currentQ.explanation}
                       </p>
                     </div>
@@ -441,39 +448,39 @@ export default function QASection({ topic, chapter, subject, formulas }: QASecti
                 {currentIndex < questions.length - 1 ? (
                   <button
                     onClick={handleNext}
-                    className="flex items-center gap-2 rounded-xl bg-slate-900 text-white hover:bg-slate-800 px-8 py-3 font-bold shadow-md transition-all active:scale-95"
+                    className="flex items-center gap-2 rounded-2xl bg-primary text-white hover:bg-primary/90 px-8 py-3 font-bold shadow-sm transition-all active:scale-95 cursor-pointer"
                   >
                     Next Question <ArrowRight className="w-4 h-4" />
                   </button>
                 ) : (
-                  <div className="flex flex-col items-center justify-center p-8 bg-gradient-to-br from-violet-50 to-indigo-50 border border-violet-100 rounded-2xl text-center shadow-lg shadow-violet-100/10 gap-4">
-                    <h4 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-indigo-650">🎉 Practice Complete!</h4>
-                    <p className="text-base text-slate-600 font-semibold">You scored <span className="font-extrabold text-violet-600">{score}</span> out of <span className="font-extrabold text-slate-800">{questions.length}</span></p>
+                  <div className="flex flex-col items-center justify-center p-6 sm:p-8 bg-card border border-border rounded-3xl text-center shadow-sm gap-4">
+                    <h4 className="text-2xl sm:text-3xl font-black text-foreground">🎉 Practice Complete!</h4>
+                    <p className="text-sm sm:text-base text-muted-foreground font-semibold">You scored <span className="font-extrabold text-primary">{score}</span> out of <span className="font-extrabold text-foreground">{questions.length}</span></p>
 
                     {latestMastery && (
-                      <div className="flex items-center gap-4 bg-white/80 border border-violet-200/60 rounded-2xl px-6 py-3 shadow-sm">
-                        <div className="flex items-center gap-2 text-sm font-bold text-amber-600">
+                      <div className="flex items-center gap-4 bg-secondary border border-border rounded-2xl px-6 py-3 shadow-sm">
+                        <div className="flex items-center gap-2 text-sm font-bold text-amber-500">
                           <Flame className="w-5 h-5 fill-amber-500 text-amber-500" />
                           <span>{latestMastery.streak} Day Streak</span>
                         </div>
-                        <div className="h-4 w-[1px] bg-slate-200" />
-                        <div className="flex items-center gap-2 text-sm font-bold text-violet-600">
-                          <Trophy className="w-5 h-5 text-violet-600" />
+                        <div className="h-4 w-[1px] bg-border" />
+                        <div className="flex items-center gap-2 text-sm font-bold text-primary">
+                          <Trophy className="w-5 h-5 text-primary" />
                           <span>{latestMastery.score.toFixed(0)}% Mastery Score</span>
                         </div>
                       </div>
                     )}
 
                     {latestMastery?.recommended && (
-                      <div className="mt-2 p-4 rounded-2xl bg-white/90 border border-violet-200 max-w-md w-full text-center space-y-2">
-                        <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-violet-600 uppercase tracking-wider">
+                      <div className="mt-2 p-4 rounded-2xl bg-secondary/80 border border-border max-w-md w-full text-center space-y-2">
+                        <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-primary uppercase tracking-wider">
                           <Target className="w-4 h-4" /> Recommended Next Topic
                         </div>
-                        <p className="text-sm font-bold text-slate-800">{latestMastery.recommended}</p>
+                        <p className="text-sm font-bold text-foreground">{latestMastery.recommended}</p>
                         <Link
                           to="/simulation/$topic"
                           params={{ topic: latestMastery.recommended }}
-                          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs shadow-md transition-all active:scale-95"
+                          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs shadow-sm transition-all active:scale-95"
                         >
                           Launch Next Simulation <ArrowRight className="w-3.5 h-3.5" />
                         </Link>
@@ -489,14 +496,14 @@ export default function QASection({ topic, chapter, subject, formulas }: QASecti
                           setSubmitFeedback({});
                           setScore(0);
                         }}
-                        className="flex-1 px-6 py-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-755 font-bold transition-all active:scale-95 shadow-sm"
+                        className="flex-1 px-6 py-3 rounded-2xl border border-border bg-card hover:bg-secondary text-foreground font-bold transition-all active:scale-95 shadow-sm cursor-pointer"
                       >
                         Retry Practice
                       </button>
                       <button
                         onClick={generateMoreQuestions}
                         disabled={loadingMore}
-                        className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-violet-600 text-white font-bold hover:bg-violet-500 shadow-md shadow-violet-600/15 transition-all active:scale-95 disabled:opacity-50"
+                        className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-primary text-white font-bold hover:bg-primary/90 shadow-sm transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
                       >
                         {loadingMore ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
