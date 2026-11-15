@@ -9,4 +9,6 @@ api_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if api_dir not in sys.path:
     sys.path.insert(0, api_dir)
 
-from main import app  # noqa: F401
+from main import app
+
+__all__ = ["app"]

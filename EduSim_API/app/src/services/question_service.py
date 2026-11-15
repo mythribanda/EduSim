@@ -84,7 +84,6 @@ class QuestionService:
     ) -> List[Dict[str, Any]]:
         """High-fidelity curriculum-aligned questions when LLM is unavailable or times out."""
         t_low = (topic or "").lower()
-        sub_low = (subject or "").lower()
 
         bank = []
         if any(w in t_low for w in ["newton", "inertia", "first law", "law of motion"]):
@@ -552,4 +551,3 @@ class QuestionService:
         finally:
             if close_db:
                 db.close()
-
